@@ -152,7 +152,7 @@ _NSLog_standard_printf_handler(NSString* message)
       len = [d length];
     }
 
-#if	defined(_WIN32)
+#if	0 && defined(_WIN32)
   null_terminated_buf = UNISTR(message);
 
   OutputDebugStringW(null_terminated_buf);
