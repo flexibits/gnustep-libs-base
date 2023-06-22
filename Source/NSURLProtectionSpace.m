@@ -54,6 +54,13 @@ typedef struct {
   return o;
 }
 
++ (NSURLProtectionSpace*) protectionSpaceForAuthentication: (NSString*)auth
+                                                requestURL: (NSURL*)URL
+{
+  return [GSHTTPAuthentication protectionSpaceForAuthentication: auth requestURL: URL];
+}
+
+
 - (NSString *) authenticationMethod
 {
   return this->authenticationMethod;
