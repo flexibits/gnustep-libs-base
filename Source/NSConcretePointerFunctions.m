@@ -49,6 +49,12 @@ describePointer(const void *item)
     return [NSString stringWithFormat:@"%p", item];
 }
 
+static NSString *
+describeInteger(const void *item)
+{
+    return [NSString stringWithFormat:@"%" PRIdPTR, (intptr_t)item];
+}
+
 static BOOL
 equalDirect(const void *item1, const void *item2,
             NSUInteger (*_size)(const void *item))
