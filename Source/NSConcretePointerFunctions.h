@@ -106,7 +106,7 @@ inline static BOOL hasPersonalityType(int options, int flag)
 
 inline static BOOL isCopyIn(int options)
 {
-    return personalityType(options) & NSPointerFunctionsCopyIn;
+    return options & NSPointerFunctionsCopyIn;
 }
 
 /* Declare the concrete pointer functions class as a wrapper around
