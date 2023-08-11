@@ -304,15 +304,17 @@ relinquishRetainedMemory(const void *item,
     _x.relinquishFunction = func;
 }
 
-- (void)setSizeFunction:(NSUInteger (*)(const void *item))func
+- (NSUInteger (*)(const void *item))sizeFunction
 {
-    _x.sizeFunction = func;
+    NSLog(@"Error: Unsupported NSPointerFunctions property sizeFunction");
+    NSParameterAssert(NO);
+    return nil;
 }
 
-- (void)setUsesStrongWriteBarrier:(BOOL)flag
+- (void)setSizeFunction:(NSUInteger (*)(const void *item))func
 {
-    _x.options &=
-        ~(NSPointerFunctionsZeroingWeakMemory | NSPointerFunctionsOpaqueMemory | NSPointerFunctionsMallocMemory | NSPointerFunctionsMachVirtualMemory);
+    NSLog(@"Error: Unsupported NSPointerFunctions property sizeFunction");
+    NSParameterAssert(NO);
 }
 
 - (BOOL)usesStrongWriteBarrier

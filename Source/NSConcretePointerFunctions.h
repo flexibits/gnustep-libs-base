@@ -71,10 +71,7 @@ typedef struct
     void (*relinquishFunction)(const void *item,
                                NSUInteger (*size)(const void *item));
 
-    NSUInteger (*sizeFunction)(const void *item);
-
     NSPointerFunctionsOptions options;
-
 } PFInfo;
 
 const int NSPointerFunctionsMemoryMask = 0xff;
@@ -154,7 +151,7 @@ static inline void *
 pointerFunctionsAcquire(PFInfo *PF, void **dst, void *src)
 {
     if (PF->acquireFunction != 0)
-        src = (*PF->acquireFunction)(src, PF->sizeFunction,
+        src = (*PF->acquireFunction)(src, nil,
                                      isCopyIn(PF->options) ? YES : NO);
     // FIXME: This shouldn't be here.  Acquire and assign are separate
     // operations.  Acquire is for copy-in operations (i.e. retain / copy),
@@ -191,7 +188,7 @@ static inline NSUInteger
 pointerFunctionsHash(PFInfo *PF, void *item)
 {
     if (PF->hashFunction != 0)
-        return (*PF->hashFunction)(item, PF->sizeFunction);
+        return (*PF->hashFunction)(item, nil);
     return (NSUInteger)(uintptr_t)item;
 }
 
@@ -202,7 +199,7 @@ static inline BOOL
 pointerFunctionsEqual(PFInfo *PF, void *item1, void *item2)
 {
     if (PF->isEqualFunction != 0)
-        return (*PF->isEqualFunction)(item1, item2, PF->sizeFunction);
+        return (*PF->isEqualFunction)(item1, item2, nil);
     if (item1 == item2)
         return YES;
     return NO;
@@ -215,7 +212,7 @@ static inline void
 pointerFunctionsRelinquish(PFInfo *PF, void **itemptr)
 {
     if (PF->relinquishFunction != 0)
-        (*PF->relinquishFunction)(*itemptr, PF->sizeFunction);
+        (*PF->relinquishFunction)(*itemptr, nil);
     if (hasMemoryType(PF->options, NSPointerFunctionsWeakMemory))
         ARC_WEAK_WRITE(itemptr, 0);
     else if (hasMemoryType(PF->options, NSPointerFunctionsZeroingWeakMemory))
@@ -230,10 +227,10 @@ pointerFunctionsReplace(PFInfo *PF, void **dst, void *src)
 {
     if (src != *dst) {
         if (PF->acquireFunction != 0)
-            src = (*PF->acquireFunction)(src, PF->sizeFunction,
+            src = (*PF->acquireFunction)(src, nil,
                                          isCopyIn(PF->options) ? YES : NO);
         if (PF->relinquishFunction != 0)
-            (*PF->relinquishFunction)(*dst, PF->sizeFunction);
+            (*PF->relinquishFunction)(*dst, nil);
         if (hasMemoryType(PF->options, NSPointerFunctionsWeakMemory))
             ARC_WEAK_WRITE(dst, 0);
         else if (hasMemoryType(PF->options, NSPointerFunctionsZeroingWeakMemory))
