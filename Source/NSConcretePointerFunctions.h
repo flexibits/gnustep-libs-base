@@ -30,24 +30,31 @@
 #endif
 
 #if defined(OBJC_CAP_ARC)
+
 #include <objc/objc-arc.h>
+
 #define ARC_WEAK_READ(x) objc_loadWeak((id *)x)
 #define ARC_WEAK_WRITE(addr, x) objc_storeWeak((id *)addr, (id)x)
+
+// Unused: NSPointerFunctionsZeroingWeakMemory deprecated
 #define WEAK_READ(x) (*x)
 #define WEAK_WRITE(addr, x) (*(addr) = x)
+
 #define STRONG_WRITE(addr, x) objc_storeStrong((id *)addr, (id)x)
 #define STRONG_ACQUIRE(x) objc_retain(x)
+
 #else
-#define WEAK_READ(x) (*x)
-#define WEAK_WRITE(addr, x) (*(addr) = x)
-#define STRONG_WRITE(addr, x) ASSIGN(*((id *)addr), ((id)x))
-#define STRONG_ACQUIRE(x) RETAIN(((id)x))
-#endif
-#ifndef ARC_WEAK_WRITE
-#define ARC_WEAK_WRITE(addr, x) WEAK_WRITE(addr, x)
-#endif
-#ifndef ARC_WEAK_READ
-#define ARC_WEAK_READ(x) WEAK_READ(x)
+#error Non-ARC compilation unsupported
+// #define WEAK_READ(x) (*x)
+// #define WEAK_WRITE(addr, x) (*(addr) = x)
+// #define STRONG_WRITE(addr, x) ASSIGN(*((id *)addr), ((id)x))
+// #define STRONG_ACQUIRE(x) RETAIN(((id)x))
+// #endif
+// #ifndef ARC_WEAK_WRITE
+// #define ARC_WEAK_WRITE(addr, x) WEAK_WRITE(addr, x)
+// #endif
+// #ifndef ARC_WEAK_READ
+// #define ARC_WEAK_READ(x) WEAK_READ(x)
 #endif
 
 
