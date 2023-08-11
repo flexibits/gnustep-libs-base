@@ -183,65 +183,80 @@ relinquishRetainedMemory(const void *item,
 {
     _x.options = options;
 
-    /* First we look at the memory management options to see which function
-     * should be used to relinquish contents of a container with these
-     * options.
-     */
-    if (options & NSPointerFunctionsZeroingWeakMemory) {
-        _x.relinquishFunction = 0;
-    } else if (options & NSPointerFunctionsOpaqueMemory) {
-        _x.relinquishFunction = 0;
-    } else if (options & NSPointerFunctionsMallocMemory) {
-        _x.relinquishFunction = relinquishMallocMemory;
-    } else if (options & NSPointerFunctionsMachVirtualMemory) {
-        _x.relinquishFunction = relinquishMallocMemory;
-    } else {
-        _x.relinquishFunction = relinquishRetainedMemory;
+    NSUInteger memoryOption = memoryType(options);
+    NSUInteger personalityOption = personalityType(options);
+    BOOL copyIn = isCopyIn(options);
+
+    if (memoryOption == NSPointerFunctionsOpaqueMemory && copyIn) {
+        NSLog(@"ERROR: Unsupported use of NSPointerFunctionsCopyIn with NSPointerFunctionsOpaqueMemory");
+        NSParameterAssert(NO);
+        return nil;
     }
 
-    /* Now we look at the personality options to determine other functions.
-     */
-    if (options & NSPointerFunctionsOpaquePersonality) {
-        _x.acquireFunction = acquireExistingMemory;
-        _x.descriptionFunction = describePointer;
-        _x.hashFunction = hashShifted;
-        _x.isEqualFunction = equalDirect;
-    } else if (options & NSPointerFunctionsObjectPointerPersonality) {
-        if (options & NSPointerFunctionsZeroingWeakMemory) {
-            _x.acquireFunction = acquireExistingMemory;
-        } else {
+    switch (memoryType) {
+        case NSPointerFunctionsStrongMemory: {
+            // Default option (0)
             _x.acquireFunction = acquireRetainedObject;
-        }
-        _x.descriptionFunction = describeObject;
-        _x.hashFunction = hashShifted;
-        _x.isEqualFunction = equalDirect;
-    } else if (options & NSPointerFunctionsCStringPersonality) {
-        _x.acquireFunction = acquireMallocMemory;
-        _x.descriptionFunction = describeString;
-        _x.hashFunction = hashString;
-        _x.isEqualFunction = equalString;
-    } else if (options & NSPointerFunctionsStructPersonality) {
-        _x.acquireFunction = acquireMallocMemory;
-        _x.descriptionFunction = describePointer;
-        _x.hashFunction = hashMemory;
-        _x.isEqualFunction = equalMemory;
-    } else if (options & NSPointerFunctionsIntegerPersonality) {
-        _x.acquireFunction = acquireExistingMemory;
-        _x.descriptionFunction = describeInteger;
-        _x.hashFunction = hashDirect;
-        _x.isEqualFunction = equalDirect;
-    } else /* objects */
-    {
-        if (options & NSPointerFunctionsZeroingWeakMemory) {
-            _x.acquireFunction = acquireExistingMemory;
-        } else {
-            _x.acquireFunction = acquireRetainedObject;
-        }
-        _x.descriptionFunction = describeObject;
-        _x.hashFunction = hashObject;
-        _x.isEqualFunction = equalObject;
+            _x.relinquishFunction = relinquishRetainedMemory;
+        } break;
+        case NSPointerFunctionsZeroingWeakMemory: {
+            NSLog(@"ERROR: Unsupported NSPointerFunctionsOptions option NSPointerFunctionsZeroingWeakMemory");
+            NSParameterAssert(NO);
+            return nil;
+        } break;
+        case NSPointerFunctionsOpaqueMemory: {
+            _x.acquireFunction = nil;
+            _x.relinquishFunction = nil;
+        } break;
+        case NSPointerFunctionsMallocMemory: {
+            NSLog(@"ERROR: Unsupported NSPointerFunctionsOptions option NSPointerFunctionsMallocMemory");
+            NSParameterAssert(NO);
+            return nil;
+        } break;
+        case NSPointerFunctionsMachVirtualMemory: {
+            NSLog(@"ERROR: Unsupported NSPointerFunctionsOptions option NSPointerFunctionsMachVirtualMemory");
+            NSParameterAssert(NO);
+            return nil;
+        } break;
+        case NSPointerFunctionsWeakMemory: {
+            _x.acquireFunction = nil;
+            _x.relinquishFunction = nil;
+        } break;
     }
 
+    switch (personalityType) {
+        case NSPointerFunctionsObjectPersonality: {
+            // Default option (0)
+            _x.descriptionFunction = describeObject;
+            _x.hashFunction = hashObject;
+            _x.isEqualFunction = equalObject;
+        } break;
+        case NSPointerFunctionsOpaquePersonality: {
+            _x.descriptionFunction = describePointer;
+            _x.hashFunction = hashDirect;
+            _x.isEqualFunction = equalDirect;
+        } break;
+        case NSPointerFunctionsObjectPointerPersonality: {
+            _x.descriptionFunction = describeObject;
+            _x.hashFunction = hashShifted;
+            _x.isEqualFunction = equalDirect;
+        } break;
+        case NSPointerFunctionsCStringPersonality: {
+            NSLog(@"ERROR: Unsupported NSPointerFunctionsOptions option NSPointerFunctionsCStringPersonality");
+            NSParameterAssert(NO);
+            return nil;
+        } break;
+        case NSPointerFunctionsStructPersonality: {
+            NSLog(@"ERROR: Unsupported NSPointerFunctionsOptions option NSPointerFunctionsStructPersonality");
+            NSParameterAssert(NO);
+            return nil;
+        } break;
+        case NSPointerFunctionsIntegerPersonality: {
+            NSLog(@"ERROR: Unsupported NSPointerFunctionsOptions option NSPointerFunctionsIntegerPersonality");
+            NSParameterAssert(NO);
+            return nil;
+        } break;
+    }
 
     return self;
 }
