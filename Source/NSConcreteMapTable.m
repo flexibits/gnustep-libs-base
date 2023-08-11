@@ -104,6 +104,11 @@ typedef GSIMapNode_t *GSIMapNode;
  (M->legacy ? M->cb.old.v.retain(M, X.ptr) \
   : IS_WEAK_VALUE(M) ? nil : pointerFunctionsAcquire(&M->cb.pf.v, &X.ptr, X.ptr))
 
+// NOTE: The below comment makes me very nervous, especially considering the
+//       acquire/relinquish/etc functionalities have now been fixed. Are any of these
+//       following definitions even correct? Are we reintroducing this double-retain bug?
+//        - brooke.tilley (2023-08-11)
+
 /* 2013-05-25 Here are the macros originally added for GC/ARC ...
  * but they caused map table entries to be doubly retained :-(
  * The question is, are the new versions I hacked in below to
