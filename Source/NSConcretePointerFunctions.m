@@ -102,7 +102,9 @@ relinquishRetainedMemory(const void *item,
 
 - (id)initWithOptions:(NSPointerFunctionsOptions)options
 {
-    _x.options = options;
+    PFInfo pf = { 0 };
+
+    pf.options = options;
 
     int memoryOption = memoryType(options);
     int personalityOption = personalityType(options);
@@ -117,8 +119,8 @@ relinquishRetainedMemory(const void *item,
     switch (memoryOption) {
         case NSPointerFunctionsStrongMemory: {
             // Default option (0)
-            _x.acquireFunction = acquireRetainedObject;
-            _x.relinquishFunction = relinquishRetainedMemory;
+            pf.acquireFunction = acquireRetainedObject;
+            pf.relinquishFunction = relinquishRetainedMemory;
         } break;
         case NSPointerFunctionsZeroingWeakMemory: {
             NSLog(@"ERROR: Unsupported NSPointerFunctionsOptions option NSPointerFunctionsZeroingWeakMemory");
@@ -126,8 +128,8 @@ relinquishRetainedMemory(const void *item,
             return nil;
         } break;
         case NSPointerFunctionsOpaqueMemory: {
-            _x.acquireFunction = nil;
-            _x.relinquishFunction = nil;
+            pf.acquireFunction = NULL;
+            pf.relinquishFunction = NULL;
         } break;
         case NSPointerFunctionsMallocMemory: {
             NSLog(@"ERROR: Unsupported NSPointerFunctionsOptions option NSPointerFunctionsMallocMemory");
@@ -140,27 +142,27 @@ relinquishRetainedMemory(const void *item,
             return nil;
         } break;
         case NSPointerFunctionsWeakMemory: {
-            _x.acquireFunction = nil;
-            _x.relinquishFunction = nil;
+            pf.acquireFunction = NULL;
+            pf.relinquishFunction = NULL;
         } break;
     }
 
     switch (personalityOption) {
         case NSPointerFunctionsObjectPersonality: {
             // Default option (0)
-            _x.descriptionFunction = describeObject;
-            _x.hashFunction = hashObject;
-            _x.isEqualFunction = equalObject;
+            pf.descriptionFunction = describeObject;
+            pf.hashFunction = hashObject;
+            pf.isEqualFunction = equalObject;
         } break;
         case NSPointerFunctionsOpaquePersonality: {
-            _x.descriptionFunction = describePointer;
-            _x.hashFunction = hashDirect;
-            _x.isEqualFunction = equalDirect;
+            pf.descriptionFunction = describePointer;
+            pf.hashFunction = hashDirect;
+            pf.isEqualFunction = equalDirect;
         } break;
         case NSPointerFunctionsObjectPointerPersonality: {
-            _x.descriptionFunction = describeObject;
-            _x.hashFunction = hashShifted;
-            _x.isEqualFunction = equalDirect;
+            pf.descriptionFunction = describeObject;
+            pf.hashFunction = hashShifted;
+            pf.isEqualFunction = equalDirect;
         } break;
         case NSPointerFunctionsCStringPersonality: {
             NSLog(@"ERROR: Unsupported NSPointerFunctionsOptions option NSPointerFunctionsCStringPersonality");
@@ -179,6 +181,7 @@ relinquishRetainedMemory(const void *item,
         } break;
     }
 
+    memcpy(&_x, &pf, sizeof(PFInfo));
     return self;
 }
 
@@ -244,7 +247,7 @@ relinquishRetainedMemory(const void *item,
 {
     NSLog(@"Error: Unsupported NSPointerFunctions property sizeFunction");
     NSParameterAssert(NO);
-    return nil;
+    return NULL;
 }
 
 - (void)setSizeFunction:(NSUInteger (*)(const void *item))func
