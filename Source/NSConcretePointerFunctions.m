@@ -25,6 +25,7 @@
 
 #import "common.h"
 #import "NSConcretePointerFunctions.h"
+#import <Foundation/NSException.h>
 
 static void *
 acquireRetainedObject(const void *item,
@@ -103,8 +104,8 @@ relinquishRetainedMemory(const void *item,
 {
     _x.options = options;
 
-    NSUInteger memoryOption = memoryType(options);
-    NSUInteger personalityOption = personalityType(options);
+    int memoryOption = memoryType(options);
+    int personalityOption = personalityType(options);
     BOOL copyIn = isCopyIn(options);
 
     if (memoryOption == NSPointerFunctionsOpaqueMemory && copyIn) {
@@ -113,7 +114,7 @@ relinquishRetainedMemory(const void *item,
         return nil;
     }
 
-    switch (memoryType) {
+    switch (memoryOption) {
         case NSPointerFunctionsStrongMemory: {
             // Default option (0)
             _x.acquireFunction = acquireRetainedObject;
@@ -144,7 +145,7 @@ relinquishRetainedMemory(const void *item,
         } break;
     }
 
-    switch (personalityType) {
+    switch (personalityOption) {
         case NSPointerFunctionsObjectPersonality: {
             // Default option (0)
             _x.descriptionFunction = describeObject;

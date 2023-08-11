@@ -81,8 +81,8 @@ typedef struct
     NSPointerFunctionsOptions options;
 } PFInfo;
 
-const int NSPointerFunctionsMemoryMask = 0xff;
-const int NSPointerFunctionsPersonalityMask = 0xff00;
+#define NSPointerFunctionsMemoryMask (0xff)
+#define NSPointerFunctionsPersonalityMask (0xff00)
 
 inline static int memoryType(int options)
 {
