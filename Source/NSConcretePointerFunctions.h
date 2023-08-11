@@ -77,9 +77,32 @@ typedef struct
 
 } PFInfo;
 
-inline static BOOL memoryType(int options, int flag)
+const int NSPointerFunctionsMemoryMask = 0xff;
+const int NSPointerFunctionsPersonalityMask = 0xff00;
+
+inline static int memoryType(int options)
 {
-    return (options & 0xff) == flag;
+    return options & NSPointerFunctionsMemoryMask;
+}
+
+inline static BOOL hasMemoryType(int options, int flag)
+{
+    return memoryType(options) == flag;
+}
+
+inline static int personalityType(int options)
+{
+    return options & NSPointerFunctionsPersonalityMask;
+}
+
+inline static BOOL hasPersonalityType(int options, int flag)
+{
+    return personalityType(options) == flag;
+}
+
+inline static BOOL isCopyIn(int options)
+{
+    return personalityType(options) & NSPointerFunctionsCopyIn;
 }
 
 /* Declare the concrete pointer functions class as a wrapper around
@@ -100,10 +123,10 @@ inline static BOOL memoryType(int options, int flag)
  */
 static inline void *pointerFunctionsRead(PFInfo *PF, void **addr)
 {
-    if (memoryType(PF->options, NSPointerFunctionsWeakMemory)) {
+    if (hasMemoryType(PF->options, NSPointerFunctionsWeakMemory)) {
         return ARC_WEAK_READ((id *)addr);
     }
-    if (memoryType(PF->options, NSPointerFunctionsZeroingWeakMemory)) {
+    if (hasMemoryType(PF->options, NSPointerFunctionsZeroingWeakMemory)) {
         return WEAK_READ((id *)addr);
     }
     return *addr;
@@ -114,11 +137,11 @@ static inline void *pointerFunctionsRead(PFInfo *PF, void **addr)
  */
 static inline void pointerFunctionsAssign(PFInfo *PF, void **addr, void *value)
 {
-    if (memoryType(PF->options, NSPointerFunctionsWeakMemory)) {
+    if (hasMemoryType(PF->options, NSPointerFunctionsWeakMemory)) {
         ARC_WEAK_WRITE(addr, value);
-    } else if (memoryType(PF->options, NSPointerFunctionsZeroingWeakMemory)) {
+    } else if (hasMemoryType(PF->options, NSPointerFunctionsZeroingWeakMemory)) {
         WEAK_WRITE(addr, value);
-    } else if (memoryType(PF->options, NSPointerFunctionsStrongMemory)) {
+    } else if (hasMemoryType(PF->options, NSPointerFunctionsStrongMemory)) {
         STRONG_WRITE(addr, value);
     } else {
         *addr = value;
@@ -132,7 +155,7 @@ pointerFunctionsAcquire(PFInfo *PF, void **dst, void *src)
 {
     if (PF->acquireFunction != 0)
         src = (*PF->acquireFunction)(src, PF->sizeFunction,
-                                     PF->options & NSPointerFunctionsCopyIn ? YES : NO);
+                                     isCopyIn(PF->options) ? YES : NO);
     // FIXME: This shouldn't be here.  Acquire and assign are separate
     // operations.  Acquire is for copy-in operations (i.e. retain / copy),
     // assign is for move operations of already-owned pointers.  Combining them
@@ -193,9 +216,9 @@ pointerFunctionsRelinquish(PFInfo *PF, void **itemptr)
 {
     if (PF->relinquishFunction != 0)
         (*PF->relinquishFunction)(*itemptr, PF->sizeFunction);
-    if (memoryType(PF->options, NSPointerFunctionsWeakMemory))
+    if (hasMemoryType(PF->options, NSPointerFunctionsWeakMemory))
         ARC_WEAK_WRITE(itemptr, 0);
-    else if (memoryType(PF->options, NSPointerFunctionsZeroingWeakMemory))
+    else if (hasMemoryType(PF->options, NSPointerFunctionsZeroingWeakMemory))
         WEAK_WRITE(itemptr, (void *)0);
     else
         *itemptr = 0;
@@ -208,12 +231,12 @@ pointerFunctionsReplace(PFInfo *PF, void **dst, void *src)
     if (src != *dst) {
         if (PF->acquireFunction != 0)
             src = (*PF->acquireFunction)(src, PF->sizeFunction,
-                                         PF->options & NSPointerFunctionsCopyIn ? YES : NO);
+                                         isCopyIn(PF->options) ? YES : NO);
         if (PF->relinquishFunction != 0)
             (*PF->relinquishFunction)(*dst, PF->sizeFunction);
-        if (memoryType(PF->options, NSPointerFunctionsWeakMemory))
+        if (hasMemoryType(PF->options, NSPointerFunctionsWeakMemory))
             ARC_WEAK_WRITE(dst, 0);
-        else if (memoryType(PF->options, NSPointerFunctionsZeroingWeakMemory))
+        else if (hasMemoryType(PF->options, NSPointerFunctionsZeroingWeakMemory))
             WEAK_WRITE(dst, (void *)0);
         else
             *dst = src;
