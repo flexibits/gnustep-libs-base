@@ -169,7 +169,7 @@ relinquishRetainedMemory(const void *item,
         } break;
         case NSPointerFunctionsOpaquePersonality: {
             pf.descriptionFunction = describePointer;
-            pf.hashFunction = hashDirect;
+            pf.hashFunction = hashShifted;
             pf.isEqualFunction = equalDirect;
         } break;
         case NSPointerFunctionsObjectPointerPersonality: {
