@@ -44,16 +44,19 @@ enum {
    * is not active. */
   NSPointerFunctionsStrongMemory = (0<<0),
 
-  /** Garbage collected weak references */
+  /** UNSUPPORTED
+   * Garbage collected weak references */
   NSPointerFunctionsZeroingWeakMemory = (1<<0),
 
   /** Non-GC memory */
   NSPointerFunctionsOpaqueMemory = (2<<0),
 
-  /** Heap (calloc/free) memory */
+  /** UNSUPPORTED
+   * Heap (calloc/free) memory */
   NSPointerFunctionsMallocMemory = (3<<0),
 
-  /** MACH virtual memory (not implemented) */
+  /** UNSUPPORTED
+   * MACH virtual memory (not implemented) */
   NSPointerFunctionsMachVirtualMemory = (4<<0),
 
   /** Uses read and write barriers appropriate for either automatic reference
@@ -76,21 +79,23 @@ enum {
    */
   NSPointerFunctionsObjectPointerPersonality = (2<<8),
 
-  /** Use strcmp for comparison and a hash of the string contents.  Describe
+  /** UNSUPPORTED
+   * Use strcmp for comparison and a hash of the string contents.  Describe
    * assuming that the string contains UTF-8 data.
    */
   NSPointerFunctionsCStringPersonality = (3<<8),
 
-  /** Use memcmp for comparison and a hash of the sructure contents.
+  /** UNSUPPORTED
+   * Use memcmp for comparison and a hash of the sructure contents.
    * A size function must be set so that the size of the memcmp and hash
    * are known,
    */
   NSPointerFunctionsStructPersonality = (4<<8),
 
-  /** Use unmodified integer value for both hash and equality test.
+  /** UNSUPPORTED
+   * Use unmodified integer value for both hash and equality test.
    */
   NSPointerFunctionsIntegerPersonality = (5<<8),
-
 
   /** Request the memory acquire function to allocate/copy items.
    */
