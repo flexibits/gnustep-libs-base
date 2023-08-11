@@ -27,46 +27,13 @@
 #import "NSConcretePointerFunctions.h"
 
 static void *
-acquireMallocMemory(const void *item,
-                    NSUInteger (*size)(const void *item), BOOL shouldCopy)
-{
-    if (shouldCopy == YES) {
-        NSUInteger len = (*size)(item);
-        void *newItem = malloc(len);
-
-        memcpy(newItem, item, len);
-        item = newItem;
-    }
-    return (void *)item;
-}
-
-static void *
 acquireRetainedObject(const void *item,
-                      NSUInteger (*size)(const void *item), BOOL shouldCopy)
+                      NSUInteger (*_size)(const void *item), BOOL shouldCopy)
 {
     if (shouldCopy == YES) {
         return [(NSObject *)item copy];
     }
     return [(NSObject *)item retain];
-}
-
-static void *
-acquireExistingMemory(const void *item,
-                      NSUInteger (*size)(const void *item), BOOL shouldCopy)
-{
-    return (void *)item;
-}
-
-static NSString *
-describeString(const void *item)
-{
-    return [NSString stringWithFormat:@"%s", (char *)item];
-}
-
-static NSString *
-describeInteger(const void *item)
-{
-    return [NSString stringWithFormat:@"%" PRIdPTR, (intptr_t)item];
 }
 
 static NSString *
@@ -83,86 +50,39 @@ describePointer(const void *item)
 
 static BOOL
 equalDirect(const void *item1, const void *item2,
-            NSUInteger (*size)(const void *item))
+            NSUInteger (*_size)(const void *item))
 {
     return (item1 == item2) ? YES : NO;
 }
 
 static BOOL
 equalObject(const void *item1, const void *item2,
-            NSUInteger (*size)(const void *item))
+            NSUInteger (*_size)(const void *item))
 {
     return [(NSObject *)item1 isEqual:(NSObject *)item2];
 }
 
-static BOOL
-equalMemory(const void *item1, const void *item2,
-            NSUInteger (*size)(const void *item))
-{
-    NSUInteger s1 = (*size)(item1);
-    NSUInteger s2 = (*size)(item2);
-
-    return (s1 == s2 && memcmp(item1, item2, s1) == 0) ? YES : NO;
-}
-
-static BOOL
-equalString(const void *item1, const void *item2,
-            NSUInteger (*size)(const void *item))
-{
-    return (strcmp((const char *)item1, (const char *)item2) == 0) ? YES : NO;
-}
-
 static NSUInteger
-hashDirect(const void *item, NSUInteger (*size)(const void *item))
+hashDirect(const void *item, NSUInteger (*_size)(const void *item))
 {
     return (NSUInteger)(uintptr_t)item;
 }
 
 static NSUInteger
-hashObject(const void *item, NSUInteger (*size)(const void *item))
+hashObject(const void *item, NSUInteger (*_size)(const void *item))
 {
     return [(NSObject *)item hash];
 }
 
 static NSUInteger
-hashMemory(const void *item, NSUInteger (*size)(const void *item))
-{
-    unsigned len = (*size)(item);
-    NSUInteger hash = 0;
-
-    while (len-- > 0) {
-        hash = (hash << 5) + hash + *(const uint8_t *)item++;
-    }
-    return hash;
-}
-
-static NSUInteger
-hashShifted(const void *item, NSUInteger (*size)(const void *item))
+hashShifted(const void *item, NSUInteger (*_size)(const void *item))
 {
     return ((NSUInteger)(uintptr_t)item) >> 2;
 }
 
-static NSUInteger
-hashString(const void *item, NSUInteger (*size)(const void *item))
-{
-    NSUInteger hash = 0;
-
-    while (*(const uint8_t *)item != 0) {
-        hash = (hash << 5) + hash + *(const uint8_t *)item++;
-    }
-    return hash;
-}
-
-static void
-relinquishMallocMemory(const void *item,
-                       NSUInteger (*size)(const void *item))
-{
-    free((void *)item);
-}
-
 static void
 relinquishRetainedMemory(const void *item,
-                         NSUInteger (*size)(const void *item))
+                         NSUInteger (*_size)(const void *item))
 {
     [(NSObject *)item release];
 }
