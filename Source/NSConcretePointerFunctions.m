@@ -122,6 +122,13 @@ relinquishRetainedMemory(const void *item,
         return nil;
     }
 
+    if (personalityOption == NSPointerFunctionsIntegerPersonality &&
+        memoryOption != NSPointerFunctionsOpaqueMemory) {
+        NSLog(@"ERROR: Unsupported use of NSPointerFunctionsIntegerPersonality with a memory type other than NSPointerFunctionsOpaqueMemory");
+        NSParameterAssert(NO);
+        return nil;
+    }
+
     switch (memoryOption) {
         case NSPointerFunctionsStrongMemory: {
             // Default option (0)
@@ -181,8 +188,9 @@ relinquishRetainedMemory(const void *item,
             return nil;
         } break;
         case NSPointerFunctionsIntegerPersonality: {
-            NSLog(@"ERROR: Unsupported NSPointerFunctionsOptions option NSPointerFunctionsIntegerPersonality");
-            NSParameterAssert(NO);
+            pf.descriptionFunction = describeInteger;
+            pf.hashFunction = hashDirect;
+            pf.isEqualFunction = equalDirect;
             return nil;
         } break;
     }
