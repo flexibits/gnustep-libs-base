@@ -315,31 +315,30 @@ relinquishRetainedMemory(const void *item,
         ~(NSPointerFunctionsZeroingWeakMemory | NSPointerFunctionsOpaqueMemory | NSPointerFunctionsMallocMemory | NSPointerFunctionsMachVirtualMemory);
 }
 
-- (void)setUsesWeakReadAndWriteBarriers:(BOOL)flag
-{
-    _x.options |= NSPointerFunctionsZeroingWeakMemory;
-    _x.options &=
-        ~(NSPointerFunctionsOpaqueMemory | NSPointerFunctionsMallocMemory | NSPointerFunctionsMachVirtualMemory);
-}
-
-- (NSUInteger (*)(const void *item))sizeFunction
-{
-    return _x.sizeFunction;
-}
-
 - (BOOL)usesStrongWriteBarrier
 {
-    if ((_x.options &
-         (NSPointerFunctionsZeroingWeakMemory | NSPointerFunctionsOpaqueMemory | NSPointerFunctionsMallocMemory | NSPointerFunctionsMachVirtualMemory)) == NSPointerFunctionsStrongMemory)
-        return YES;
+    NSLog(@"ERROR: Unsupported NSPointerFunctions property usesStrongWriteBarrier");
+    NSParameterAssert(NO);
     return NO;
+}
+
+- (void)setUsesStrongWriteBarrier:(BOOL)flag
+{
+    NSLog(@"ERROR: Unsupported NSPointerFunctions property usesStrongWriteBarrier");
+    NSParameterAssert(NO);
 }
 
 - (BOOL)usesWeakReadAndWriteBarriers
 {
-    if (_x.options & NSPointerFunctionsZeroingWeakMemory)
-        return YES;
+    NSLog(@"ERROR: Unsupported NSPointerFunctions property usesWeakReadAndWriteBarriers");
+    NSParameterAssert(NO);
     return NO;
+}
+
+- (void)setUsesWeakReadAndWriteBarriers:(BOOL)flag
+{
+    NSLog(@"ERROR: Unsupported NSPointerFunctions property usesWeakReadAndWriteBarriers");
+    NSParameterAssert(NO);
 }
 
 @end
