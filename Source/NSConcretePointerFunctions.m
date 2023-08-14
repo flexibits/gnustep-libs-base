@@ -158,6 +158,11 @@ relinquishRetainedMemory(const void *item,
             pf.acquireFunction = NULL;
             pf.relinquishFunction = NULL;
         } break;
+        default: {
+            NSLog(@"ERROR: Invalid NSPointerFunctionsOptions passed to initWithOptions");
+            NSParameterAssert(NO);
+            return nil;
+        } break;
     }
 
     switch (personalityOption) {
@@ -191,6 +196,10 @@ relinquishRetainedMemory(const void *item,
             pf.descriptionFunction = describeInteger;
             pf.hashFunction = hashDirect;
             pf.isEqualFunction = equalDirect;
+        } break;
+        default: {
+            NSLog(@"ERROR: Invalid NSPointerFunctionsOptions passed to initWithOptions");
+            NSParameterAssert(NO);
             return nil;
         } break;
     }
