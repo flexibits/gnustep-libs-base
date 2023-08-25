@@ -238,7 +238,11 @@ static NSRecursiveLock *classLock = nil;
     || [tz isEqual: [my->tz name]] == NO)
     {
 #if GS_USE_ICU == 1
-      ucal_close(my->cal);
+      if (my->cal != NULL)
+        {
+          ucal_close (my->cal);
+          my->cal = NULL;
+        }
 #endif
 
       ASSIGN(my->localeID, locale);
@@ -311,6 +315,7 @@ static NSRecursiveLock *classLock = nil;
   my->minimumDaysInFirstWeek = NSNotFound;
   ASSIGN(my->identifier, identifier);
   ASSIGN(my->tz, [NSTimeZone defaultTimeZone]);
+  my->cal = NULL;
   [self setLocale: [NSLocale currentLocale]];
 
   return self;
@@ -321,7 +326,11 @@ static NSRecursiveLock *classLock = nil;
   if (0 != _NSCalendarInternal)
     {
 #if GS_USE_ICU == 1
-      ucal_close (my->cal);
+    if (my->cal != NULL)
+      {
+        ucal_close (my->cal);
+        my->cal = NULL;
+      }
 #endif
       RELEASE(my->identifier);
       RELEASE(my->localeID);
