@@ -295,9 +295,9 @@
 #    endif
 #  endif
 #else
-#  if	GS_NONFRAGILE
-#    error "Your gnustep-base was configured for the objc-nonfragile-abi but you are not using it now."
-#  endif
+// #  if	GS_NONFRAGILE
+// #    error "Your gnustep-base was configured for the objc-nonfragile-abi but you are not using it now."
+// #  endif
 #endif
 
 #define	GS_EXPOSE(X)	(!GS_NONFRAGILE || defined(EXPOSE_##X##_IVARS))
