@@ -30,6 +30,7 @@
 
 #include <Foundation/NSObject.h>
 #include <Foundation/NSGeometry.h>
+#import <Foundation/NSLock.h>
 
 @class NSDate;
 @class NSCalendar;
@@ -152,20 +153,6 @@ GS_EXPORT_CLASS
 {
 @private
   void  *_NSDateComponentsInternal;
-/* FIXME ... remove dummy fields at next binary incompatible release
- */
-  void  *_dummy1;
-  void  *_dummy2;
-  void  *_dummy3;
-  void  *_dummy4;
-  void  *_dummy5;
-  void  *_dummy6;
-  void  *_dummy7;
-  void  *_dummy8;
-  void  *_dummy9;
-  void  *_dummy10;
-  void  *_dummy11;
-  void  *_dummy12;
 }
 
 - (NSInteger) day;
@@ -261,17 +248,12 @@ GS_EXPORT_CLASS
 @end
 
 
-
 GS_EXPORT_CLASS
 @interface NSCalendar : NSObject <NSCoding, NSCopying>
 {
 @private
-  void  *_NSCalendarInternal;
-/* FIXME ... remove dummy fields at next binary incompatible release
- */
-  void  *_dummy1;
-  void  *_dummy2;
-  void  *_dummy3;
+  void *_NSCalendarInternal;
+  NSLock *_lock;
 }
 
 /**
