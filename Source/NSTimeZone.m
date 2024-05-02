@@ -2813,7 +2813,7 @@ GSBreakTime(NSTimeInterval when,
         &ftLastWriteTime);       // last write time 
 
       if (cSubKeys && (retCode == ERROR_SUCCESS))
-    	{
+    	  {
           unsigned wLen = [name length];
           wchar_t *wName = malloc((wLen+1) * sizeof(wchar_t));
 
@@ -2821,22 +2821,22 @@ GSBreakTime(NSTimeInterval when,
             {
               [name getCharacters: wName];
               wName[wLen] = 0;
-              for (i = 0; i < cSubKeys && !tzFound; i++) 
-                { 
+              for (i = 0; i < cSubKeys && !tzFound; i++)
+                {
                   cbName = 255;
-                   
+
                   retCode = RegEnumKeyExW(regDirKey, i, achKey, &cbName,
-                    NULL, NULL, NULL, &ftLastWriteTime);         
-                  if (retCode == ERROR_SUCCESS) 
+                                            NULL, NULL, NULL, &ftLastWriteTime);
+                  if (retCode == ERROR_SUCCESS)
                     {
                       wchar_t keyBuffer[16384];
                       HKEY regKey;
-                       
+
                       if (isNT)
                         wcscpy(keyBuffer, L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Time Zones\\");
                       else
                         wcscpy(keyBuffer, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Time Zones\\");
-                       
+
                       wcscat(keyBuffer, achKey);
                       if (ERROR_SUCCESS == RegOpenKeyExW(HKEY_LOCAL_MACHINE,
                         keyBuffer, 0, KEY_READ, &regKey))
@@ -2847,90 +2847,85 @@ GSBreakTime(NSTimeInterval when,
                           DWORD bufsize;
                           DWORD type;
 
-                          /* check standardname */
-                          standardName[0] = L'\0';
-                          bufsize = sizeof(buf);
-                          if (ERROR_SUCCESS == RegQueryValueExW(regKey,
-                            L"Std", 0, &type, (BYTE *)buf, &bufsize))
+                          /* check display name */
+                          if (wcscmp(achKey, wName) == 0)
                             {
-                              wcscpy(standardName, buf);
-                              if (wcscmp(standardName, wName) == 0)
-                                tzFound = YES;
-                            }
-        
-                          /* check daylightname */
-                          daylightName[0] = L'\0';
-                          bufsize = sizeof(buf);
-                          if (ERROR_SUCCESS == RegQueryValueExW(regKey,
-                            L"Dlt", 0, &type, (BYTE *)buf, &bufsize))
-                            {
-                              wcscpy(daylightName, buf);
-                              if (wcscmp(daylightName, wName) == 0)
-                                tzFound = YES;
+                              tzFound = YES;
                             }
 
-                          if (tzFound)
-                            {
-                              /* Read in the time zone data */
-                              bufsize = sizeof(buf);
-                              if (ERROR_SUCCESS == RegQueryValueExW(regKey,
-                                L"TZI", 0, &type, (BYTE *)buf, &bufsize))
-                                {
-                                  TZI *tzi = (void*)buf;
-                                  Bias = tzi->Bias;
-                                  StandardBias = tzi->StandardBias;
-                                  DaylightBias = tzi->DaylightBias;
-                                  StandardDate = tzi->StandardDate;
-                                  DaylightDate = tzi->DaylightDate;
-                                }
-                          
-                              /* Set the standard name for the time zone. */
-                              if (wcslen(standardName))
-                                {
-                                  int a, b;
+                            /* check standardname */
+                            standardName[0] = L'\0';
+                            bufsize = sizeof(buf);
+                            if (ERROR_SUCCESS == RegQueryValueExW(regKey,
+                              L"Std", 0, &type, (BYTE *)buf, &bufsize))
+                              {
+                                wcscpy(standardName, buf);
+                                if (wcscmp(standardName, wName) == 0)
+                                  tzFound = YES;
+                              }
 
-                                  ASSIGN(timeZoneName,
-                                    [NSString stringWithCharacters: standardName
-                                    length: wcslen(standardName)]);
+                            if (tzFound)
+                              {
+                                /* Read in the time zone data */
+                                bufsize = sizeof(buf);
+                                if (ERROR_SUCCESS == RegQueryValueExW(regKey,
+                                  L"TZI", 0, &type, (BYTE *)buf, &bufsize))
+                                  {
+                                    TZI *tzi = (void*)buf;
+                                    Bias = tzi->Bias;
+                                    StandardBias = tzi->StandardBias;
+                                    DaylightBias = tzi->DaylightBias;
+                                    StandardDate = tzi->StandardDate;
+                                    DaylightDate = tzi->DaylightDate;
+                                  }
 
-                                  /* Abbr generated here is IMHO
-                                   * a bit suspicous but I kept it */
-                                  for (a = 0, b = 0; standardName[a]; a++)
-                                    {
-                                      if (iswupper(standardName[a]))
-                                        standardName[b++] = standardName[a];
-                                    }
-                                  standardName[b] = L'\0';
-                                  ASSIGN(timeZoneNameAbbr,
-                                    [NSString stringWithCharacters: standardName
-                                    length: wcslen(standardName)]);
-                                }
+                                /* Set the standard name for the time zone. */
+                                if (wcslen(standardName))
+                                  {
+                                    int a, b;
 
-                              /* Set the daylight savings name
-                               * for the time zone. */
-                              if (wcslen(daylightName))
-                                {
-                                  int a, b;
+                                    ASSIGN(timeZoneName,
+                                      [NSString stringWithCharacters: standardName
+                                      length: wcslen(standardName)]);
 
-                                  ASSIGN(daylightZoneName,
-                                    [NSString stringWithCharacters: daylightName
-                                    length: wcslen(daylightName)]);
+                                    /* Abbr generated here is IMHO
+                                    * a bit suspicous but I kept it */
+                                    for (a = 0, b = 0; standardName[a]; a++)
+                                      {
+                                        if (iswupper(standardName[a]))
+                                          standardName[b++] = standardName[a];
+                                      }
+                                    standardName[b] = L'\0';
+                                    ASSIGN(timeZoneNameAbbr,
+                                      [NSString stringWithCharacters: standardName
+                                      length: wcslen(standardName)]);
+                                  }
 
-                                  /* Abbr generated here is IMHO
-                                   * a bit suspicous but I kept it */
-                                  for (a = 0, b = 0; daylightName[a]; a++)
-                                    {
-                                      if (iswupper(daylightName[a]))
-                                        daylightName[b++] = daylightName[a];
-                                    }
-                                  daylightName[b] = L'\0';
-                                  ASSIGN(daylightZoneNameAbbr,
-                                    [NSString stringWithCharacters: daylightName
-                                    length: wcslen(daylightName)]);
+                                /* Set the daylight savings name
+                                * for the time zone. */
+                                if (wcslen(daylightName))
+                                  {
+                                    int a, b;
+
+                                    ASSIGN(daylightZoneName,
+                                      [NSString stringWithCharacters: daylightName
+                                      length: wcslen(daylightName)]);
+
+                                    /* Abbr generated here is IMHO
+                                     * a bit suspicous but I kept it */
+                                    for (a = 0, b = 0; daylightName[a]; a++)
+                                      {
+                                        if (iswupper(daylightName[a]))
+                                          daylightName[b++] = daylightName[a];
+                                      }
+                                    daylightName[b] = L'\0';
+                                    ASSIGN(daylightZoneNameAbbr,
+                                      [NSString stringWithCharacters: daylightName
+                                      length: wcslen(daylightName)]);
                                 }
                             }
                           RegCloseKey(regKey);
-                        }			       
+                        }
                     }
                 }
               free(wName);
