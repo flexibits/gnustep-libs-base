@@ -393,5 +393,11 @@ typedef struct {
 {
   return this->statusCode;
 }
+
+- (NSString *)valueForHTTPHeaderField:(NSString *)field
+{
+  return [self _valueForHTTPHeaderField:field];
+}
+
 @end
 
