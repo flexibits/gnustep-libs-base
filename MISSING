@@ -479,7 +479,7 @@ NSRange:
 
 	@class NSString
 
-	@inteface NSValue (NSValueRangeException)
+	@interface NSValue (NSValueRangeException)
 -------------------------------------------------------------
 NSRegularExpression:
 	<NSString.h>
@@ -489,8 +489,6 @@ NSRegularExpression:
 
 	+ escapedPatternForString:
 	+ escapedTemplateForString:
-
-	@interface NSDataDetector : NSRegularExpression
 -------------------------------------------------------------
 NSRunLoop:
 	<NSDate.h>

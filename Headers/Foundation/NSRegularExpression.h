@@ -162,6 +162,37 @@ GS_EXPORT_CLASS
 #endif // GS_USE_ICU
 @end
 
+/**
+ * 
+ */
+GS_EXPORT_CLASS
+@interface NSDataDetector : NSRegularExpression
+{
+    @private
+    NSTextCheckingTypes _types;
+}
+
+/**
+ * 
+ */
++ (NSDataDetector *)dataDetectorWithTypes:(NSTextCheckingTypes)checkingTypes error:(NSError **)error;
+
+/**
+ * 
+ */
+- (id)initWithTypes:(NSTextCheckingTypes)checkingTypes error:(NSError **)error;
+
+/**
+ * 
+ */
+#if GS_HAS_DECLARED_PROPERTIES
+@property (readonly) NSTextCheckingTypes checkingTypes;
+#else
+- (NSTextCheckingTypes)checkingTypes;
+#endif
+
+@end
+
 #if	defined(__cplusplus)
 }
 #endif

@@ -1069,3 +1069,25 @@ prepareResult(NSRegularExpression *regex,
 }
 @end
 #endif
+
+@implementation NSDataDetector
+
++ (NSDataDetector *)dataDetectorWithTypes:(NSTextCheckingTypes)checkingTypes error:(NSError **)error
+{
+    return [[self alloc] initWithTypes:checkingTypes error:error];
+}
+
+- (id)initWithTypes:(NSTextCheckingTypes)checkingTypes error:(NSError **)error
+{
+    if ((self = [super init])) {
+        _types = checkingTypes;
+    }
+    return self;
+}
+
+- (NSTextCheckingTypes)checkingTypes
+{
+    return _types;
+}
+
+@end
