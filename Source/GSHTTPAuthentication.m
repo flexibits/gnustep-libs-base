@@ -389,226 +389,167 @@ static GSMimeParser		*mimeParser = nil;
   [storeLock unlock];
 }
 
-- (NSString*) authorizationForAuthentication: (NSString*)authentication
-				      method: (NSString*)method
-					path: (NSString*)path
+- (NSString *)authorizationForAuthentication:(NSString *)authentication
+                                      method:(NSString *)method
+                                        path:(NSString *)path
 {
-  NSMutableString	*authorisation;
+    NSMutableString *authorisation;
 
-  if ([self->_space authenticationMethod]
-    == NSURLAuthenticationMethodHTTPDigest)
-    {
-      NSString		*realm = nil;
-      NSString		*qop = nil;
-      NSString		*nonce = nil;
-      NSString		*opaque = nil;
-      NSString		*stale = @"FALSE";
-      NSString		*algorithm = @"MD5";
-      NSString		*cnonce;
-      NSString		*HA1;
-      NSString		*HA2;
-      NSString		*response;
-      int		nc;
+    if ([self->_space authenticationMethod] == NSURLAuthenticationMethodHTTPDigest) {
+        NSString *realm = nil;
+        NSString *qop = nil;
+        NSString *nonce = nil;
+        NSString *opaque = nil;
+        NSString *stale = @"FALSE";
+        NSString *algorithm = @"MD5";
+        NSString *cnonce;
+        NSString *HA1;
+        NSString *HA2;
+        NSString *response;
+        int nc;
 
-      if (authentication != nil)
-	{
-	  NSScanner		*sc;
-	  NSString		*key;
-	  NSString		*val;
+        if (authentication != nil) {
+            NSScanner *sc;
+            NSString *key;
+            NSString *val;
 
-	  sc = [NSScanner scannerWithString: authentication];
-	  if ([sc scanString: @"Digest" intoString: 0] == NO)
-	    {
-	      NSDebugMLog(@"Bad format HTTP digest in '%@'", authentication);
-	      return nil;	// Not a digest authentication
-	    }
-	  while ((key = [mimeParser scanName: sc]) != nil)
-	    {
-	      if ([sc scanString: @"=" intoString: 0] == NO)
-		{
-		  NSDebugMLog(@"Missing '=' in HTTP digest '%@'",
-		    authentication);
-		  return nil;	// Bad name=value specification
-		}
-	      if ((val = [mimeParser scanToken: sc]) == nil)
-		{
-		  NSDebugMLog(@"Missing value in HTTP digest '%@'",
-		    authentication);
-		  return nil;	// Bad name=value specification
-		}
-	      if ([key caseInsensitiveCompare: @"realm"] == NSOrderedSame)
-		{
-		  realm = val;
-		}
-	      if ([key caseInsensitiveCompare: @"qop"] == NSOrderedSame)
-		{
-		  qop = val;
-		}
-	      if ([key caseInsensitiveCompare: @"nonce"] == NSOrderedSame)
-		{
-		  nonce = val;
-		}
-	      if ([key caseInsensitiveCompare: @"opaque"] == NSOrderedSame)
-		{
-		  opaque = val;
-		}
-	      if ([key caseInsensitiveCompare: @"stale"] == NSOrderedSame)
-		{
-		  stale = val;
-		}
-	      if ([key caseInsensitiveCompare: @"algorithm"] == NSOrderedSame)
-		{
-		  algorithm = val;
-		}
-	      if ([sc scanString: @"," intoString: 0] == NO)
-		{
-		  break;	// No more in list.
-		}
-	    }
+            sc = [NSScanner scannerWithString: authentication];
+            if ([sc scanString: @"Digest" intoString: 0] == NO) {
+                NSDebugMLog(@"Bad format HTTP digest in '%@'", authentication);
+                return nil;	// Not a digest authentication
+            }
+            while ((key = [mimeParser scanName: sc]) != nil) {
+                if ([sc scanString: @"=" intoString: 0] == NO) {
+                    NSDebugMLog(@"Missing '=' in HTTP digest '%@'", authentication);
+                   return nil;	// Bad name=value specification
+                }
+                if ((val = [mimeParser scanToken: sc]) == nil) {
+                    NSDebugMLog(@"Missing value in HTTP digest '%@'", authentication);
+                    return nil;	// Bad name=value specification
+                }
+                if ([key caseInsensitiveCompare: @"realm"] == NSOrderedSame) {
+                    realm = val;
+                }
+                if ([key caseInsensitiveCompare: @"qop"] == NSOrderedSame) {
+                    qop = val;
+                }
+                if ([key caseInsensitiveCompare: @"nonce"] == NSOrderedSame) {
+                    nonce = val;
+                }
+                if ([key caseInsensitiveCompare: @"opaque"] == NSOrderedSame) {
+                    opaque = val;
+                }
+                if ([key caseInsensitiveCompare: @"stale"] == NSOrderedSame) {
+                   stale = val;
+                }
+                if ([key caseInsensitiveCompare: @"algorithm"] == NSOrderedSame) {
+                    algorithm = val;
+                }
+                if ([sc scanString: @"," intoString: 0] == NO) {
+                    break; // No more in list.
+                }
+            }
 
-	  if (realm == nil)
-	    {
-	      NSDebugMLog(@"Missing HTTP digest realm in '%@'", authentication);
-	      return nil;
-	    }
-	  if ([realm isEqualToString: [self->_space realm]] == NO)
-	    {
-	      NSDebugMLog(@"Bad HTTP digest realm in '%@'", authentication);
-	      return nil;
-	    }
-	  if (nonce == nil)
-	    {
-	      NSDebugMLog(@"Missing HTTP digest nonce in '%@'", authentication);
-	      return nil;
-	    }
+            if (realm == nil) {
+                NSDebugMLog(@"Missing HTTP digest realm in '%@'", authentication);
+                return nil;
+            }
+            if ([realm isEqualToString: [self->_space realm]] == NO) {
+                NSDebugMLog(@"Bad HTTP digest realm in '%@'", authentication);
+                return nil;
+            }
+            if (nonce == nil) {
+                NSDebugMLog(@"Missing HTTP digest nonce in '%@'", authentication);
+                return nil;
+            }
 
-	  if ([algorithm isEqualToString: @"MD5"] == NO)
-	    {
-	      NSDebugMLog(@"Unsupported HTTP digest algorithm in '%@'",
-		authentication);
-	      return nil;
-	    }
-	  if (![[qop componentsSeparatedByString: @","]
-	    containsObject: @"auth"])
-	    {
-	      NSDebugMLog(@"Unsupported/missing HTTP digest qop in '%@'",
-		authentication);
-	      return nil;
-	    }
+            if ([algorithm isEqualToString: @"MD5"] == NO) {
+                NSDebugMLog(@"Unsupported HTTP digest algorithm in '%@'", authentication);
+                return nil;
+            }
+            if (![[qop componentsSeparatedByString: @","] containsObject: @"auth"]) {
+                NSDebugMLog(@"Unsupported/missing HTTP digest qop in '%@'", authentication);
+                return nil;
+            }
 
-	  [self->_lock lock];
-	  if ([stale boolValue] == YES
-	    || [nonce isEqualToString: _nonce] == NO)
-	    {
-	      _nc = 1;
-	    }
-	  ASSIGN(_nonce, nonce);
-	  ASSIGN(_qop, qop);
-	  ASSIGN(_opaque, opaque);
-	}
-      else
-	{
-	  [self->_lock lock];
-	  nonce = _nonce;
-	  opaque = _opaque;
-	  realm = [self->_space realm];
-	}
+            [self->_lock lock];
+            if ([stale boolValue] == YES || [nonce isEqualToString: _nonce] == NO) {
+                _nc = 1;
+            }
+            ASSIGN(_nonce, nonce);
+            ASSIGN(_qop, qop);
+            ASSIGN(_opaque, opaque);
+        } else {
+            [self->_lock lock];
+            nonce = _nonce;
+            opaque = _opaque;
+            realm = [self->_space realm];
+        }
 
-      nc = _nc++;
+        nc = _nc++;
 
-      qop = @"auth";
+        qop = @"auth";
 
-      cnonce = [[[[[NSProcessInfo processInfo] globallyUniqueString]
-	dataUsingEncoding: NSUTF8StringEncoding] md5Digest] digestHex];
+        cnonce = [[[[[NSProcessInfo processInfo] globallyUniqueString] dataUsingEncoding: NSUTF8StringEncoding] md5Digest] digestHex];
 
-      HA1 = [[[[NSString stringWithFormat: @"%@:%@:%@",
-	[self->_credential user], realm, [self->_credential password]]
-	dataUsingEncoding: NSUTF8StringEncoding] md5Digest] digestHex];
+        HA1 = [[[[NSString stringWithFormat: @"%@:%@:%@", [self->_credential user], realm, [self->_credential password]] dataUsingEncoding: NSUTF8StringEncoding] md5Digest] digestHex];
 
-      HA2 = [[[[NSString stringWithFormat: @"%@:%@", method, path]
-	dataUsingEncoding: NSUTF8StringEncoding] md5Digest] digestHex];
+        HA2 = [[[[NSString stringWithFormat: @"%@:%@", method, path] dataUsingEncoding: NSUTF8StringEncoding] md5Digest] digestHex];
 
-      response = [[[[NSString stringWithFormat: @"%@:%@:%08x:%@:%@:%@",
-	HA1, nonce, nc, cnonce, qop, HA2]
-	dataUsingEncoding: NSUTF8StringEncoding] md5Digest] digestHex];
+        response = [[[[NSString stringWithFormat: @"%@:%@:%08x:%@:%@:%@", HA1, nonce, nc, cnonce, qop, HA2] dataUsingEncoding: NSUTF8StringEncoding] md5Digest] digestHex];
 
-      authorisation = [NSMutableString stringWithCapacity: 512];
-      [authorisation appendFormat:  @"Digest realm=\"%@\"", realm];
-      [authorisation appendFormat:  @",username=\"%@\"",
-	[self->_credential user]];
-      [authorisation appendFormat:  @",nonce=\"%@\"", nonce];
-      [authorisation appendFormat:  @",uri=\"%@\"", path];
-      [authorisation appendFormat:  @",response=\"%@\"", response];
-      [authorisation appendFormat:  @",qop=\"%@\"", qop];
-      [authorisation appendFormat:  @",nc=%08x", nc];
-      [authorisation appendFormat:  @",cnonce=\"%@\"", cnonce];
-      if (opaque != nil)
-	{
-	  [authorisation appendFormat:  @",opaque=\"%@\"", opaque];
-	}
+        authorisation = [NSMutableString stringWithCapacity: 512];
+        [authorisation appendFormat:@"Digest realm=\"%@\"", realm];
+        [authorisation appendFormat:@",username=\"%@\"", [self->_credential user]];
+        [authorisation appendFormat:@",nonce=\"%@\"", nonce];
+        [authorisation appendFormat:@",uri=\"%@\"", path];
+        [authorisation appendFormat:@",response=\"%@\"", response];
+        [authorisation appendFormat:@",qop=\"%@\"", qop];
+        [authorisation appendFormat:@",nc=%08x", nc];
+        [authorisation appendFormat:@",cnonce=\"%@\"", cnonce];
+        if (opaque != nil) {
+            [authorisation appendFormat:@",opaque=\"%@\"", opaque];
+        }
 
-      [self->_lock unlock];
+        [self->_lock unlock];
+    } else if ([self->_space authenticationMethod] == NSURLAuthenticationMethodHTMLForm) {
+        // This should not generate any authentication header.
+        return nil;
+    } else if ([self->_space authenticationMethod] == NSURLAuthenticationMethodNTLM) {
+        // FIXME: this needs to be implemented
+        return nil;
+    } else if ([self->_space authenticationMethod] == NSURLAuthenticationMethodNegotiate) {
+        // FIXME: this needs to be implemented
+        return nil;
+    } else if ([self->_space authenticationMethod] == NSURLAuthenticationMethodDefault || [self->_space authenticationMethod] == NSURLAuthenticationMethodHTTPBasic) {
+        NSString *toEncode;
+
+        if (authentication != nil) {
+            NSScanner *sc;
+
+            sc = [NSScanner scannerWithString: authentication];
+            if ([sc scanString: @"Basic" intoString: 0] == NO) {
+                NSDebugMLog(@"Bad format HTTP basic in '%@'", authentication);
+                return nil;	// Not a basic authentication
+            }
+        }
+
+        authorisation = [NSMutableString stringWithCapacity: 64];
+        if ([[self->_credential password] length] > 0) {
+            toEncode = [NSString stringWithFormat:@"%@:%@", [self->_credential user], [self->_credential password]];
+        } else {
+            toEncode = [NSString stringWithFormat:@"%@",
+            [self->_credential user]];
+        }
+        [authorisation appendFormat:@"Basic %@", [GSMimeDocument encodeBase64String: toEncode]];
+    } else {
+        // FIXME: Currently, ClientCertificate and ServerTrust authentication
+        // methods are NOT implemented and will end up here. They should, in fact,
+        // be handled in the SSL connection layer (in GSHTTPURLHandle) rather than
+        // in this method.
+        return nil;
     }
-  else if ([self->_space authenticationMethod]
-    == NSURLAuthenticationMethodHTMLForm)
-    {
-      // This should not generate any authentication header.
-      return nil;
-    }
-  else if ([self->_space authenticationMethod]
-    == NSURLAuthenticationMethodNTLM)
-    {
-      // FIXME: this needs to be implemented
-      return nil;
-    }
-  else if ([self->_space authenticationMethod]
-    == NSURLAuthenticationMethodNegotiate)
-    {
-      // FIXME: this needs to be implemented
-      return nil;
-    }
-  else if ([self->_space authenticationMethod]
-    == NSURLAuthenticationMethodDefault
-    || [self->_space authenticationMethod]
-    == NSURLAuthenticationMethodHTTPBasic)
-    {
-      NSString	*toEncode;
-
-      if (authentication != nil)
-	{
-	  NSScanner		*sc;
-
-	  sc = [NSScanner scannerWithString: authentication];
-	  if ([sc scanString: @"Basic" intoString: 0] == NO)
-	    {
-	      NSDebugMLog(@"Bad format HTTP basic in '%@'", authentication);
-	      return nil;	// Not a basic authentication
-	    }
-	}
-
-      authorisation = [NSMutableString stringWithCapacity: 64];
-      if ([[self->_credential password] length] > 0)
-	{
-	  toEncode = [NSString stringWithFormat: @"%@:%@",
-	    [self->_credential user], [self->_credential password]];
-	}
-      else
-	{
-	  toEncode = [NSString stringWithFormat: @"%@",
-	    [self->_credential user]];
-	}
-      [authorisation appendFormat: @"Basic %@",
-	[GSMimeDocument encodeBase64String: toEncode]];
-    }
-  else
-    {
-      // FIXME: Currently, ClientCertificate and ServerTrust authentication
-      // methods are NOT implemented and will end up here. They should, in fact,
-      // be handled in the SSL connection layer (in GSHTTPURLHandle) rather than
-      // in this method.
-      return nil;
-    }
-  return authorisation;
+    return authorisation;
 }
 
 - (NSURLCredential *) credential
