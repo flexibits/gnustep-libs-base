@@ -716,10 +716,59 @@ static unsigned nextSessionIdentifier()
     }
 }
 
-- (void) URLProtocol: (NSURLProtocol *)protocol
-  didReceiveAuthenticationChallenge: (NSURLAuthenticationChallenge *)challenge
+- (void)continueWithCredential:(NSURLCredential *)credential forTask:(NSURLSessionTask *)task
 {
-  //FIXME
+    NSURLProtectionSpace *protectionSpace = [credential protectionSpace];
+    NSString *authScheme = [protectionSpace authenticationMethod];
+
+    [task suspend];
+
+    // AUTH GOES HERE
+
+    [task resume];
+}
+
+- (void)continueWithDefaultCredentialForTask:(NSURLSessionTask *)task withCredentialStorage:(NSURLCredentialStorage *)credentialStorage andProtectionSpace:(NSURLProtectionSpace *)protectionSpace
+{
+    NSURLCredential *credential = [credentialStorage defaultCredentialForProtectionSpace:protectionSpace];
+
+    [self useCredential:credential forTask:task];
+}
+
+- (void)URLProtocol:(NSURLProtocol *)protocol didReceiveAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge
+{
+    NSURLSessionTask *task = [protocol task];
+    NSURLSession *session;
+    id<NSURLSessionDelegate> delegate;
+
+    NSAssert(nil != task, @"Missing task");
+
+    session = [task session];
+
+    delegate = [session delegate];
+    if (nil != delegate && [delegate respondsToSelector: @selector(URLSession:task:didReceiveChallenge:completionHandler:)]) {
+        [[session delegateQueue] addOperationWithBlock:^{
+            [(id<NSURLSessionTaskDelegate>)delegate URLSession:session 
+                                                          task:task 
+                                           didReceiveChallenge:challenge
+                                             completionHandler:^(NSURLSessionAuthChallengeDisposition disposition) {
+                switch (disposition) {
+                    case NSURLSessionAuthChallengeUseCredential:
+                        [self continueWithCredential:[challenge proposedCredential] forTask:task];
+                        break;
+                    case NSURLSessionAuthChallengePerformDefaultHandling:
+                        [self continueWithDefaultCredentialForTask:task 
+                                             withCredentialStorage:[[session configuration] URLCredentialStorage] 
+                                                andProtectionSpace:[challenge protectionSpace]];
+                        break;
+                    case NSURLSessionAuthChallengeCancelAuthenticationChallenge:
+                    case NSURLSessionAuthChallengeRejectProtectionSpace:
+                        [task cancel];
+                        break;
+                }
+            }];
+        }];
+    }
 }
 
 - (void) URLProtocol: (NSURLProtocol *)protocol
@@ -983,10 +1032,13 @@ static unsigned nextSessionIdentifier()
   [task invalidateProtocol];
 }
 
-- (void) URLProtocol: (NSURLProtocol *)protocol
-  didCancelAuthenticationChallenge: (NSURLAuthenticationChallenge *)challenge
+- (void)URLProtocol:(NSURLProtocol *)protocol didCancelAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge
 {
-  //FIXME
+    NSURLSessionTask *task = [protocol task];
+
+    NSAssert(nil != task, @"Missing task");
+
+    [self task:task didFailWithError:[NSError errorWithDomain:NSCocoaErrorDomain code:NSUserCancelledError userInfo:nil]];
 }
 
 @end
