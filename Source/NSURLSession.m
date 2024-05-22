@@ -39,6 +39,7 @@
 #import "GSTaskRegistry.h"
 #import "GSURLSessionTaskBody.h"
 
+#import "Foundation/FoundationErrors.h"
 #import "Foundation/NSError.h"
 #import "Foundation/NSException.h"
 #import "Foundation/NSOperation.h"
@@ -891,7 +892,11 @@ static unsigned nextSessionIdentifier()
 
 - (void)URLProtocol:(NSURLProtocol *)protocol didCancelAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge
 {
-    // FIXME
+    NSURLSessionTask *task = [protocol task];
+
+    NSAssert(nil != task, @"Missing task");
+
+    [self task:task didFailWithError:[NSError errorWithDomain:NSCocoaErrorDomain code:NSUserCancelledError userInfo:nil]];
 }
 
 @end
