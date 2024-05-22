@@ -666,9 +666,51 @@ static unsigned nextSessionIdentifier()
     }
 }
 
+- (void)continueWithCredential:(NSURLCredential *)credential authenticationChallenge:(NSURLAuthenticationChallenge *)challenge
+{
+    if ([challenge proposedCredential] == nil) {
+        /* continue without a credential if there is no proposed credential
+         * at all or if an authentication failure has already happened.
+         */
+        [[challenge sender] continueWithoutCredentialForAuthenticationChallenge:challenge];
+    } else {
+        [[challenge sender] useCredential:credential forAuthenticationChallenge:challenge];
+    }
+}
+
 - (void)URLProtocol:(NSURLProtocol *)protocol didReceiveAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge
 {
-    // FIXME
+    NSURLSessionTask *task = [protocol task];
+    NSURLSession *session;
+    id<NSURLSessionDelegate> delegate;
+
+    NSAssert(nil != task, @"Missing task");
+
+    session = [task session];
+    delegate = [session delegate];
+    if (nil != delegate && [delegate respondsToSelector:@selector(URLSession:task:didReceiveChallenge:completionHandler:)]) {
+        [[session delegateQueue] addOperationWithBlock:^{
+            [(id<NSURLSessionTaskDelegate>)delegate URLSession:session
+                                                          task:task
+                                           didReceiveChallenge:challenge
+                                             completionHandler:^(NSURLSessionAuthChallengeDisposition disposition, NSURLCredential *credential) {
+                                                 switch (disposition) {
+                                                     case NSURLSessionAuthChallengeUseCredential:
+                                                         [self continueWithCredential:credential authenticationChallenge:challenge];
+                                                         break;
+                                                     case NSURLSessionAuthChallengePerformDefaultHandling:
+                                                         credential = [[[session configuration] URLCredentialStorage] defaultCredentialForProtectionSpace:[challenge protectionSpace]];
+
+                                                         [self continueWithCredential:credential authenticationChallenge:challenge];
+                                                         break;
+                                                     case NSURLSessionAuthChallengeCancelAuthenticationChallenge:
+                                                     case NSURLSessionAuthChallengeRejectProtectionSpace:
+                                                         [task cancel];
+                                                         break;
+                                                 }
+                                             }];
+        }];
+    }
 }
 
 - (void)URLProtocol:(NSURLProtocol *)protocol didReceiveResponse:(NSURLResponse *)response cacheStoragePolicy:(NSURLCacheStoragePolicy)policy
