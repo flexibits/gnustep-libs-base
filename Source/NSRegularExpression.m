@@ -21,7 +21,7 @@
    */
 
 
-#define	EXPOSE_NSRegularExpression_IVARS	1
+#define EXPOSE_NSRegularExpression_IVARS 1
 #import "common.h"
 
 #if GS_USE_ICU == 1
@@ -66,273 +66,234 @@
 uint32_t
 NSRegularExpressionOptionsToURegexpFlags(NSRegularExpressionOptions opts)
 {
-  uint32_t flags = 0;
+    uint32_t flags = 0;
 
-  if (opts & NSRegularExpressionCaseInsensitive)
-    {
-      flags |= UREGEX_CASE_INSENSITIVE;
+    if (opts & NSRegularExpressionCaseInsensitive) {
+        flags |= UREGEX_CASE_INSENSITIVE;
     }
-  if (opts & NSRegularExpressionAllowCommentsAndWhitespace)
-    {
-      flags |= UREGEX_COMMENTS;
+    if (opts & NSRegularExpressionAllowCommentsAndWhitespace) {
+        flags |= UREGEX_COMMENTS;
     }
-  if (opts & NSRegularExpressionIgnoreMetacharacters)
-    {
-      flags |= UREGEX_LITERAL;
+    if (opts & NSRegularExpressionIgnoreMetacharacters) {
+        flags |= UREGEX_LITERAL;
     }
-  if (opts & NSRegularExpressionDotMatchesLineSeparators)
-    {
-      flags |= UREGEX_DOTALL;
+    if (opts & NSRegularExpressionDotMatchesLineSeparators) {
+        flags |= UREGEX_DOTALL;
     }
-  if (opts & NSRegularExpressionAnchorsMatchLines)
-    {
-      flags |= UREGEX_MULTILINE;
+    if (opts & NSRegularExpressionAnchorsMatchLines) {
+        flags |= UREGEX_MULTILINE;
     }
-  if (opts & NSRegularExpressionUseUnixLineSeparators)
-    {
-      flags |= UREGEX_UNIX_LINES;
+    if (opts & NSRegularExpressionUseUnixLineSeparators) {
+        flags |= UREGEX_UNIX_LINES;
     }
-  if (opts & NSRegularExpressionUseUnicodeWordBoundaries)
-    {
-      flags |= UREGEX_UWORD;
+    if (opts & NSRegularExpressionUseUnicodeWordBoundaries) {
+        flags |= UREGEX_UWORD;
     }
-  return flags;
+    return flags;
 }
 
 @implementation NSRegularExpression
 
-+ (NSRegularExpression*) regularExpressionWithPattern: (NSString*)aPattern
-                                              options: (NSRegularExpressionOptions)opts
-                                                error: (NSError**)e
++ (NSRegularExpression *)regularExpressionWithPattern:(NSString *)aPattern
+                                              options:(NSRegularExpressionOptions)opts
+                                                error:(NSError **)e
 {
-  NSRegularExpression   *r;
+    NSRegularExpression *r;
 
-  r = [[self alloc] initWithPattern: aPattern
-                            options: opts
-                              error: e];
-  return AUTORELEASE(r);
+    r = [[self alloc] initWithPattern:aPattern
+                              options:opts
+                                error:e];
+    return AUTORELEASE(r);
 }
 
 
 #if HAVE_UREGEX_OPENUTEXT
-- (id) initWithPattern: (NSString*)aPattern
-	       options: (NSRegularExpressionOptions)opts
-		 error: (NSError**)e
+- (id)initWithPattern:(NSString *)aPattern
+              options:(NSRegularExpressionOptions)opts
+                error:(NSError **)e
 {
-  uint32_t	flags = NSRegularExpressionOptionsToURegexpFlags(opts);
-  UText		p = UTEXT_INITIALIZER;
-  UParseError	pe = {0};
-  UErrorCode	s = 0;
+    uint32_t flags = NSRegularExpressionOptionsToURegexpFlags(opts);
+    UText p = UTEXT_INITIALIZER;
+    UParseError pe = {0};
+    UErrorCode s = 0;
 
-  // Raise an NSInvalidArgumentException to match macOS behaviour.
-  if (!aPattern)
-    {
-      NSException *exp;
+    // Raise an NSInvalidArgumentException to match macOS behaviour.
+    if (!aPattern) {
+        NSException *exp;
 
-      exp = [NSException exceptionWithName: NSInvalidArgumentException
-                                    reason: @"nil argument"
-      				  userInfo: nil];
-      [exp raise];
+        exp = [NSException exceptionWithName:NSInvalidArgumentException
+                                      reason:@"nil argument"
+                                    userInfo:nil];
+        [exp raise];
     }
 
 #if !__has_feature(blocks)
-  if ([self class] != [NSRegularExpression class])
-    {
-      GSOnceMLog(@"Warning: NSRegularExpression was built by a compiler without blocks support.  NSRegularExpression will deviate from the documented behaviour when subclassing and any code that subclasses NSRegularExpression may break in unexpected ways.  If you must subclass NSRegularExpression, you are strongly recommended to use a compiler with blocks support.");
+    if ([self class] != [NSRegularExpression class]) {
+        GSOnceMLog(@"Warning: NSRegularExpression was built by a compiler without blocks support.  NSRegularExpression will deviate from the documented behaviour when subclassing and any code that subclasses NSRegularExpression may break in unexpected ways.  If you must subclass NSRegularExpression, you are strongly recommended to use a compiler with blocks support.");
     }
 #endif
 
-  UTextInitWithNSString(&p, aPattern);
-  regex = uregex_openUText(&p, flags, &pe, &s);
-  utext_close(&p);
-  if (U_FAILURE(s))
-    {
-      /* Match macOS behaviour if the pattern is invalid.
-       * Example:
-       *   Domain=NSCocoaErrorDomain
-       *   Code=2048 "The value “<PATTERN>” is invalid."
-       *   UserInfo={NSInvalidValue=<PATTERN>}
-       */
-      if (e)
-        {
-          NSDictionary  *userInfo;
-          NSString      *description;
+    UTextInitWithNSString(&p, aPattern);
+    regex = uregex_openUText(&p, flags, &pe, &s);
+    utext_close(&p);
+    if (U_FAILURE(s)) {
+        /* Match macOS behaviour if the pattern is invalid.
+         * Example:
+         *   Domain=NSCocoaErrorDomain
+         *   Code=2048 "The value “<PATTERN>” is invalid."
+         *   UserInfo={NSInvalidValue=<PATTERN>}
+         */
+        if (e) {
+            NSDictionary *userInfo;
+            NSString *description;
 
-          description = [NSString stringWithFormat: @"The value “%@” is invalid.", aPattern];
+            description = [NSString stringWithFormat:@"The value “%@” is invalid.", aPattern];
 
-          userInfo = [NSDictionary dictionaryWithObjectsAndKeys:
-            aPattern, @"NSInvalidValue",
-            description, NSLocalizedDescriptionKey,
-            nil];
+            userInfo = [NSDictionary dictionaryWithObjectsAndKeys:
+                                         aPattern, @"NSInvalidValue",
+                                         description, NSLocalizedDescriptionKey,
+                                         nil];
 
-          *e = [NSError errorWithDomain: NSCocoaErrorDomain
-                                   code: NSFormattingError
-                               userInfo: userInfo];
+            *e = [NSError errorWithDomain:NSCocoaErrorDomain
+                                     code:NSFormattingError
+                                 userInfo:userInfo];
         }
 
-      DESTROY(self);
-      return self;
+        DESTROY(self);
+        return self;
     }
-  options = opts;
-  return self;
+    options = opts;
+    return self;
 }
 
-- (BOOL) isEqual: (id)obj
+- (BOOL)isEqual:(id)obj
 {
-  if ([obj isKindOfClass: [NSRegularExpression class]])
-    {
-      if (self == obj)
-        {
-          return YES;
-        }
-      else if (options != ((NSRegularExpression*)obj)->options)
-        {
-          return NO;
-        }
-      else
-        {
-          UErrorCode  myErr      = 0;
-          UErrorCode  theirErr   = 0;
-          const UText *myText    = uregex_patternUText(regex, &myErr);
-          const UText *theirText =
-           uregex_patternUText(((NSRegularExpression*)obj)->regex, &theirErr);
-          if (U_FAILURE(myErr) != U_FAILURE(theirErr))
-            {
-              return NO;
+    if ([obj isKindOfClass:[NSRegularExpression class]]) {
+        if (self == obj) {
+            return YES;
+        } else if (options != ((NSRegularExpression *)obj)->options) {
+            return NO;
+        } else {
+            UErrorCode myErr = 0;
+            UErrorCode theirErr = 0;
+            const UText *myText = uregex_patternUText(regex, &myErr);
+            const UText *theirText =
+                uregex_patternUText(((NSRegularExpression *)obj)->regex, &theirErr);
+            if (U_FAILURE(myErr) != U_FAILURE(theirErr)) {
+                return NO;
+            } else if (U_FAILURE(myErr) && U_FAILURE(theirErr)) {
+                return YES;
             }
-          else if (U_FAILURE(myErr) && U_FAILURE(theirErr))
-            {
-              return YES;
-            }
-          return utext_equals(myText, theirText);
+            return utext_equals(myText, theirText);
         }
-    }
-  else
-    {
-      return [super isEqual: obj];
+    } else {
+        return [super isEqual:obj];
     }
 }
 
-- (NSString*) pattern
+- (NSString *)pattern
 {
-  UErrorCode	s = 0;
-  UText		*t = uregex_patternUText(regex, &s);
-  GSUTextString	*str = NULL;
+    UErrorCode s = 0;
+    UText *t = uregex_patternUText(regex, &s);
+    GSUTextString *str = NULL;
 
-  if (U_FAILURE(s))
-    {
-      return nil;
+    if (U_FAILURE(s)) {
+        return nil;
     }
-  str = [GSUTextString new];
-  utext_clone(&str->txt, t, FALSE, TRUE, &s);
-  return AUTORELEASE(str);
+    str = [GSUTextString new];
+    utext_clone(&str->txt, t, FALSE, TRUE, &s);
+    return AUTORELEASE(str);
 }
 #else
-- (id) initWithPattern: (NSString*)aPattern
-	       options: (NSRegularExpressionOptions)opts
-		 error: (NSError**)e
+- (id)initWithPattern:(NSString *)aPattern
+              options:(NSRegularExpressionOptions)opts
+                error:(NSError **)e
 {
-  int32_t	length = [aPattern length];
-  uint32_t	flags = NSRegularExpressionOptionsToURegexpFlags(opts);
-  UParseError	pe = {0};
-  UErrorCode	s = 0;
-  TEMP_BUFFER(buffer, length);
+    int32_t length = [aPattern length];
+    uint32_t flags = NSRegularExpressionOptionsToURegexpFlags(opts);
+    UParseError pe = {0};
+    UErrorCode s = 0;
+    TEMP_BUFFER(buffer, length);
 
 #if !__has_feature(blocks)
-  if ([self class] != [NSRegularExpression class])
-    {
-      GSOnceMLog(@"Warning: NSRegularExpression was built by a compiler without blocks support.  NSRegularExpression will deviate from the documented behaviour when subclassing and any code that subclasses NSRegularExpression may break in unexpected ways.  If you must subclass NSRegularExpression, you are strongly recommended to use a compiler with blocks support.");
+    if ([self class] != [NSRegularExpression class]) {
+        GSOnceMLog(@"Warning: NSRegularExpression was built by a compiler without blocks support.  NSRegularExpression will deviate from the documented behaviour when subclassing and any code that subclasses NSRegularExpression may break in unexpected ways.  If you must subclass NSRegularExpression, you are strongly recommended to use a compiler with blocks support.");
     }
 #endif
 
-  [aPattern getCharacters: buffer range: NSMakeRange(0, length)];
-  regex = uregex_open(buffer, length, flags, &pe, &s);
-  if (U_FAILURE(s))
-    {
-      // FIXME: Do something sensible with the error parameter.
-      DESTROY(self);
-      return self;
+    [aPattern getCharacters:buffer
+                      range:NSMakeRange(0, length)];
+    regex = uregex_open(buffer, length, flags, &pe, &s);
+    if (U_FAILURE(s)) {
+        // FIXME: Do something sensible with the error parameter.
+        DESTROY(self);
+        return self;
     }
-  options = opts;
-  return self;
+    options = opts;
+    return self;
 }
 
-- (BOOL) isEqual: (id)obj
+- (BOOL)isEqual:(id)obj
 {
-  if ([obj isKindOfClass: [NSRegularExpression class]])
-    {
-      if (self == obj)
-        {
-          return YES;
-        }
-      else if (options != ((NSRegularExpression*)obj)->options)
-        {
-          return NO;
-        }
-      else
-        {
-          UErrorCode  myErr      = 0;
-          UErrorCode  theirErr   = 0;
-          int32_t     myLen      = 0;
-          int32_t     theirLen   = 0;
-          const UChar *myText    = uregex_pattern(regex, &myLen, &myErr);
-          const UChar *theirText = uregex_pattern(
-                                     ((NSRegularExpression*)obj)->regex,
-                                     &theirLen, &theirErr);
-          if (U_FAILURE(myErr) != U_FAILURE(theirErr))
-            {
-              return NO;
+    if ([obj isKindOfClass:[NSRegularExpression class]]) {
+        if (self == obj) {
+            return YES;
+        } else if (options != ((NSRegularExpression *)obj)->options) {
+            return NO;
+        } else {
+            UErrorCode myErr = 0;
+            UErrorCode theirErr = 0;
+            int32_t myLen = 0;
+            int32_t theirLen = 0;
+            const UChar *myText = uregex_pattern(regex, &myLen, &myErr);
+            const UChar *theirText = uregex_pattern(
+                ((NSRegularExpression *)obj)->regex,
+                &theirLen, &theirErr);
+            if (U_FAILURE(myErr) != U_FAILURE(theirErr)) {
+                return NO;
+            } else if (U_FAILURE(myErr) && U_FAILURE(theirErr)) {
+                return YES;
             }
-          else if (U_FAILURE(myErr) && U_FAILURE(theirErr))
-            {
-              return YES;
+            if (myLen != theirLen) {
+                return NO;
             }
-          if (myLen != theirLen)
-            {
-              return NO;
-            }
-          return (0 == memcmp((const void*)myText, (const void*)theirText, myLen));
+            return (0 == memcmp((const void *)myText, (const void *)theirText, myLen));
         }
-    }
-  else
-    {
-      return [super isEqual: obj];
+    } else {
+        return [super isEqual:obj];
     }
 }
 
 
-
-- (NSString*) pattern
+- (NSString *)pattern
 {
-  UErrorCode	s = 0;
-  int32_t	length;
-  const unichar *pattern = uregex_pattern(regex, &length, &s);
+    UErrorCode s = 0;
+    int32_t length;
+    const unichar *pattern = uregex_pattern(regex, &length, &s);
 
-  if (U_FAILURE(s))
-    {
-      return nil;
+    if (U_FAILURE(s)) {
+        return nil;
     }
-  return [NSString stringWithCharacters: pattern length: length];
+    return [NSString stringWithCharacters:pattern length:length];
 }
 #endif
 
-- (NSUInteger) hash
+- (NSUInteger)hash
 {
-  return [[self pattern] hash] ^ options;
+    return [[self pattern] hash] ^ options;
 }
 
 static UBool
 callback(const void *context, int32_t steps)
 {
-  BOOL		stop = NO;
-  GSRegexBlock	block = (GSRegexBlock)context;
+    BOOL stop = NO;
+    GSRegexBlock block = (GSRegexBlock)context;
 
-  if (NULL == context)
-    {
-      return FALSE;
+    if (NULL == context) {
+        return FALSE;
     }
-  CALL_BLOCK(block, nil, NSMatchingProgress, &stop);
-  return stop;
+    CALL_BLOCK(block, nil, NSMatchingProgress, &stop);
+    return stop;
 }
 
 
@@ -345,38 +306,33 @@ callback(const void *context, int32_t steps)
  */
 static int32_t _workLimit = DEFAULT_WORK_LIMIT;
 
-+ (void) _defaultsChanged: (NSNotification*)n
++ (void)_defaultsChanged:(NSNotification *)n
 {
-  NSUserDefaults        *defs = [NSUserDefaults standardUserDefaults];
-  id                    value = [defs objectForKey: @"GSRegularExpressionWorkLimit"];
-  int32_t               newLimit = DEFAULT_WORK_LIMIT;
+    NSUserDefaults *defs = [NSUserDefaults standardUserDefaults];
+    id value = [defs objectForKey:@"GSRegularExpressionWorkLimit"];
+    int32_t newLimit = DEFAULT_WORK_LIMIT;
 
-  if ([value respondsToSelector: @selector(intValue)])
-    {
-      int32_t   v = [value intValue];
+    if ([value respondsToSelector:@selector(intValue)]) {
+        int32_t v = [value intValue];
 
-      if (v >= 0)
-        {
-          newLimit = v;
+        if (v >= 0) {
+            newLimit = v;
         }
     }
-  _workLimit = newLimit;
+    _workLimit = newLimit;
 }
 
-+ (void) initialize
++ (void)initialize
 {
-  if (self == [NSRegularExpression class])
-    {
-      [[NSNotificationCenter defaultCenter]
-        addObserver: self
-           selector: @selector(_defaultsChanged:)
-              name: NSUserDefaultsDidChangeNotification
-            object: nil];
-      [self _defaultsChanged: nil];
+    if (self == [NSRegularExpression class]) {
+        [[NSNotificationCenter defaultCenter]
+            addObserver:self
+               selector:@selector(_defaultsChanged:)
+                   name:NSUserDefaultsDidChangeNotification
+                 object:nil];
+        [self _defaultsChanged:nil];
     }
 }
-
-
 
 
 /**
@@ -390,242 +346,205 @@ static int32_t _workLimit = DEFAULT_WORK_LIMIT;
 #if HAVE_UREGEX_OPENUTEXT
 static URegularExpression *
 setupRegex(URegularExpression *regex,
-  NSString *string,
-  UText *txt,
-  NSMatchingOptions options,
-  NSRange range,
-  GSRegexBlock block)
+           NSString *string,
+           UText *txt,
+           NSMatchingOptions options,
+           NSRange range,
+           GSRegexBlock block)
 {
-  UErrorCode		s = 0;
-  URegularExpression	*r = uregex_clone(regex, &s);
+    UErrorCode s = 0;
+    URegularExpression *r = uregex_clone(regex, &s);
 
-  if (options & NSMatchingReportProgress)
-    {
-      uregex_setMatchCallback(r, callback, block, &s);
+    if (options & NSMatchingReportProgress) {
+        uregex_setMatchCallback(r, callback, block, &s);
     }
-  UTextInitWithNSString(txt, string);
-  uregex_setUText(r, txt, &s);
-  uregex_setRegion(r, range.location, range.location+range.length, &s);
-  if (options & NSMatchingWithoutAnchoringBounds)
-    {
-      uregex_useAnchoringBounds(r, FALSE, &s);
+    UTextInitWithNSString(txt, string);
+    uregex_setUText(r, txt, &s);
+    uregex_setRegion(r, range.location, range.location + range.length, &s);
+    if (options & NSMatchingWithoutAnchoringBounds) {
+        uregex_useAnchoringBounds(r, FALSE, &s);
     }
-  if (options & NSMatchingWithTransparentBounds)
-    {
-      uregex_useTransparentBounds(r, TRUE, &s);
+    if (options & NSMatchingWithTransparentBounds) {
+        uregex_useTransparentBounds(r, TRUE, &s);
     }
-  uregex_setTimeLimit(r, _workLimit, &s);
-  if (U_FAILURE(s))
-    {
-      uregex_close(r);
-      return NULL;
+    uregex_setTimeLimit(r, _workLimit, &s);
+    if (U_FAILURE(s)) {
+        uregex_close(r);
+        return NULL;
     }
-  return r;
+    return r;
 }
 #else
 static URegularExpression *
 setupRegex(URegularExpression *regex,
-  NSString *string,
-  unichar *buffer,
-  int32_t length,
-  NSMatchingOptions options,
-  NSRange range,
-  GSRegexBlock block)
+           NSString *string,
+           unichar *buffer,
+           int32_t length,
+           NSMatchingOptions options,
+           NSRange range,
+           GSRegexBlock block)
 {
-  UErrorCode		s = 0;
-  URegularExpression	*r = uregex_clone(regex, &s);
+    UErrorCode s = 0;
+    URegularExpression *r = uregex_clone(regex, &s);
 
-  [string getCharacters: buffer range: NSMakeRange(0, length)];
-  if (options & NSMatchingReportProgress)
-    {
-      uregex_setMatchCallback(r, callback, block, &s);
+    [string getCharacters:buffer range:NSMakeRange(0, length)];
+    if (options & NSMatchingReportProgress) {
+        uregex_setMatchCallback(r, callback, block, &s);
     }
-  uregex_setText(r, buffer, length, &s);
-  uregex_setRegion(r, range.location, range.location+range.length, &s);
-  if (options & NSMatchingWithoutAnchoringBounds)
-    {
-      uregex_useAnchoringBounds(r, FALSE, &s);
+    uregex_setText(r, buffer, length, &s);
+    uregex_setRegion(r, range.location, range.location + range.length, &s);
+    if (options & NSMatchingWithoutAnchoringBounds) {
+        uregex_useAnchoringBounds(r, FALSE, &s);
     }
-  if (options & NSMatchingWithTransparentBounds)
-    {
-      uregex_useTransparentBounds(r, TRUE, &s);
+    if (options & NSMatchingWithTransparentBounds) {
+        uregex_useTransparentBounds(r, TRUE, &s);
     }
-  uregex_setTimeLimit(r, _workLimit, &s);
-  if (U_FAILURE(s))
-    {
-      uregex_close(r);
-      return NULL;
+    uregex_setTimeLimit(r, _workLimit, &s);
+    if (U_FAILURE(s)) {
+        uregex_close(r);
+        return NULL;
     }
-  return r;
+    return r;
 }
 #endif
 
 static uint32_t
 prepareResult(NSRegularExpression *regex,
-  URegularExpression *r,
-  NSRangePointer ranges,
-  NSUInteger groups,
-  UErrorCode *s)
+              URegularExpression *r,
+              NSRangePointer ranges,
+              NSUInteger groups,
+              UErrorCode *s)
 {
-  uint32_t	flags = 0;
-  NSUInteger	i = 0;
+    uint32_t flags = 0;
+    NSUInteger i = 0;
 
-  for (i = 0; i < groups; i++)
-    {
-      NSInteger start = uregex_start(r, i, s);
-      NSInteger end = uregex_end(r, i, s);
+    for (i = 0; i < groups; i++) {
+        NSInteger start = uregex_start(r, i, s);
+        NSInteger end = uregex_end(r, i, s);
 
-      /* The ICU API defines -1 as not found. Convert to
-       * NSNotFound if applicable.
-       */
-      if (start == -1)
-        {
-          start = NSNotFound;
+        /* The ICU API defines -1 as not found. Convert to
+         * NSNotFound if applicable.
+         */
+        if (start == -1) {
+            start = NSNotFound;
         }
-      if (end == -1)
-        {
-          end = NSNotFound;
+        if (end == -1) {
+            end = NSNotFound;
         }
 
-      if (end < start)
-        {
-          flags |= NSMatchingInternalError;
-          end = start = NSNotFound;
+        if (end < start) {
+            flags |= NSMatchingInternalError;
+            end = start = NSNotFound;
         }
-      ranges[i] = NSMakeRange(start, end-start);
+        ranges[i] = NSMakeRange(start, end - start);
     }
-  if (uregex_hitEnd(r, s))
-    {
-      flags |= NSMatchingHitEnd;
+    if (uregex_hitEnd(r, s)) {
+        flags |= NSMatchingHitEnd;
     }
-  if (uregex_requireEnd(r, s))
-    {
-      flags |= NSMatchingRequiredEnd;
+    if (uregex_requireEnd(r, s)) {
+        flags |= NSMatchingRequiredEnd;
     }
-  if (0 != *s)
-    {
-      flags |= NSMatchingInternalError;
+    if (0 != *s) {
+        flags |= NSMatchingInternalError;
     }
-  return flags;
+    return flags;
 }
 
 #if HAVE_UREGEX_OPENUTEXT
-- (void) enumerateMatchesInString: (NSString*)string
-                          options: (NSMatchingOptions)opts
-                            range: (NSRange)range
-                       usingBlock: (GSRegexBlock)block
+- (void)enumerateMatchesInString:(NSString *)string
+                         options:(NSMatchingOptions)opts
+                           range:(NSRange)range
+                      usingBlock:(GSRegexBlock)block
 {
-  UErrorCode	        s = 0;
-  UText		        txt = UTEXT_INITIALIZER;
-  BOOL		        stop = NO;
-  URegularExpression    *r = setupRegex(regex, string, &txt, opts, range, block);
-  NSUInteger	        groups = [self numberOfCaptureGroups] + 1;
-  NSRange	        ranges[groups];
+    UErrorCode s = 0;
+    UText txt = UTEXT_INITIALIZER;
+    BOOL stop = NO;
+    URegularExpression *r = setupRegex(regex, string, &txt, opts, range, block);
+    NSUInteger groups = [self numberOfCaptureGroups] + 1;
+    NSRange ranges[groups];
 
-  // Should this throw some kind of exception?
-  if (NULL == r)
-    {
-      return;
+    // Should this throw some kind of exception?
+    if (NULL == r) {
+        return;
     }
-  if (opts & NSMatchingAnchored)
-    {
-      if (uregex_lookingAt(r, -1, &s) && (0 == s))
-	{
-	  // FIXME: Factor all of this out into prepareResult()
-	  uint32_t		flags;
-	  NSTextCheckingResult *result;
+    if (opts & NSMatchingAnchored) {
+        if (uregex_lookingAt(r, -1, &s) && (0 == s)) {
+            // FIXME: Factor all of this out into prepareResult()
+            uint32_t flags;
+            NSTextCheckingResult *result;
 
-	  flags = prepareResult(self, r, ranges, groups, &s);
-	  result = (flags & NSMatchingInternalError) ? nil
-            : [NSTextCheckingResult
-	    regularExpressionCheckingResultWithRanges: ranges
-						count: groups
-				    regularExpression: self];
-	  CALL_BLOCK(block, result, flags, &stop);
-	}
-    }
-  else
-    {
-      while (!stop && uregex_findNext(r, &s) && (0 == s))
-	{
-	  uint32_t		flags;
-	  NSTextCheckingResult	*result;
+            flags = prepareResult(self, r, ranges, groups, &s);
+            result = (flags & NSMatchingInternalError) ? nil : [NSTextCheckingResult regularExpressionCheckingResultWithRanges:ranges
+                                                                                                                         count:groups
+                                                                                                             regularExpression:self];
+            CALL_BLOCK(block, result, flags, &stop);
+        }
+    } else {
+        while (!stop && uregex_findNext(r, &s) && (0 == s)) {
+            uint32_t flags;
+            NSTextCheckingResult *result;
 
-	  flags = prepareResult(self, r, ranges, groups, &s);
-	  result = (flags & NSMatchingInternalError) ? nil
-            : [NSTextCheckingResult
-	    regularExpressionCheckingResultWithRanges: ranges
-						count: groups
-				    regularExpression: self];
-	  CALL_BLOCK(block, result, flags, &stop);
-	}
+            flags = prepareResult(self, r, ranges, groups, &s);
+            result = (flags & NSMatchingInternalError) ? nil : [NSTextCheckingResult regularExpressionCheckingResultWithRanges:ranges
+                                                                                                                         count:groups
+                                                                                                             regularExpression:self];
+            CALL_BLOCK(block, result, flags, &stop);
+        }
     }
-  if (opts & NSMatchingCompleted)
-    {
-      CALL_BLOCK(block, nil, NSMatchingCompleted, &stop);
+    if (opts & NSMatchingCompleted) {
+        CALL_BLOCK(block, nil, NSMatchingCompleted, &stop);
     }
-  utext_close(&txt);
-  uregex_close(r);
+    utext_close(&txt);
+    uregex_close(r);
 }
 #else
-- (void) enumerateMatchesInString: (NSString*)string
-                          options: (NSMatchingOptions)opts
-                            range: (NSRange)range
-                       usingBlock: (GSRegexBlock)block
+- (void)enumerateMatchesInString:(NSString *)string
+                         options:(NSMatchingOptions)opts
+                           range:(NSRange)range
+                      usingBlock:(GSRegexBlock)block
 {
-  UErrorCode	        s = 0;
-  BOOL		        stop = NO;
-  int32_t	        length = [string length];
-  URegularExpression    *r;
-  NSUInteger	        groups = [self numberOfCaptureGroups] + 1;
-  NSRange	        ranges[groups];
-  TEMP_BUFFER(buffer, length);
+    UErrorCode s = 0;
+    BOOL stop = NO;
+    int32_t length = [string length];
+    URegularExpression *r;
+    NSUInteger groups = [self numberOfCaptureGroups] + 1;
+    NSRange ranges[groups];
+    TEMP_BUFFER(buffer, length);
 
-  r = setupRegex(regex, string, buffer, length, opts, range, block);
+    r = setupRegex(regex, string, buffer, length, opts, range, block);
 
-  // Should this throw some kind of exception?
-  if (NULL == r)
-    {
-      return;
+    // Should this throw some kind of exception?
+    if (NULL == r) {
+        return;
     }
-  if (opts & NSMatchingAnchored)
-    {
-      if (uregex_lookingAt(r, -1, &s) && (0 == s))
-	{
-	  // FIXME: Factor all of this out into prepareResult()
-	  uint32_t		flags;
-	  NSTextCheckingResult *result;
+    if (opts & NSMatchingAnchored) {
+        if (uregex_lookingAt(r, -1, &s) && (0 == s)) {
+            // FIXME: Factor all of this out into prepareResult()
+            uint32_t flags;
+            NSTextCheckingResult *result;
 
-	  flags = prepareResult(self, r, ranges, groups, &s);
-	  result = (flags & NSMatchingInternalError) ? nil
-            : [NSTextCheckingResult
-	    regularExpressionCheckingResultWithRanges: ranges
-						count: groups
-				    regularExpression: self];
-	  CALL_BLOCK(block, result, flags, &stop);
-	}
-    }
-  else
-    {
-      while (!stop && uregex_findNext(r, &s) && (0 == s))
-	{
-	  uint32_t		flags;
-	  NSTextCheckingResult	*result;
+            flags = prepareResult(self, r, ranges, groups, &s);
+            result = (flags & NSMatchingInternalError) ? nil : [NSTextCheckingResult regularExpressionCheckingResultWithRanges:ranges
+                                                                                                                         count:groups
+                                                                                                             regularExpression:self];
+            CALL_BLOCK(block, result, flags, &stop);
+        }
+    } else {
+        while (!stop && uregex_findNext(r, &s) && (0 == s)) {
+            uint32_t flags;
+            NSTextCheckingResult *result;
 
-	  flags = prepareResult(self, r, ranges, groups, &s);
-	  result = (flags & NSMatchingInternalError) ? nil
-            : [NSTextCheckingResult
-	    regularExpressionCheckingResultWithRanges: ranges
-						count: groups
-				    regularExpression: self];
-	  CALL_BLOCK(block, result, flags, &stop);
-	}
+            flags = prepareResult(self, r, ranges, groups, &s);
+            result = (flags & NSMatchingInternalError) ? nil : [NSTextCheckingResult regularExpressionCheckingResultWithRanges:ranges
+                                                                                                                         count:groups
+                                                                                                             regularExpression:self];
+            CALL_BLOCK(block, result, flags, &stop);
+        }
     }
-  if (opts & NSMatchingCompleted)
-    {
-      CALL_BLOCK(block, nil, NSMatchingCompleted, &stop);
+    if (opts & NSMatchingCompleted) {
+        CALL_BLOCK(block, nil, NSMatchingCompleted, &stop);
     }
-  uregex_close(r);
+    uregex_close(r);
 }
 #endif
 
@@ -634,550 +553,519 @@ prepareResult(NSRegularExpression *regex,
  * possible when compiling with a compiler that doesn't support blocks.
  */
 #if __has_feature(blocks)
-- (NSUInteger) numberOfMatchesInString: (NSString*)string
-                               options: (NSMatchingOptions)opts
-                                 range: (NSRange)range
+- (NSUInteger)numberOfMatchesInString:(NSString *)string
+                              options:(NSMatchingOptions)opts
+                                range:(NSRange)range
 
 {
-  __block NSUInteger	count = 0;
-  GSRegexBlock		block;
+    __block NSUInteger count = 0;
+    GSRegexBlock block;
 
-  opts &= ~NSMatchingReportProgress;
-  opts &= ~NSMatchingReportCompletion;
+    opts &= ~NSMatchingReportProgress;
+    opts &= ~NSMatchingReportCompletion;
 
-  block =
-    ^(NSTextCheckingResult *result, NSMatchingFlags flags, BOOL *stop)
-    {
-      count++;
+    block = ^(NSTextCheckingResult *result, NSMatchingFlags flags, BOOL *stop) {
+        count++;
     };
-  [self enumerateMatchesInString: string
-			 options: opts
-			   range: range
-		      usingBlock: block];
-  return count;
+    [self enumerateMatchesInString:string
+                           options:opts
+                             range:range
+                        usingBlock:block];
+    return count;
 }
 
-- (NSTextCheckingResult*) firstMatchInString: (NSString*)string
-                                     options: (NSMatchingOptions)opts
-                                       range: (NSRange)range
+- (NSTextCheckingResult *)firstMatchInString:(NSString *)string
+                                     options:(NSMatchingOptions)opts
+                                       range:(NSRange)range
 {
-  __block NSTextCheckingResult	*r = nil;
-  GSRegexBlock 			block;
+    __block NSTextCheckingResult *r = nil;
+    GSRegexBlock block;
 
-  opts &= ~NSMatchingReportProgress;
-  opts &= ~NSMatchingReportCompletion;
+    opts &= ~NSMatchingReportProgress;
+    opts &= ~NSMatchingReportCompletion;
 
-  block =
-    ^(NSTextCheckingResult *result, NSMatchingFlags flags, BOOL *stop)
-    {
-      r = result;
-      *stop = YES;
+    block = ^(NSTextCheckingResult *result, NSMatchingFlags flags, BOOL *stop) {
+        r = result;
+        *stop = YES;
     };
-  [self enumerateMatchesInString: string
-			 options: opts
-			   range: range
-		      usingBlock: block];
-  return r;
+    [self enumerateMatchesInString:string
+                           options:opts
+                             range:range
+                        usingBlock:block];
+    return r;
 }
 
-- (NSArray*) matchesInString: (NSString*)string
+- (NSArray *)matchesInString:(NSString *)string
                      options:(NSMatchingOptions)opts
                        range:(NSRange)range
 {
-  NSMutableArray	*array = [NSMutableArray array];
-  GSRegexBlock 		block;
+    NSMutableArray *array = [NSMutableArray array];
+    GSRegexBlock block;
 
-  opts &= ~NSMatchingReportProgress;
-  opts &= ~NSMatchingReportCompletion;
+    opts &= ~NSMatchingReportProgress;
+    opts &= ~NSMatchingReportCompletion;
 
-  block =
-    ^(NSTextCheckingResult *result, NSMatchingFlags flags, BOOL *stop)
-    {
-      [array addObject: result];
+    block = ^(NSTextCheckingResult *result, NSMatchingFlags flags, BOOL *stop) {
+        [array addObject:result];
     };
-  [self enumerateMatchesInString: string
-			 options: opts
-			   range: range
-		      usingBlock: block];
-  return array;
+    [self enumerateMatchesInString:string
+                           options:opts
+                             range:range
+                        usingBlock:block];
+    return array;
 }
 
-- (NSRange) rangeOfFirstMatchInString: (NSString*)string
-                              options: (NSMatchingOptions)opts
-                                range: (NSRange)range
+- (NSRange)rangeOfFirstMatchInString:(NSString *)string
+                             options:(NSMatchingOptions)opts
+                               range:(NSRange)range
 {
-  __block NSRange	r = {NSNotFound, 0};
-  GSRegexBlock 		block;
+    __block NSRange r = {NSNotFound, 0};
+    GSRegexBlock block;
 
-  opts &= ~NSMatchingReportProgress;
-  opts &= ~NSMatchingReportCompletion;
+    opts &= ~NSMatchingReportProgress;
+    opts &= ~NSMatchingReportCompletion;
 
-  block =
-    ^(NSTextCheckingResult *result, NSMatchingFlags flags, BOOL *stop)
-    {
-      r = [result range];
-      *stop = YES;
+    block = ^(NSTextCheckingResult *result, NSMatchingFlags flags, BOOL *stop) {
+        r = [result range];
+        *stop = YES;
     };
-  [self enumerateMatchesInString: string
-			 options: opts
-			   range: range
-		      usingBlock: block];
-  return r;
+    [self enumerateMatchesInString:string
+                           options:opts
+                             range:range
+                        usingBlock:block];
+    return r;
 }
 
 #else
-#  ifdef __clang__ /* FIXME ... this is blocks specific, not clang specific */
-#    warning Your compiler does not support blocks.  NSRegularExpression will deviate from the documented behaviour when subclassing and any code that subclasses NSRegularExpression may break in unexpected ways.  If you must subclass NSRegularExpression, you may want to use a compiler with blocks support.
-#    warning Your compiler would support blocks if you added -fblocks to your OBJCFLAGS
-#  endif
+#ifdef __clang__ /* FIXME ... this is blocks specific, not clang specific */
+#warning Your compiler does not support blocks.  NSRegularExpression will deviate from the documented behaviour when subclassing and any code that subclasses NSRegularExpression may break in unexpected ways.  If you must subclass NSRegularExpression, you may want to use a compiler with blocks support.
+#warning Your compiler would support blocks if you added -fblocks to your OBJCFLAGS
+#endif
 #if HAVE_UREGEX_OPENUTEXT
-#define FAKE_BLOCK_HACK(failRet, code) \
-  UErrorCode            s = 0;\
-  UText                 txt = UTEXT_INITIALIZER;\
-  BOOL                  stop = NO;\
-  URegularExpression    *r = setupRegex(regex, string, &txt, opts, range, 0);\
-\
-  if (NULL == r) { return failRet; }\
-  if (opts & NSMatchingAnchored)\
-    {\
-      if (uregex_lookingAt(r, -1, &s) && (0==s))\
-	{\
-	  code\
-	}\
-    }\
-  else\
-    {\
-      while (!stop && uregex_findNext(r, &s) && (s == 0))\
-	{\
-	  code\
-	}\
-    }\
-  utext_close(&txt);\
-  uregex_close(r);
+#define FAKE_BLOCK_HACK(failRet, code)                                       \
+    UErrorCode s = 0;                                                        \
+    UText txt = UTEXT_INITIALIZER;                                           \
+    BOOL stop = NO;                                                          \
+    URegularExpression *r = setupRegex(regex, string, &txt, opts, range, 0); \
+                                                                             \
+    if (NULL == r) {                                                         \
+        return failRet;                                                      \
+    }                                                                        \
+    if (opts & NSMatchingAnchored) {                                         \
+        if (uregex_lookingAt(r, -1, &s) && (0 == s)) {                       \
+            code                                                             \
+        }                                                                    \
+    } else {                                                                 \
+        while (!stop && uregex_findNext(r, &s) && (s == 0)) {                \
+            code                                                             \
+        }                                                                    \
+    }                                                                        \
+    utext_close(&txt);                                                       \
+    uregex_close(r);
 #else
-#define FAKE_BLOCK_HACK(failRet, code) \
-  UErrorCode s = 0;\
-  BOOL stop = NO;\
-  uint32_t length = [string length];\
-  URegularExpression *r;\
-  TEMP_BUFFER(buffer, length);\
-  r = setupRegex(regex, string, buffer, length, opts, range, 0);\
-  if (NULL == r) { return failRet; }\
-  if (opts & NSMatchingAnchored)\
-    {\
-      if (uregex_lookingAt(r, -1, &s) && (0==s))\
-	{\
-	  code\
-	}\
-    }\
-  else\
-    {\
-      while (!stop && uregex_findNext(r, &s) && (s == 0))\
-	{\
-	  code\
-	}\
-    }\
-  uregex_close(r);
+#define FAKE_BLOCK_HACK(failRet, code)                             \
+    UErrorCode s = 0;                                              \
+    BOOL stop = NO;                                                \
+    uint32_t length = [string length];                             \
+    URegularExpression *r;                                         \
+    TEMP_BUFFER(buffer, length);                                   \
+    r = setupRegex(regex, string, buffer, length, opts, range, 0); \
+    if (NULL == r) {                                               \
+        return failRet;                                            \
+    }                                                              \
+    if (opts & NSMatchingAnchored) {                               \
+        if (uregex_lookingAt(r, -1, &s) && (0 == s)) {             \
+            code                                                   \
+        }                                                          \
+    } else {                                                       \
+        while (!stop && uregex_findNext(r, &s) && (s == 0)) {      \
+            code                                                   \
+        }                                                          \
+    }                                                              \
+    uregex_close(r);
 #endif
 
-- (NSUInteger) numberOfMatchesInString: (NSString*)string
-                               options: (NSMatchingOptions)opts
-                                 range: (NSRange)range
+- (NSUInteger)numberOfMatchesInString:(NSString *)string
+                              options:(NSMatchingOptions)opts
+                                range:(NSRange)range
 
 {
-  NSUInteger	count = 0;
+    NSUInteger count = 0;
 
-  FAKE_BLOCK_HACK(count,
-    {
-      count++;
-    });
-  return count;
+    FAKE_BLOCK_HACK(count,
+                    {
+                        count++;
+                    });
+    return count;
 }
 
-- (NSTextCheckingResult*) firstMatchInString: (NSString*)string
-                                     options: (NSMatchingOptions)opts
-                                       range: (NSRange)range
+- (NSTextCheckingResult *)firstMatchInString:(NSString *)string
+                                     options:(NSMatchingOptions)opts
+                                       range:(NSRange)range
 {
-  NSTextCheckingResult	*result = nil;
-  NSUInteger		groups = [self numberOfCaptureGroups] + 1;
-  NSRange		ranges[groups];
+    NSTextCheckingResult *result = nil;
+    NSUInteger groups = [self numberOfCaptureGroups] + 1;
+    NSRange ranges[groups];
 
-  FAKE_BLOCK_HACK(result,
-    {
-      uint32_t  flags;
+    FAKE_BLOCK_HACK(result,
+                    {
+                        uint32_t flags;
 
-      flags = prepareResult(self, r, ranges, groups, &s);
-      result = (flags & NSMatchingInternalError) ? nil
-        : [NSTextCheckingResult
-	regularExpressionCheckingResultWithRanges: ranges
-					    count: groups
-				regularExpression: self];
-      stop = YES;
-    });
-  return result;
+                        flags = prepareResult(self, r, ranges, groups, &s);
+                        result = (flags & NSMatchingInternalError) ? nil : [NSTextCheckingResult regularExpressionCheckingResultWithRanges:ranges
+                                                                                                                                     count:groups
+                                                                                                                         regularExpression:self];
+                        stop = YES;
+                    });
+    return result;
 }
 
-- (NSArray*) matchesInString: (NSString*)string
-                     options: (NSMatchingOptions)opts
-                       range: (NSRange)range
+- (NSArray *)matchesInString:(NSString *)string
+                     options:(NSMatchingOptions)opts
+                       range:(NSRange)range
 {
-  NSMutableArray	*array = [NSMutableArray array];
-  NSUInteger		groups = [self numberOfCaptureGroups] + 1;
-  NSRange		ranges[groups];
+    NSMutableArray *array = [NSMutableArray array];
+    NSUInteger groups = [self numberOfCaptureGroups] + 1;
+    NSRange ranges[groups];
 
-  FAKE_BLOCK_HACK(array,
-    {
-      NSTextCheckingResult	*result = NULL;
-      uint32_t                  flags;
+    FAKE_BLOCK_HACK(array,
+                    {
+                        NSTextCheckingResult *result = NULL;
+                        uint32_t flags;
 
-      flags = prepareResult(self, r, ranges, groups, &s);
-      result = (flags & NSMatchingInternalError) ? nil
-        : [NSTextCheckingResult
-	regularExpressionCheckingResultWithRanges: ranges
-					    count: groups
-				regularExpression: self];
-      if (nil != result)
-        {
-          [array addObject: result];
-        }
-    });
-  return array;
+                        flags = prepareResult(self, r, ranges, groups, &s);
+                        result = (flags & NSMatchingInternalError) ? nil : [NSTextCheckingResult regularExpressionCheckingResultWithRanges:ranges
+                                                                                                                                     count:groups
+                                                                                                                         regularExpression:self];
+                        if (nil != result) {
+                            [array addObject:result];
+                        }
+                    });
+    return array;
 }
 
-- (NSRange) rangeOfFirstMatchInString: (NSString*)string
-                              options: (NSMatchingOptions)opts
-                                range: (NSRange)range
+- (NSRange)rangeOfFirstMatchInString:(NSString *)string
+                             options:(NSMatchingOptions)opts
+                               range:(NSRange)range
 {
-  NSRange result = {NSNotFound, 0};
+    NSRange result = {NSNotFound, 0};
 
-  FAKE_BLOCK_HACK(result,
-    {
-      prepareResult(self, r, &result, 1, &s);
-      stop = YES;
-    });
-  return result;
+    FAKE_BLOCK_HACK(result,
+                    {
+                        prepareResult(self, r, &result, 1, &s);
+                        stop = YES;
+                    });
+    return result;
 }
 
 #endif
 
 #if HAVE_UREGEX_OPENUTEXT
-- (NSUInteger) replaceMatchesInString: (NSMutableString*)string
-                              options: (NSMatchingOptions)opts
-                                range: (NSRange)range
-                         withTemplate: (NSString*)template
+- (NSUInteger)replaceMatchesInString:(NSMutableString *)string
+                             options:(NSMatchingOptions)opts
+                               range:(NSRange)range
+                        withTemplate:(NSString *)template
 {
-  // FIXME: We're computing a value that is most likely ignored in an
-  // expensive way.
-  NSInteger	results = [self numberOfMatchesInString: string
-						options: opts
-						  range: range];
-  UErrorCode	s = 0;
-  UText		txt = UTEXT_INITIALIZER;
-  UText		replacement = UTEXT_INITIALIZER;
-  GSUTextString	*ret = [GSUTextString new];
-  URegularExpression *r = setupRegex(regex, string, &txt, opts, range, 0);
-  UText		*output = NULL;
+    // FIXME: We're computing a value that is most likely ignored in an
+    // expensive way.
+    NSInteger results = [self numberOfMatchesInString:string
+                                              options:opts
+                                                range:range];
+    UErrorCode s = 0;
+    UText txt = UTEXT_INITIALIZER;
+    UText replacement = UTEXT_INITIALIZER;
+    GSUTextString *ret = [GSUTextString new];
+    URegularExpression *r = setupRegex(regex, string, &txt, opts, range, 0);
+    UText *output = NULL;
 
-  UTextInitWithNSString(&replacement, template);
+    UTextInitWithNSString(&replacement, template);
 
-  output = uregex_replaceAllUText(r, &replacement, NULL, &s);
-  if (0 != s)
-    {
-      uregex_close(r);
-      utext_close(&replacement);
-      utext_close(&txt);
-      DESTROY(ret);
-      return 0;
+    output = uregex_replaceAllUText(r, &replacement, NULL, &s);
+    if (0 != s) {
+        uregex_close(r);
+        utext_close(&replacement);
+        utext_close(&txt);
+        DESTROY(ret);
+        return 0;
     }
-  utext_clone(&ret->txt, output, TRUE, TRUE, &s);
-  [string setString: ret];
-  RELEASE(ret);
-  uregex_close(r);
+    utext_clone(&ret->txt, output, TRUE, TRUE, &s);
+    [string setString:ret];
+    RELEASE(ret);
+    uregex_close(r);
 
-  utext_close(&txt);
-  utext_close(output);
-  utext_close(&replacement);
-  return results;
+    utext_close(&txt);
+    utext_close(output);
+    utext_close(&replacement);
+    return results;
 }
 
-- (NSString*) stringByReplacingMatchesInString: (NSString*)string
-                                       options: (NSMatchingOptions)opts
-                                         range: (NSRange)range
-                                  withTemplate: (NSString*)template
+- (NSString *)stringByReplacingMatchesInString:(NSString *)string
+                                       options:(NSMatchingOptions)opts
+                                         range:(NSRange)range
+                                  withTemplate:(NSString *)template
 {
-  UErrorCode	s = 0;
-  UText		txt = UTEXT_INITIALIZER;
-  UText		replacement = UTEXT_INITIALIZER;
-  UText		*output = NULL;
-  GSUTextString	*ret = [GSUTextString new];
-  URegularExpression *r = setupRegex(regex, string, &txt, opts, range, 0);
+    UErrorCode s = 0;
+    UText txt = UTEXT_INITIALIZER;
+    UText replacement = UTEXT_INITIALIZER;
+    UText *output = NULL;
+    GSUTextString *ret = [GSUTextString new];
+    URegularExpression *r = setupRegex(regex, string, &txt, opts, range, 0);
 
-  UTextInitWithNSString(&replacement, template);
+    UTextInitWithNSString(&replacement, template);
 
-  output = uregex_replaceAllUText(r, &replacement, NULL, &s);
-  if (0 != s)
-    {
-      uregex_close(r);
-      utext_close(&replacement);
-      utext_close(&txt);
-      DESTROY(ret);
-      return nil;
+    output = uregex_replaceAllUText(r, &replacement, NULL, &s);
+    if (0 != s) {
+        uregex_close(r);
+        utext_close(&replacement);
+        utext_close(&txt);
+        DESTROY(ret);
+        return nil;
     }
-  utext_clone(&ret->txt, output, TRUE, TRUE, &s);
-  uregex_close(r);
+    utext_clone(&ret->txt, output, TRUE, TRUE, &s);
+    uregex_close(r);
 
-  utext_close(&txt);
-  utext_close(output);
-  utext_close(&replacement);
-  return AUTORELEASE(ret);
+    utext_close(&txt);
+    utext_close(output);
+    utext_close(&replacement);
+    return AUTORELEASE(ret);
 }
 
-- (NSString*) replacementStringForResult: (NSTextCheckingResult*)result
-                                inString: (NSString*)string
-                                  offset: (NSInteger)offset
-                                template: (NSString*)template
+- (NSString *)replacementStringForResult:(NSTextCheckingResult *)result
+                                inString:(NSString *)string
+                                  offset:(NSInteger)offset
+                                template:(NSString *)template
 {
-  UErrorCode	s = 0;
-  UText		txt = UTEXT_INITIALIZER;
-  UText		replacement = UTEXT_INITIALIZER;
-  UText		*output = NULL;
-  GSUTextString	*ret = [GSUTextString new];
-  NSRange	range = [result range];
-  URegularExpression *r = setupRegex(regex,
-				     [string substringWithRange: range],
-				     &txt,
-				     0,
-				     NSMakeRange(0, range.length),
-				     0);
+    UErrorCode s = 0;
+    UText txt = UTEXT_INITIALIZER;
+    UText replacement = UTEXT_INITIALIZER;
+    UText *output = NULL;
+    GSUTextString *ret = [GSUTextString new];
+    NSRange range = [result range];
+    URegularExpression *r = setupRegex(regex,
+                                       [string substringWithRange:range],
+                                       &txt,
+                                       0,
+                                       NSMakeRange(0, range.length),
+                                       0);
 
-  UTextInitWithNSString(&replacement, template);
+    UTextInitWithNSString(&replacement, template);
 
-  output = uregex_replaceFirstUText(r, &replacement, NULL, &s);
-  if (0 != s)
-    {
-      uregex_close(r);
-      utext_close(&replacement);
-      utext_close(&txt);
-      DESTROY(ret);
-      return nil;
+    output = uregex_replaceFirstUText(r, &replacement, NULL, &s);
+    if (0 != s) {
+        uregex_close(r);
+        utext_close(&replacement);
+        utext_close(&txt);
+        DESTROY(ret);
+        return nil;
     }
-  utext_clone(&ret->txt, output, TRUE, TRUE, &s);
-  uregex_close(r);
+    utext_clone(&ret->txt, output, TRUE, TRUE, &s);
+    uregex_close(r);
 
-  utext_close(&txt);
-  utext_close(output);
-  utext_close(&replacement);
-  return AUTORELEASE(ret);
+    utext_close(&txt);
+    utext_close(output);
+    utext_close(&replacement);
+    return AUTORELEASE(ret);
 }
 #else
-- (NSUInteger) replaceMatchesInString: (NSMutableString*)string
-                              options: (NSMatchingOptions)opts
-                                range: (NSRange)range
-                         withTemplate: (NSString*)template
+- (NSUInteger)replaceMatchesInString:(NSMutableString *)string
+                             options:(NSMatchingOptions)opts
+                               range:(NSRange)range
+                        withTemplate:(NSString *)template
 {
-  // FIXME: We're computing a value that is most likely ignored in an
-  // expensive way.
-  NSInteger	results = [self numberOfMatchesInString: string
-						options: opts
-						  range: range];
-  UErrorCode	s = 0;
-  uint32_t	length = [string length];
-  uint32_t	replLength = [template length];
-  unichar	replacement[replLength];
-  int32_t	outLength;
-  unichar	*output;
-  NSString	*out;
-  URegularExpression *r;
-  TEMP_BUFFER(buffer, length);
+    // FIXME: We're computing a value that is most likely ignored in an
+    // expensive way.
+    NSInteger results = [self numberOfMatchesInString:string
+                                              options:opts
+                                                range:range];
+    UErrorCode s = 0;
+    uint32_t length = [string length];
+    uint32_t replLength = [template length];
+    unichar replacement[replLength];
+    int32_t outLength;
+    unichar *output;
+    NSString *out;
+    URegularExpression *r;
+    TEMP_BUFFER(buffer, length);
 
-  r = setupRegex(regex, string, buffer, length, opts, range, 0);
-  [template getCharacters: replacement range: NSMakeRange(0, replLength)];
+    r = setupRegex(regex, string, buffer, length, opts, range, 0);
+    [template getCharacters:replacement range:NSMakeRange(0, replLength)];
 
-  outLength = uregex_replaceAll(r, replacement, replLength, NULL, 0, &s);
+    outLength = uregex_replaceAll(r, replacement, replLength, NULL, 0, &s);
 
-  s = 0;
-  output = NSZoneMalloc(0, outLength * sizeof(unichar));
-  uregex_replaceAll(r, replacement, replLength, output, outLength, &s);
-  out =
-    [[NSString alloc] initWithCharactersNoCopy: output
-					length: outLength
-				  freeWhenDone: YES];
-  [string setString: out];
-  RELEASE(out);
+    s = 0;
+    output = NSZoneMalloc(0, outLength * sizeof(unichar));
+    uregex_replaceAll(r, replacement, replLength, output, outLength, &s);
+    out =
+        [[NSString alloc] initWithCharactersNoCopy:output
+                                            length:outLength
+                                      freeWhenDone:YES];
+    [string setString:out];
+    RELEASE(out);
 
-  return results;
+    return results;
 }
 
-- (NSString*) stringByReplacingMatchesInString: (NSString*)string
-                                       options: (NSMatchingOptions)opts
-                                         range: (NSRange)range
-                                  withTemplate: (NSString*)template
+- (NSString *)stringByReplacingMatchesInString:(NSString *)string
+                                       options:(NSMatchingOptions)opts
+                                         range:(NSRange)range
+                                  withTemplate:(NSString *)template
 {
-  UErrorCode	s = 0;
-  uint32_t	length = [string length];
-  URegularExpression *r;
-  uint32_t	replLength = [template length];
-  unichar	replacement[replLength];
-  int32_t	outLength;
-  unichar	*output;
-  TEMP_BUFFER(buffer, length);
+    UErrorCode s = 0;
+    uint32_t length = [string length];
+    URegularExpression *r;
+    uint32_t replLength = [template length];
+    unichar replacement[replLength];
+    int32_t outLength;
+    unichar *output;
+    TEMP_BUFFER(buffer, length);
 
-  r = setupRegex(regex, string, buffer, length, opts, range, 0);
-  [template getCharacters: replacement range: NSMakeRange(0, replLength)];
+    r = setupRegex(regex, string, buffer, length, opts, range, 0);
+    [template getCharacters:replacement range:NSMakeRange(0, replLength)];
 
-  outLength = uregex_replaceAll(r, replacement, replLength, NULL, 0, &s);
+    outLength = uregex_replaceAll(r, replacement, replLength, NULL, 0, &s);
 
-  s = 0;
-  output = NSZoneMalloc(0, outLength * sizeof(unichar));
-  uregex_replaceAll(r, replacement, replLength, output, outLength, &s);
-  return AUTORELEASE([[NSString alloc] initWithCharactersNoCopy: output
-							 length: outLength
-						   freeWhenDone: YES]);
+    s = 0;
+    output = NSZoneMalloc(0, outLength * sizeof(unichar));
+    uregex_replaceAll(r, replacement, replLength, output, outLength, &s);
+    return AUTORELEASE([[NSString alloc] initWithCharactersNoCopy:output
+                                                           length:outLength
+                                                     freeWhenDone:YES]);
 }
 
-- (NSString*) replacementStringForResult: (NSTextCheckingResult*)result
-                                inString: (NSString*)string
-                                  offset: (NSInteger)offset
-                                template: (NSString*)template
+- (NSString *)replacementStringForResult:(NSTextCheckingResult *)result
+                                inString:(NSString *)string
+                                  offset:(NSInteger)offset
+                                template:(NSString *)template
 {
-  UErrorCode	s = 0;
-  NSRange	range = [result range];
-  URegularExpression *r;
-  uint32_t	replLength = [template length];
-  unichar	replacement[replLength];
-  int32_t	outLength;
-  unichar	*output;
-  TEMP_BUFFER(buffer, range.length);
+    UErrorCode s = 0;
+    NSRange range = [result range];
+    URegularExpression *r;
+    uint32_t replLength = [template length];
+    unichar replacement[replLength];
+    int32_t outLength;
+    unichar *output;
+    TEMP_BUFFER(buffer, range.length);
 
-  r = setupRegex(regex,
-		 [string substringWithRange: range],
-		 buffer,
-		 range.length,
-		 0,
-		 NSMakeRange(0, range.length),
-		 0);
-  [template getCharacters: replacement range: NSMakeRange(0, replLength)];
+    r = setupRegex(regex,
+                   [string substringWithRange:range],
+                   buffer,
+                   range.length,
+                   0,
+                   NSMakeRange(0, range.length),
+                   0);
+    [template getCharacters:replacement range:NSMakeRange(0, replLength)];
 
-  outLength = uregex_replaceFirst(r, replacement, replLength, NULL, 0, &s);
-  s = 0;
-  output = NSZoneMalloc(0, outLength * sizeof(unichar));
-  uregex_replaceFirst(r, replacement, replLength, output, outLength, &s);
-  return AUTORELEASE([[NSString alloc] initWithCharactersNoCopy: output
-							 length: outLength
-						   freeWhenDone: YES]);
+    outLength = uregex_replaceFirst(r, replacement, replLength, NULL, 0, &s);
+    s = 0;
+    output = NSZoneMalloc(0, outLength * sizeof(unichar));
+    uregex_replaceFirst(r, replacement, replLength, output, outLength, &s);
+    return AUTORELEASE([[NSString alloc] initWithCharactersNoCopy:output
+                                                           length:outLength
+                                                     freeWhenDone:YES]);
 }
 #endif
 
-+ (NSString*) escapedPatternForString: (NSString *)string
++ (NSString *)escapedPatternForString:(NSString *)string
 {
-  /* https://unicode-org.github.io/icu/userguide/strings/regexp.html
-   * Need to escape * ? + [ ( ) { } ^ $ | \ .
-   */
-  return [[NSRegularExpression 
-    regularExpressionWithPattern: @"([*?+\\[(){}^$|\\\\.])" 
-                         options: 0 
-                           error: NULL]
-    stringByReplacingMatchesInString: string
-                             options: 0
-                               range: NSMakeRange(0, [string length]) 
-                        withTemplate: @"\\\\$1"
-  ];
+    /* https://unicode-org.github.io/icu/userguide/strings/regexp.html
+     * Need to escape * ? + [ ( ) { } ^ $ | \ .
+     */
+    return [[NSRegularExpression
+        regularExpressionWithPattern:@"([*?+\\[(){}^$|\\\\.])"
+                             options:0
+                               error:NULL]
+        stringByReplacingMatchesInString:string
+                                 options:0
+                                   range:NSMakeRange(0, [string length])
+                            withTemplate:@"\\\\$1"];
 }
 
-- (NSRegularExpressionOptions) options
+- (NSRegularExpressionOptions)options
 {
-  return options;
+    return options;
 }
 
-- (NSUInteger) numberOfCaptureGroups
+- (NSUInteger)numberOfCaptureGroups
 {
-  UErrorCode s = 0;
-  return uregex_groupCount(regex, &s);
+    UErrorCode s = 0;
+    return uregex_groupCount(regex, &s);
 }
 
-- (void) dealloc
+- (void)dealloc
 {
-  uregex_close(regex);
-  [super dealloc];
+    uregex_close(regex);
+    [super dealloc];
 }
 
-- (void) encodeWithCoder: (NSCoder*)aCoder
+- (void)encodeWithCoder:(NSCoder *)aCoder
 {
-  if ([aCoder allowsKeyedCoding])
-    {
-      [aCoder encodeInteger: options forKey: @"options"];
-      [aCoder encodeObject: [self pattern] forKey: @"pattern"];
-    }
-  else
-    {
-      [aCoder encodeValueOfObjCType: @encode(NSRegularExpressionOptions)
-				 at: &options];
-      [aCoder encodeObject: [self pattern]];
+    if ([aCoder allowsKeyedCoding]) {
+        [aCoder encodeInteger:options forKey:@"options"];
+        [aCoder encodeObject:[self pattern] forKey:@"pattern"];
+    } else {
+        [aCoder encodeValueOfObjCType:@encode(NSRegularExpressionOptions)
+                                   at:&options];
+        [aCoder encodeObject:[self pattern]];
     }
 }
 
-- (id) initWithCoder: (NSCoder*)aCoder
+- (id)initWithCoder:(NSCoder *)aCoder
 {
-  NSString	*pattern;
+    NSString *pattern;
 
-  if ([aCoder allowsKeyedCoding])
-    {
-      options = [aCoder decodeIntegerForKey: @"options"];
-      pattern = [aCoder decodeObjectForKey: @"pattern"];
+    if ([aCoder allowsKeyedCoding]) {
+        options = [aCoder decodeIntegerForKey:@"options"];
+        pattern = [aCoder decodeObjectForKey:@"pattern"];
+    } else {
+        [aCoder decodeValueOfObjCType:@encode(NSRegularExpressionOptions)
+                                   at:&options];
+        pattern = [aCoder decodeObject];
     }
-  else
-    {
-      [aCoder decodeValueOfObjCType: @encode(NSRegularExpressionOptions)
-				 at: &options];
-      pattern = [aCoder decodeObject];
-    }
-  return [self initWithPattern: pattern options: options error: NULL];
+    return [self initWithPattern:pattern options:options error:NULL];
 }
 
-- (id) copyWithZone: (NSZone*)aZone
+- (id)copyWithZone:(NSZone *)aZone
 {
-  NSRegularExpressionOptions	opts = options;
-  UErrorCode			s = 0;
-  URegularExpression		*r = uregex_clone(regex, &s);
+    NSRegularExpressionOptions opts = options;
+    UErrorCode s = 0;
+    URegularExpression *r = uregex_clone(regex, &s);
 
-  if (0 != s)
-    {
-      return nil;
+    if (0 != s) {
+        return nil;
     }
 
-  self = [[self class] allocWithZone: aZone];
-  if (nil == self)
-    {
-      return nil;
+    self = [[self class] allocWithZone:aZone];
+    if (nil == self) {
+        return nil;
     }
-  options = opts;
-  regex = r;
-  return self;
+    options = opts;
+    regex = r;
+    return self;
 }
 @end
-#endif //GS_ICU == 1
+#endif // GS_ICU == 1
 
 #ifndef NSRegularExpressionWorks
 #import "Foundation/NSRegularExpression.h"
 #import "Foundation/NSZone.h"
 #import "Foundation/NSException.h"
 @implementation NSRegularExpression
-+ (id)allocWithZone: (NSZone*)aZone
++ (id)allocWithZone:(NSZone *)aZone
 {
-  [NSException raise: NSInvalidArgumentException
-              format: @"NSRegularExpression requires ICU 4.4 or later"];
-  return nil;
+    [NSException raise:NSInvalidArgumentException
+                format:@"NSRegularExpression requires ICU 4.4 or later"];
+    return nil;
 }
-- (id) copyWithZone: (NSZone*)zone
+- (id)copyWithZone:(NSZone *)zone
 {
-  return nil;
+    return nil;
 }
-- (void) encodeWithCoder: (NSCoder*)aCoder
+- (void)encodeWithCoder:(NSCoder *)aCoder
 {
 }
-- (id) initWithCoder: (NSCoder*)aCoder
+- (id)initWithCoder:(NSCoder *)aCoder
 {
-  return nil;
+    return nil;
 }
 @end
 #endif
