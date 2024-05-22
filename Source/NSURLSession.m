@@ -71,7 +71,7 @@ GS_DECLARE const int64_t NSURLSessionTransferSizeUnknown = -1;
  * The session class uses the [GSTaskRegistry] to keep track of its tasks.
  *
  * The task class uses an GSInternalState type together with GSTransferState
- * to keep track of its state and each transfer’s state. 
+ * to keep track of its state and each transfer’s state.
  * NB. a single task may do multiple transfers (e.g. as the result of a
  * redirect).
  *
@@ -89,26 +89,26 @@ GS_DECLARE const int64_t NSURLSessionTransferSizeUnknown = -1;
  */
 @interface NSURLSession ()
 
-- (dispatch_queue_t) workQueue;
+- (dispatch_queue_t)workQueue;
 
 @end
 
-@interface NSURLSessionTask()
-- (instancetype) initWithSession: (NSURLSession*)session
-                         request: (NSURLRequest*)request
-                  taskIdentifier: (NSUInteger)identifier;
+@interface NSURLSessionTask ()
+- (instancetype)initWithSession:(NSURLSession *)session
+                        request:(NSURLRequest *)request
+                 taskIdentifier:(NSUInteger)identifier;
 
-- (void) getProtocolWithCompletion: (void (^)(NSURLProtocol* protocol))completion;
+- (void)getProtocolWithCompletion:(void (^)(NSURLProtocol *protocol))completion;
 
-- (void) setState: (NSURLSessionTaskState)state;
+- (void)setState:(NSURLSessionTaskState)state;
 
-- (void) invalidateProtocol;
+- (void)invalidateProtocol;
 
-- (void (^)(NSData *data, NSURLResponse *response, NSError *error)) dataCompletionHandler;
-- (void) setDataCompletionHandler: (void (^)(NSData *data, NSURLResponse *response, NSError *error))completionHandler;
+- (void (^)(NSData *data, NSURLResponse *response, NSError *error))dataCompletionHandler;
+- (void)setDataCompletionHandler:(void (^)(NSData *data, NSURLResponse *response, NSError *error))completionHandler;
 
-- (void (^)(NSURL *location, NSURLResponse *response, NSError *error)) downloadCompletionHandler;
-- (void) setDownloadCompletionHandler: (void (^)(NSURL *location, NSURLResponse *response, NSError *error))completionHandler;
+- (void (^)(NSURL *location, NSURLResponse *response, NSError *error))downloadCompletionHandler;
+- (void)setDownloadCompletionHandler:(void (^)(NSURL *location, NSURLResponse *response, NSError *error))completionHandler;
 @end
 
 @interface NSURLSessionTask (URLProtocolClient) <NSURLProtocolClient>
@@ -116,429 +116,408 @@ GS_DECLARE const int64_t NSURLSessionTransferSizeUnknown = -1;
 @end
 
 typedef NS_ENUM(NSUInteger, NSURLSessionTaskProtocolState) {
-  NSURLSessionTaskProtocolStateToBeCreated = 0, 
-  NSURLSessionTaskProtocolStateAwaitingCacheReply = 1,
-  NSURLSessionTaskProtocolStateExisting = 2,  
-  NSURLSessionTaskProtocolStateInvalidated = 3,  
+    NSURLSessionTaskProtocolStateToBeCreated = 0,
+    NSURLSessionTaskProtocolStateAwaitingCacheReply = 1,
+    NSURLSessionTaskProtocolStateExisting = 2,
+    NSURLSessionTaskProtocolStateInvalidated = 3,
 };
 
 static unsigned nextSessionIdentifier()
 {
-  static gs_mutex_t lock = GS_MUTEX_INIT_STATIC;
-  static unsigned sessionCounter = 0;
+    static gs_mutex_t lock = GS_MUTEX_INIT_STATIC;
+    static unsigned sessionCounter = 0;
 
-  GS_MUTEX_LOCK(lock);
-  sessionCounter += 1;
-  GS_MUTEX_UNLOCK(lock);
+    GS_MUTEX_LOCK(lock);
+    sessionCounter += 1;
+    GS_MUTEX_UNLOCK(lock);
 
-  return sessionCounter;
+    return sessionCounter;
 }
 
-@implementation NSURLSession
-{
-  dispatch_queue_t     _workQueue;
-  NSUInteger           _nextTaskIdentifier;
-  BOOL                 _invalidated;
-  GSTaskRegistry       *_taskRegistry;
+@implementation NSURLSession {
+    dispatch_queue_t _workQueue;
+    NSUInteger _nextTaskIdentifier;
+    BOOL _invalidated;
+    GSTaskRegistry *_taskRegistry;
 }
 
 
-+ (NSURLSession*) sharedSession
++ (NSURLSession *)sharedSession
 {
-  static NSURLSession *session = nil;
-  static dispatch_once_t predicate;
-    
-  dispatch_once(&predicate, ^{
-    NSURLSessionConfiguration *configuration = [NSURLSessionConfiguration defaultSessionConfiguration];
-    session = [[NSURLSession alloc] initWithConfiguration: configuration 
-                                                 delegate: nil 
-                                            delegateQueue: nil];
-  });
+    static NSURLSession *session = nil;
+    static dispatch_once_t predicate;
 
-  return session;
+    dispatch_once(&predicate, ^{
+        NSURLSessionConfiguration *configuration = [NSURLSessionConfiguration defaultSessionConfiguration];
+        session = [[NSURLSession alloc] initWithConfiguration:configuration
+                                                     delegate:nil
+                                                delegateQueue:nil];
+    });
+
+    return session;
 }
 
-+ (NSURLSession*) sessionWithConfiguration: (NSURLSessionConfiguration*)configuration
++ (NSURLSession *)sessionWithConfiguration:(NSURLSessionConfiguration *)configuration
 {
-  NSURLSession *session;
+    NSURLSession *session;
 
-  session = [[NSURLSession alloc] initWithConfiguration: configuration 
-                                               delegate: nil 
-                                          delegateQueue: nil];
+    session = [[NSURLSession alloc] initWithConfiguration:configuration
+                                                 delegate:nil
+                                            delegateQueue:nil];
 
-  return AUTORELEASE(session);
+    return AUTORELEASE(session);
 }
 
-+ (NSURLSession*) sessionWithConfiguration: (NSURLSessionConfiguration*)configuration 
-                                  delegate: (id <NSURLSessionDelegate>)delegate 
-                             delegateQueue: (NSOperationQueue*)queue
++ (NSURLSession *)sessionWithConfiguration:(NSURLSessionConfiguration *)configuration
+                                  delegate:(id<NSURLSessionDelegate>)delegate
+                             delegateQueue:(NSOperationQueue *)queue
 {
-  NSURLSession *session;
+    NSURLSession *session;
 
-  session = [[NSURLSession alloc] initWithConfiguration: configuration 
-                                               delegate: delegate 
-                                          delegateQueue: queue];
+    session = [[NSURLSession alloc] initWithConfiguration:configuration
+                                                 delegate:delegate
+                                            delegateQueue:queue];
 
-  return AUTORELEASE(session);
+    return AUTORELEASE(session);
 }
 
-- (instancetype) initWithConfiguration: (NSURLSessionConfiguration*)configuration 
-                              delegate: (id <NSURLSessionDelegate>)delegate 
-                         delegateQueue: (NSOperationQueue*)queue
+- (instancetype)initWithConfiguration:(NSURLSessionConfiguration *)configuration
+                             delegate:(id<NSURLSessionDelegate>)delegate
+                        delegateQueue:(NSOperationQueue *)queue
 {
-  if (nil != (self = [super init]))
-    {
-      char	label[30];
-      dispatch_queue_t	targetQueue;
+    if (nil != (self = [super init])) {
+        char label[30];
+        dispatch_queue_t targetQueue;
 
-      _taskRegistry = [[GSTaskRegistry alloc] init];
-#if	defined(CURLSSLBACKEND_GNUTLS)
-      curl_global_sslset(CURLSSLBACKEND_GNUTLS, NULL, NULL);
+        _taskRegistry = [[GSTaskRegistry alloc] init];
+#if defined(CURLSSLBACKEND_GNUTLS)
+        curl_global_sslset(CURLSSLBACKEND_GNUTLS, NULL, NULL);
 #endif
-      curl_global_init(CURL_GLOBAL_SSL);
-      sprintf(label, "NSURLSession %u", nextSessionIdentifier());
-      targetQueue
-	= dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
+        curl_global_init(CURL_GLOBAL_SSL);
+        sprintf(label, "NSURLSession %u", nextSessionIdentifier());
+        targetQueue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
 #if HAVE_DISPATCH_QUEUE_CREATE_WITH_TARGET
-      _workQueue = dispatch_queue_create_with_target(label,
-	DISPATCH_QUEUE_SERIAL, targetQueue);
+        _workQueue = dispatch_queue_create_with_target(label,
+                                                       DISPATCH_QUEUE_SERIAL, targetQueue);
 #else
-      _workQueue = dispatch_queue_create(label,	DISPATCH_QUEUE_SERIAL);
-      dispatch_set_target_queue(_workQueue, targetQueue);
+        _workQueue = dispatch_queue_create(label, DISPATCH_QUEUE_SERIAL);
+        dispatch_set_target_queue(_workQueue, targetQueue);
 #endif
-      if (nil != queue)
-        {
-          ASSIGN(_delegateQueue, queue);
+        if (nil != queue) {
+            ASSIGN(_delegateQueue, queue);
+        } else {
+            _delegateQueue = [[NSOperationQueue alloc] init];
+            [_delegateQueue setMaxConcurrentOperationCount:1];
         }
-      else
-        {
-          _delegateQueue = [[NSOperationQueue alloc] init];
-          [_delegateQueue setMaxConcurrentOperationCount: 1];
-        }
-      _delegate = delegate;
-      ASSIGN(_configuration, configuration);
-      _nextTaskIdentifier = 1;
-      _invalidated = NO;
-      _multiHandle = [[GSMultiHandle alloc] initWithConfiguration: configuration
-                                                        workQueue: _workQueue];
-      [NSURLProtocol registerClass: [GSHTTPURLProtocol class]];
+        _delegate = delegate;
+        ASSIGN(_configuration, configuration);
+        _nextTaskIdentifier = 1;
+        _invalidated = NO;
+        _multiHandle = [[GSMultiHandle alloc] initWithConfiguration:configuration
+                                                          workQueue:_workQueue];
+        [NSURLProtocol registerClass:[GSHTTPURLProtocol class]];
     }
 
-  return self;
+    return self;
 }
 
-- (void) dealloc
+- (void)dealloc
 {
-  DESTROY(_taskRegistry);
-  DESTROY(_configuration);
-  DESTROY(_delegateQueue);
-  DESTROY(_multiHandle);
-  [super dealloc];
+    DESTROY(_taskRegistry);
+    DESTROY(_configuration);
+    DESTROY(_delegateQueue);
+    DESTROY(_multiHandle);
+    [super dealloc];
 }
 
-- (dispatch_queue_t) workQueue
+- (dispatch_queue_t)workQueue
 {
-  return _workQueue;
+    return _workQueue;
 }
 
-- (NSOperationQueue*) delegateQueue
+- (NSOperationQueue *)delegateQueue
 {
-  return _delegateQueue;
+    return _delegateQueue;
 }
 
-- (id <NSURLSessionDelegate>) delegate
+- (id<NSURLSessionDelegate>)delegate
 {
-  return _delegate;
+    return _delegate;
 }
 
-- (NSURLSessionConfiguration*) configuration
+- (NSURLSessionConfiguration *)configuration
 {
-  return _configuration;
+    return _configuration;
 }
 
-- (NSString*) sessionDescription
+- (NSString *)sessionDescription
 {
-  return _sessionDescription;
+    return _sessionDescription;
 }
 
-- (void) setSessionDescription: (NSString*)sessionDescription
+- (void)setSessionDescription:(NSString *)sessionDescription
 {
-  ASSIGN(_sessionDescription, sessionDescription);
+    ASSIGN(_sessionDescription, sessionDescription);
 }
 
-- (void) finishTasksAndInvalidate
+- (void)finishTasksAndInvalidate
 {
-  dispatch_async(_workQueue,
-    ^{
-      _invalidated = YES;
-      
-      void (^invalidateSessionCallback)(void) = 
-        ^{
-          if (nil == _delegate) return;
+    dispatch_async(_workQueue, ^{
+        _invalidated = YES;
 
-          [[self delegateQueue] addOperationWithBlock:
-            ^{
-              if ([_delegate respondsToSelector: @selector(URLSession:didBecomeInvalidWithError:)]) 
-                {
-                  [_delegate URLSession: self didBecomeInvalidWithError: nil];
+        void (^invalidateSessionCallback)(void) = ^{
+            if (nil == _delegate)
+                return;
+
+            [[self delegateQueue] addOperationWithBlock:^{
+                if ([_delegate respondsToSelector:@selector(URLSession:didBecomeInvalidWithError:)]) {
+                    [_delegate URLSession:self didBecomeInvalidWithError:nil];
                 }
-              _delegate = nil;
+                _delegate = nil;
             }];
         };
 
-      // if (![_taskRegistry isEmpty]) 
-      //   {
-      //     [_taskRegistry notifyOnTasksCompletion: invalidateSessionCallback];
-      //   }
-      // else 
+        // if (![_taskRegistry isEmpty])
+        //   {
+        //     [_taskRegistry notifyOnTasksCompletion: invalidateSessionCallback];
+        //   }
+        // else
         {
-          invalidateSessionCallback();
+            invalidateSessionCallback();
         }
     });
 }
 
-- (void) invalidateAndCancel
+- (void)invalidateAndCancel
 {
-  NSEnumerator      *e;
-  NSURLSessionTask  *task;
+    NSEnumerator *e;
+    NSURLSessionTask *task;
 
-  dispatch_sync(_workQueue, 
-    ^{
-      _invalidated = YES;
+    dispatch_sync(_workQueue, ^{
+        _invalidated = YES;
     });
 
-  e = [[_taskRegistry allTasks] objectEnumerator];
-  while (nil != (task = [e nextObject]))
-    {
-      [task cancel];
+    e = [[_taskRegistry allTasks] objectEnumerator];
+    while (nil != (task = [e nextObject])) {
+        [task cancel];
     }
 
-  dispatch_async(_workQueue,
-    ^{
-      if (nil == _delegate)
-        {
-          return;
+    dispatch_async(_workQueue, ^{
+        if (nil == _delegate) {
+            return;
         }
-      
-      [[self delegateQueue] addOperationWithBlock:
-        ^{
-          if ([_delegate respondsToSelector: @selector(URLSession:didBecomeInvalidWithError:)])
-            {
-              [_delegate URLSession: self didBecomeInvalidWithError: nil];
+
+        [[self delegateQueue] addOperationWithBlock:^{
+            if ([_delegate respondsToSelector:@selector(URLSession:didBecomeInvalidWithError:)]) {
+                [_delegate URLSession:self didBecomeInvalidWithError:nil];
             }
-          _delegate = nil;
+            _delegate = nil;
         }];
     });
 }
 
-- (NSURLSessionDataTask*) dataTaskWithRequest: (NSURLRequest*)request
+- (NSURLSessionDataTask *)dataTaskWithRequest:(NSURLRequest *)request
 {
-  NSURLSessionDataTask  *task;
+    NSURLSessionDataTask *task;
 
-  if (_invalidated)
-    {
-      return nil;
+    if (_invalidated) {
+        return nil;
     }
 
-  task = [[NSURLSessionDataTask alloc] initWithSession: self 
-                                               request: request 
-                                        taskIdentifier: _nextTaskIdentifier++];
+    task = [[NSURLSessionDataTask alloc] initWithSession:self
+                                                 request:request
+                                          taskIdentifier:_nextTaskIdentifier++];
 
-  [self addTask: task];
+    [self addTask:task];
 
-  return AUTORELEASE(task);
+    return AUTORELEASE(task);
 }
 
-- (NSURLSessionDataTask*) dataTaskWithURL: (NSURL*)url
+- (NSURLSessionDataTask *)dataTaskWithURL:(NSURL *)url
 {
-  NSMutableURLRequest *request;
-  
-  request = [NSMutableURLRequest requestWithURL: url];
-  [request setHTTPMethod: @"POST"];
+    NSMutableURLRequest *request;
 
-  return [self dataTaskWithRequest: request];
+    request = [NSMutableURLRequest requestWithURL:url];
+    [request setHTTPMethod:@"POST"];
+
+    return [self dataTaskWithRequest:request];
 }
 
-- (NSURLSessionUploadTask*) uploadTaskWithRequest: (NSURLRequest*)request
-                                          fromFile: (NSURL*)fileURL
+- (NSURLSessionUploadTask *)uploadTaskWithRequest:(NSURLRequest *)request
+                                         fromFile:(NSURL *)fileURL
 {
-  return [self notImplemented: _cmd];
+    return [self notImplemented:_cmd];
 }
 
-- (NSURLSessionUploadTask*) uploadTaskWithRequest: (NSURLRequest*)request
-                                         fromData: (NSData*)bodyData
+- (NSURLSessionUploadTask *)uploadTaskWithRequest:(NSURLRequest *)request
+                                         fromData:(NSData *)bodyData
 {
-  return [self notImplemented: _cmd];
+    return [self notImplemented:_cmd];
 }
 
-- (NSURLSessionUploadTask*) uploadTaskWithStreamedRequest: (NSURLRequest*)request
+- (NSURLSessionUploadTask *)uploadTaskWithStreamedRequest:(NSURLRequest *)request
 {
-  return [self notImplemented: _cmd];
+    return [self notImplemented:_cmd];
 }
 
-- (NSURLSessionDownloadTask*) downloadTaskWithRequest: (NSURLRequest*)request
+- (NSURLSessionDownloadTask *)downloadTaskWithRequest:(NSURLRequest *)request
 {
-  NSURLSessionDownloadTask  *task;
+    NSURLSessionDownloadTask *task;
 
-  if (_invalidated)
-    {
-      return nil;
+    if (_invalidated) {
+        return nil;
     }
 
-  task = [[NSURLSessionDownloadTask alloc] initWithSession: self 
-                                                   request: request 
-                                            taskIdentifier: _nextTaskIdentifier++];
+    task = [[NSURLSessionDownloadTask alloc] initWithSession:self
+                                                     request:request
+                                              taskIdentifier:_nextTaskIdentifier++];
 
-  [self addTask: task];
+    [self addTask:task];
 
-  return AUTORELEASE(task);
+    return AUTORELEASE(task);
 }
 
-- (NSURLSessionDownloadTask*) downloadTaskWithURL: (NSURL*)url
+- (NSURLSessionDownloadTask *)downloadTaskWithURL:(NSURL *)url
 {
-  NSMutableURLRequest *request;
-  
-  request = [NSMutableURLRequest requestWithURL: url];
-  [request setHTTPMethod: @"GET"];
+    NSMutableURLRequest *request;
 
-  return [self downloadTaskWithRequest: request];
+    request = [NSMutableURLRequest requestWithURL:url];
+    [request setHTTPMethod:@"GET"];
+
+    return [self downloadTaskWithRequest:request];
 }
 
-- (NSURLSessionDownloadTask*) downloadTaskWithResumeData: (NSData*)resumeData
+- (NSURLSessionDownloadTask *)downloadTaskWithResumeData:(NSData *)resumeData
 {
-  return [self notImplemented: _cmd];
+    return [self notImplemented:_cmd];
 }
 
-- (void) getTasksWithCompletionHandler: (void (^)(GS_GENERIC_CLASS(NSArray, NSURLSessionDataTask*) *dataTasks, GS_GENERIC_CLASS(NSArray, NSURLSessionUploadTask*) *uploadTasks, GS_GENERIC_CLASS(NSArray, NSURLSessionDownloadTask*) *downloadTasks))completionHandler
+- (void)getTasksWithCompletionHandler:(void (^)(GS_GENERIC_CLASS(NSArray, NSURLSessionDataTask *) * dataTasks, GS_GENERIC_CLASS(NSArray, NSURLSessionUploadTask *) * uploadTasks, GS_GENERIC_CLASS(NSArray, NSURLSessionDownloadTask *) * downloadTasks))completionHandler
 {
-  NSArray *allTasks, *dataTasks, *uploadTasks, *downloadTasks;
-  
-  allTasks = [_taskRegistry allTasks];
-  dataTasks = [allTasks filteredArrayUsingPredicate:
-    [NSPredicate predicateWithBlock:^BOOL(id task, NSDictionary* bindings) {
-      return [task isKindOfClass:[NSURLSessionDataTask class]];
-  }]];
-  uploadTasks = [allTasks filteredArrayUsingPredicate:
-    [NSPredicate predicateWithBlock:^BOOL(id task, NSDictionary* bindings) {
-      return [task isKindOfClass:[NSURLSessionUploadTask class]];
-  }]];
-  downloadTasks = [allTasks filteredArrayUsingPredicate:
-    [NSPredicate predicateWithBlock:^BOOL(id task, NSDictionary* bindings) {
-      return [task isKindOfClass:[NSURLSessionDownloadTask class]];
-  }]];
+    NSArray *allTasks, *dataTasks, *uploadTasks, *downloadTasks;
 
-  [[self delegateQueue] addOperationWithBlock:
-    ^{
-      completionHandler(dataTasks, uploadTasks, downloadTasks);
+    allTasks = [_taskRegistry allTasks];
+    dataTasks = [allTasks filteredArrayUsingPredicate:
+                              [NSPredicate predicateWithBlock:^BOOL(id task, NSDictionary *bindings) {
+                                  return [task isKindOfClass:[NSURLSessionDataTask class]];
+                              }]];
+    uploadTasks = [allTasks filteredArrayUsingPredicate:
+                                [NSPredicate predicateWithBlock:^BOOL(id task, NSDictionary *bindings) {
+                                    return [task isKindOfClass:[NSURLSessionUploadTask class]];
+                                }]];
+    downloadTasks = [allTasks filteredArrayUsingPredicate:
+                                  [NSPredicate predicateWithBlock:^BOOL(id task, NSDictionary *bindings) {
+                                      return [task isKindOfClass:[NSURLSessionDownloadTask class]];
+                                  }]];
+
+    [[self delegateQueue] addOperationWithBlock:^{
+        completionHandler(dataTasks, uploadTasks, downloadTasks);
     }];
 }
 
-- (void) getAllTasksWithCompletionHandler: (void (^)(GS_GENERIC_CLASS(NSArray, __kindof NSURLSessionTask*) *tasks))completionHandler
+- (void)getAllTasksWithCompletionHandler:(void (^)(GS_GENERIC_CLASS(NSArray, __kindof NSURLSessionTask *) * tasks))completionHandler
 {
-  NSArray *allTasks = [_taskRegistry allTasks];
+    NSArray *allTasks = [_taskRegistry allTasks];
 
-  [[self delegateQueue] addOperationWithBlock:
-    ^{
-      completionHandler(allTasks);
+    [[self delegateQueue] addOperationWithBlock:^{
+        completionHandler(allTasks);
     }];
 }
 
-- (void) addTask: (NSURLSessionTask*)task
+- (void)addTask:(NSURLSessionTask *)task
 {
-  [_taskRegistry addTask: task];
+    [_taskRegistry addTask:task];
 }
 
-- (void) removeTask: (NSURLSessionTask*)task
+- (void)removeTask:(NSURLSessionTask *)task
 {
-  [_taskRegistry removeTask: task];
+    [_taskRegistry removeTask:task];
 }
 
 @end
 
 @implementation NSURLSession (NSURLSessionAsynchronousConvenience)
 
-- (NSURLSessionDataTask*) dataTaskWithRequest: (NSURLRequest*)request
-                            completionHandler: (void (^)(NSData *data, NSURLResponse *response, NSError *error))completionHandler
+- (NSURLSessionDataTask *)dataTaskWithRequest:(NSURLRequest *)request
+                            completionHandler:(void (^)(NSData *data, NSURLResponse *response, NSError *error))completionHandler
 {
-  NSURLSessionDataTask  *task;
+    NSURLSessionDataTask *task;
 
-  if (_invalidated)
-    {
-      return nil;
+    if (_invalidated) {
+        return nil;
     }
 
-  task = [[NSURLSessionDataTask alloc] initWithSession: self 
-                                               request: request 
-                                        taskIdentifier: _nextTaskIdentifier++];
-  [task setDataCompletionHandler: completionHandler];
+    task = [[NSURLSessionDataTask alloc] initWithSession:self
+                                                 request:request
+                                          taskIdentifier:_nextTaskIdentifier++];
+    [task setDataCompletionHandler:completionHandler];
 
-  [self addTask: task];
+    [self addTask:task];
 
-  return AUTORELEASE(task);
+    return AUTORELEASE(task);
 }
 
-- (NSURLSessionDataTask*) dataTaskWithURL: (NSURL*)url
-                        completionHandler: (void (^)(NSData *data, NSURLResponse *response, NSError *error))completionHandler
+- (NSURLSessionDataTask *)dataTaskWithURL:(NSURL *)url
+                        completionHandler:(void (^)(NSData *data, NSURLResponse *response, NSError *error))completionHandler
 {
-  NSMutableURLRequest *request;
-  
-  request = [NSMutableURLRequest requestWithURL: url];
-  [request setHTTPMethod: @"POST"];
+    NSMutableURLRequest *request;
 
-  return [self dataTaskWithRequest: request
-                 completionHandler: completionHandler];
+    request = [NSMutableURLRequest requestWithURL:url];
+    [request setHTTPMethod:@"POST"];
+
+    return [self dataTaskWithRequest:request
+                   completionHandler:completionHandler];
 }
 
-- (NSURLSessionUploadTask*) uploadTaskWithRequest: (NSURLRequest*)request
-                                         fromFile: (NSURL*)fileURL
-                                completionHandler: (void (^)(NSData *data, NSURLResponse *response, NSError *error))completionHandler
+- (NSURLSessionUploadTask *)uploadTaskWithRequest:(NSURLRequest *)request
+                                         fromFile:(NSURL *)fileURL
+                                completionHandler:(void (^)(NSData *data, NSURLResponse *response, NSError *error))completionHandler
 {
-  return [self notImplemented: _cmd];
+    return [self notImplemented:_cmd];
 }
 
-- (NSURLSessionUploadTask*) uploadTaskWithRequest: (NSURLRequest*)request
-                                         fromData: (NSData*)bodyData
-                                completionHandler: (void (^)(NSData *data, NSURLResponse *response, NSError *error))completionHandler
+- (NSURLSessionUploadTask *)uploadTaskWithRequest:(NSURLRequest *)request
+                                         fromData:(NSData *)bodyData
+                                completionHandler:(void (^)(NSData *data, NSURLResponse *response, NSError *error))completionHandler
 {
-  return [self notImplemented: _cmd];
+    return [self notImplemented:_cmd];
 }
 
-- (NSURLSessionDownloadTask*) downloadTaskWithRequest: (NSURLRequest*)request
-                                    completionHandler: (void (^)(NSURL *location, NSURLResponse *response, NSError *error))completionHandler
+- (NSURLSessionDownloadTask *)downloadTaskWithRequest:(NSURLRequest *)request
+                                    completionHandler:(void (^)(NSURL *location, NSURLResponse *response, NSError *error))completionHandler
 {
-  NSURLSessionDataTask  *task;
+    NSURLSessionDataTask *task;
 
-  if (_invalidated)
-    {
-      return nil;
+    if (_invalidated) {
+        return nil;
     }
 
-  task = [[NSURLSessionDataTask alloc] initWithSession: self 
-                                               request: request 
-                                        taskIdentifier: _nextTaskIdentifier++];
-  [task setDownloadCompletionHandler: completionHandler];
+    task = [[NSURLSessionDataTask alloc] initWithSession:self
+                                                 request:request
+                                          taskIdentifier:_nextTaskIdentifier++];
+    [task setDownloadCompletionHandler:completionHandler];
 
-  [self addTask: task];
+    [self addTask:task];
 
-  return AUTORELEASE(task);
+    return AUTORELEASE(task);
 }
 
-- (NSURLSessionDownloadTask*) downloadTaskWithURL: (NSURL*)url
-                                completionHandler: (void (^)(NSURL *location, NSURLResponse *response, NSError *error))completionHandler
+- (NSURLSessionDownloadTask *)downloadTaskWithURL:(NSURL *)url
+                                completionHandler:(void (^)(NSURL *location, NSURLResponse *response, NSError *error))completionHandler
 {
-  NSMutableURLRequest *request;
-  
-  request = [NSMutableURLRequest requestWithURL: url];
-  [request setHTTPMethod: @"GET"];
+    NSMutableURLRequest *request;
 
-  return [self downloadTaskWithRequest: request
-                     completionHandler: completionHandler];
+    request = [NSMutableURLRequest requestWithURL:url];
+    [request setHTTPMethod:@"GET"];
+
+    return [self downloadTaskWithRequest:request
+                       completionHandler:completionHandler];
 }
 
-- (NSURLSessionDownloadTask*) downloadTaskWithResumeData: (NSData*)resumeData
-                                       completionHandler: (void (^)(NSURL *location, NSURLResponse *response, NSError *error))completionHandler
+- (NSURLSessionDownloadTask *)downloadTaskWithResumeData:(NSData *)resumeData
+                                       completionHandler:(void (^)(NSURL *location, NSURLResponse *response, NSError *error))completionHandler
 {
-  return [self notImplemented: _cmd];
+    return [self notImplemented:_cmd];
 }
 
 @end
@@ -546,742 +525,581 @@ static unsigned nextSessionIdentifier()
 
 @implementation _NSURLProtocolClient
 
-- (instancetype) init
+- (instancetype)init
 {
-  if (nil != (self = [super init]))
-    {
-      _cachePolicy = NSURLCacheStorageNotAllowed;
+    if (nil != (self = [super init])) {
+        _cachePolicy = NSURLCacheStorageNotAllowed;
     }
 
-  return self;
+    return self;
 }
 
-- (void) dealloc
+- (void)dealloc
 {
-  DESTROY(_cacheableData);
-  DESTROY(_cacheableResponse);
-  [super dealloc];
+    DESTROY(_cacheableData);
+    DESTROY(_cacheableResponse);
+    [super dealloc];
 }
 
-- (void) URLProtocol: (NSURLProtocol *)protocol
-  cachedResponseIsValid: (NSCachedURLResponse *)cachedResponse
+- (void)URLProtocol:(NSURLProtocol *)protocol
+    cachedResponseIsValid:(NSCachedURLResponse *)cachedResponse
 {
-
 }
 
-- (void) URLProtocol: (NSURLProtocol *)protocol
-  didFailWithError: (NSError *)error
+- (void)URLProtocol:(NSURLProtocol *)protocol
+    didFailWithError:(NSError *)error
 {
-  NSURLSessionTask  *task = [protocol task];
+    NSURLSessionTask *task = [protocol task];
 
-  NSAssert(nil != task, @"Missing task");
+    NSAssert(nil != task, @"Missing task");
 
-  [self task: task didFailWithError: error];
+    [self task:task didFailWithError:error];
 }
 
-- (void) task: (NSURLSessionTask *)task
-  didFailWithError: (NSError *)error
+- (void)task:(NSURLSessionTask *)task
+    didFailWithError:(NSError *)error
 {
-  NSURLSession                  *session;
-  NSOperationQueue              *delegateQueue;
-  id<NSURLSessionDelegate>      delegate;
-  void (^dataCompletionHandler)(NSData *data, NSURLResponse *response, NSError *error);
-  void (^downloadCompletionHandler)(NSURL *location, NSURLResponse *response, NSError *error);
+    NSURLSession *session;
+    NSOperationQueue *delegateQueue;
+    id<NSURLSessionDelegate> delegate;
+    void (^dataCompletionHandler)(NSData *data, NSURLResponse *response, NSError *error);
+    void (^downloadCompletionHandler)(NSURL *location, NSURLResponse *response, NSError *error);
 
-  session = [task session];
-  NSAssert(nil != session, @"Missing session");
+    session = [task session];
+    NSAssert(nil != session, @"Missing session");
 
-  delegateQueue = [session delegateQueue];
-  delegate = [session delegate];
-  dataCompletionHandler = [task dataCompletionHandler];
-  downloadCompletionHandler = [task downloadCompletionHandler];
+    delegateQueue = [session delegateQueue];
+    delegate = [session delegate];
+    dataCompletionHandler = [task dataCompletionHandler];
+    downloadCompletionHandler = [task downloadCompletionHandler];
 
-  if (nil != delegate)
-    {
-      [delegateQueue addOperationWithBlock: 
-        ^{
-          if (NSURLSessionTaskStateCompleted == [task state])
-            {
-              return;
+    if (nil != delegate) {
+        [delegateQueue addOperationWithBlock:^{
+            if (NSURLSessionTaskStateCompleted == [task state]) {
+                return;
             }
 
-          if ([delegate respondsToSelector:
-	    @selector(URLSession:task:didCompleteWithError:)])
-            {
-              [(id<NSURLSessionTaskDelegate>)delegate URLSession: session 
-                                                            task: task 
-                                            didCompleteWithError: error];
+            if ([delegate respondsToSelector:@selector(URLSession:task:didCompleteWithError:)]) {
+                [(id<NSURLSessionTaskDelegate>)delegate URLSession:session
+                                                              task:task
+                                              didCompleteWithError:error];
             }
 
-          [task setState: NSURLSessionTaskStateCompleted];
-          dispatch_async([session workQueue],  
-            ^{
-              [session removeTask: task];
+            [task setState:NSURLSessionTaskStateCompleted];
+            dispatch_async([session workQueue], ^{
+                [session removeTask:task];
             });
         }];
-    }
-  else if (nil != dataCompletionHandler)
-    {
-      [delegateQueue addOperationWithBlock:
-        ^{
-          if (NSURLSessionTaskStateCompleted == [task state])
-            {
-              return;
+    } else if (nil != dataCompletionHandler) {
+        [delegateQueue addOperationWithBlock:^{
+            if (NSURLSessionTaskStateCompleted == [task state]) {
+                return;
             }
 
-          dataCompletionHandler(nil, nil, error);
+            dataCompletionHandler(nil, nil, error);
 
-          [task setState: NSURLSessionTaskStateCompleted];
+            [task setState:NSURLSessionTaskStateCompleted];
 
-          dispatch_async([session workQueue],
-            ^{
-              [session removeTask: task];
+            dispatch_async([session workQueue], ^{
+                [session removeTask:task];
             });
         }];
-    }
-  else if (nil != downloadCompletionHandler)
-    {
-          [delegateQueue addOperationWithBlock:
-        ^{
-          if (NSURLSessionTaskStateCompleted == [task state])
-            {
-              return;
+    } else if (nil != downloadCompletionHandler) {
+        [delegateQueue addOperationWithBlock:^{
+            if (NSURLSessionTaskStateCompleted == [task state]) {
+                return;
             }
 
-          downloadCompletionHandler(nil, nil, error);
+            downloadCompletionHandler(nil, nil, error);
 
-          [task setState: NSURLSessionTaskStateCompleted];
+            [task setState:NSURLSessionTaskStateCompleted];
 
-          dispatch_async([session workQueue],
-            ^{
-              [session removeTask: task];
+            dispatch_async([session workQueue], ^{
+                [session removeTask:task];
             });
         }];
-    }
-  else
-    {
-      if (NSURLSessionTaskStateCompleted == [task state])
-        {
-          return;
+    } else {
+        if (NSURLSessionTaskStateCompleted == [task state]) {
+            return;
         }
 
-      [task setState: NSURLSessionTaskStateCompleted];
-      dispatch_async([session workQueue], 
-        ^{
-          [session removeTask: task];
+        [task setState:NSURLSessionTaskStateCompleted];
+        dispatch_async([session workQueue], ^{
+            [session removeTask:task];
         });
     }
-  
-  [task invalidateProtocol];
+
+    [task invalidateProtocol];
 }
 
-- (void) URLProtocol: (NSURLProtocol *)protocol
-	 didLoadData: (NSData *)data
+- (void)URLProtocol:(NSURLProtocol *)protocol
+        didLoadData:(NSData *)data
 {
-  NSURLSessionTask          *task = [protocol task];
-  NSURLSession              *session;
-  id<NSURLSessionDelegate>  delegate;
+    NSURLSessionTask *task = [protocol task];
+    NSURLSession *session;
+    id<NSURLSessionDelegate> delegate;
 
-  NSAssert(nil != task, @"Missing task");
+    NSAssert(nil != task, @"Missing task");
 
-  session = [task session];
-  delegate = [session delegate];
+    session = [task session];
+    delegate = [session delegate];
 
-  switch (_cachePolicy)
-    {
-      case NSURLCacheStorageAllowed:
-      case NSURLCacheStorageAllowedInMemoryOnly:
-        {
-          if (nil != _cacheableData)
-            {
-              [_cacheableData addObject: data];
+    switch (_cachePolicy) {
+        case NSURLCacheStorageAllowed:
+        case NSURLCacheStorageAllowedInMemoryOnly: {
+            if (nil != _cacheableData) {
+                [_cacheableData addObject:data];
             }
-          break;
-        }
-      case NSURLCacheStorageNotAllowed:
-        break;
-    }
-
-  if (nil != delegate 
-    && [task isKindOfClass: [NSURLSessionDataTask class]]
-    && [delegate respondsToSelector:
-      @selector(URLSession:dataTask:didReceiveData:)])
-    {
-      [[session delegateQueue] addOperationWithBlock:
-       ^{
-         [(id<NSURLSessionDataDelegate>)delegate URLSession: session 
-                                                   dataTask: (NSURLSessionDataTask*)task 
-                                             didReceiveData: data];
-       }];
-    }
-}
-
-- (void) URLProtocol: (NSURLProtocol *)protocol
-  didReceiveAuthenticationChallenge: (NSURLAuthenticationChallenge *)challenge
-{
-  //FIXME
-}
-
-- (void) URLProtocol: (NSURLProtocol *)protocol
-  didReceiveResponse: (NSURLResponse *)response
-  cacheStoragePolicy: (NSURLCacheStoragePolicy)policy
-{
-  NSURLSessionTask          *task = [protocol task];
-  NSURLSession              *session;
-  id<NSURLSessionDelegate>  delegate;
-
-  NSAssert(nil != task, @"Missing task");
-
-  [task setResponse: response];
-
-  session = [task session];
-
-  if (![task isKindOfClass: [NSURLSessionDataTask class]])
-    {
-      return;
-    }
-
-  _cachePolicy = policy;
-
-  if (nil != [[session configuration] URLCache])
-    {
-      switch (policy)
-        {
-          case NSURLCacheStorageAllowed:
-          case NSURLCacheStorageAllowedInMemoryOnly:
-            ASSIGN(_cacheableData, [NSMutableArray array]);
-            ASSIGN(_cacheableResponse, response);
-            break;
-          case NSURLCacheStorageNotAllowed:
             break;
         }
+        case NSURLCacheStorageNotAllowed:
+            break;
     }
 
-  delegate = [session delegate];
-  if (nil != delegate)
-    {
-      [[session delegateQueue] addOperationWithBlock: 
-        ^{
-          if ([delegate respondsToSelector: @selector
-            (URLSession:dataTask:didReceiveResponse:completionHandler:)])
-            {
-              NSURLSessionDataTask	*dataTask = (NSURLSessionDataTask*)task;
-
-              [(id<NSURLSessionDataDelegate>)delegate URLSession: session 
-                                                        dataTask: dataTask 
-                                              didReceiveResponse: response
-                                               completionHandler:
-                ^(NSURLSessionResponseDisposition disposition) {
-                  if (disposition != NSURLSessionResponseAllow)
-                    {
-                      NSLog(@"Warning: ignoring disposition %d from completion handler",
-                        (int)disposition);
-                    }
-                }];
-            }
+    if (nil != delegate && [task isKindOfClass:[NSURLSessionDataTask class]] && [delegate respondsToSelector:@selector(URLSession:dataTask:didReceiveData:)]) {
+        [[session delegateQueue] addOperationWithBlock:^{
+            [(id<NSURLSessionDataDelegate>)delegate URLSession:session
+                                                      dataTask:(NSURLSessionDataTask *)task
+                                                didReceiveData:data];
         }];
     }
 }
 
-- (void) URLProtocol: (NSURLProtocol *)protocol
-  wasRedirectedToRequest: (NSURLRequest *)request
-  redirectResponse: (NSURLResponse *)redirectResponse
+- (void)URLProtocol:(NSURLProtocol *)protocol didReceiveAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge
 {
-  NSAssert(NO, @"The NSURLSession implementation doesn't currently handle redirects directly.");
+    // FIXME
 }
 
-- (NSURLProtectionSpace*) _protectionSpaceFrom: (NSHTTPURLResponse*)response
+- (void)URLProtocol:(NSURLProtocol *)protocol didReceiveResponse:(NSURLResponse *)response cacheStoragePolicy:(NSURLCacheStoragePolicy)policy
 {
-  NSURLProtectionSpace	*space = nil;
-  NSString		*auth;
+    NSURLSessionTask *task = [protocol task];
+    NSURLSession *session;
+    id<NSURLSessionDelegate> delegate;
 
-  auth = [[response allHeaderFields] objectForKey: @"WWW-Authenticate"];
-  if (nil != auth)
-    {
-      NSURL	*url = [response URL];
-      NSString	*host = [url host];
-      NSNumber	*port = [url port];
-      NSString	*scheme = [url scheme];
-      NSRange	range;
-      NSString	*realm;
-      NSString	*method;
+    NSAssert(nil != task, @"Missing task");
 
-      if (nil == host) host = @"";
-      if (nil == port) port = [NSNumber numberWithInt: 80];
-      method = [[auth componentsSeparatedByString: @" "] firstObject];
-      range = [auth rangeOfString: @"realm="];
-      realm = range.length > 0
-        ? [auth substringFromIndex: NSMaxRange(range)] : @"";
-      space = AUTORELEASE([[NSURLProtectionSpace alloc]
-        initWithHost: host
-        port: [port integerValue]
-        protocol: scheme
-        realm: realm
-        authenticationMethod: method]);
+    [task setResponse:response];
+
+    session = [task session];
+
+    if (![task isKindOfClass:[NSURLSessionDataTask class]]) {
+        return;
     }
-  return space;
-}
 
-- (void) URLProtocolDidFinishLoading: (NSURLProtocol *)protocol
-{
-  NSURLSessionTask          *task = [protocol task];
-  NSURLSession              *session;
-  NSHTTPURLResponse         *urlResponse;
-  NSURLCache                *cache;
-  NSOperationQueue          *delegateQueue;
-  id<NSURLSessionDelegate>  delegate;
-  void (^dataCompletionHandler)(NSData *data, NSURLResponse *response, NSError *error);
-  void (^downloadCompletionHandler)(NSURL *location, NSURLResponse *response, NSError *error);
+    _cachePolicy = policy;
 
-  NSAssert(nil != task, @"Missing task");
-
-  session = [task session];
-  urlResponse = (NSHTTPURLResponse*)[task response];
-
-  if ([urlResponse statusCode] == 401)
-    {
-      NSURLProtectionSpace	*space;
-
-      if (nil != (space = [self _protectionSpaceFrom: urlResponse]))
-        {
+    if (nil != [[session configuration] URLCache]) {
+        switch (policy) {
+            case NSURLCacheStorageAllowed:
+            case NSURLCacheStorageAllowedInMemoryOnly:
+                ASSIGN(_cacheableData, [NSMutableArray array]);
+                ASSIGN(_cacheableResponse, response);
+                break;
+            case NSURLCacheStorageNotAllowed:
+                break;
         }
     }
 
-  delegate = [session delegate];
-  delegateQueue = [session delegateQueue];
-  dataCompletionHandler = [task dataCompletionHandler];
-  downloadCompletionHandler = [task downloadCompletionHandler];
+    delegate = [session delegate];
+    if (nil != delegate) {
+        [[session delegateQueue] addOperationWithBlock:^{
+            if ([delegate respondsToSelector:@selector(URLSession:dataTask:didReceiveResponse:completionHandler:)]) {
+                NSURLSessionDataTask *dataTask = (NSURLSessionDataTask *)task;
 
-  if (nil != (cache = [[session configuration] URLCache])
-    && [task isKindOfClass: [NSURLSessionDataTask class]]
-    && nil != _cacheableData
-    && nil != _cacheableResponse)
-    {
-      NSCachedURLResponse  *cacheable;
-      NSMutableData        *data;
-      NSEnumerator         *e;
-      NSData               *d;
+                [(id<NSURLSessionDataDelegate>)delegate URLSession:session
+                                                          dataTask:dataTask
+                                                didReceiveResponse:response
+                                                 completionHandler:^(NSURLSessionResponseDisposition disposition) {
+                                                     if (disposition != NSURLSessionResponseAllow) {
+                                                         NSLog(@"Warning: ignoring disposition %d from completion handler",
+                                                               (int)disposition);
+                                                     }
+                                                 }];
+            }
+        }];
+    }
+}
 
-      data = [NSMutableData data];
-      e = [_cacheableData objectEnumerator];
-      while (nil != (d = [e nextObject]))
-        {
-          [data appendData: d];
+- (void)URLProtocol:(NSURLProtocol *)protocol
+    wasRedirectedToRequest:(NSURLRequest *)request
+          redirectResponse:(NSURLResponse *)redirectResponse
+{
+    NSAssert(NO, @"The NSURLSession implementation doesn't currently handle redirects directly.");
+}
+
+- (NSURLProtectionSpace *)_protectionSpaceFrom:(NSHTTPURLResponse *)response
+{
+    NSURLProtectionSpace *space = nil;
+    NSString *auth;
+
+    auth = [[response allHeaderFields] objectForKey:@"WWW-Authenticate"];
+    if (nil != auth) {
+        NSURL *url = [response URL];
+        NSString *host = [url host];
+        NSNumber *port = [url port];
+        NSString *scheme = [url scheme];
+        NSRange range;
+        NSString *realm;
+        NSString *method;
+
+        if (nil == host)
+            host = @"";
+        if (nil == port)
+            port = [NSNumber numberWithInt:80];
+        method = [[auth componentsSeparatedByString:@" "] firstObject];
+        range = [auth rangeOfString:@"realm="];
+        realm = range.length > 0 ? [auth substringFromIndex:NSMaxRange(range)] : @"";
+        space = AUTORELEASE([[NSURLProtectionSpace alloc] initWithHost:host
+                                                                  port:[port integerValue]
+                                                              protocol:scheme
+                                                                 realm:realm
+                                                  authenticationMethod:method]);
+    }
+    return space;
+}
+
+- (void)URLProtocolDidFinishLoading:(NSURLProtocol *)protocol
+{
+    NSURLSessionTask *task = [protocol task];
+    NSURLSession *session;
+    NSHTTPURLResponse *urlResponse;
+    NSURLCache *cache;
+    NSOperationQueue *delegateQueue;
+    id<NSURLSessionDelegate> delegate;
+    void (^dataCompletionHandler)(NSData *data, NSURLResponse *response, NSError *error);
+    void (^downloadCompletionHandler)(NSURL *location, NSURLResponse *response, NSError *error);
+
+    NSAssert(nil != task, @"Missing task");
+
+    session = [task session];
+    urlResponse = (NSHTTPURLResponse *)[task response];
+
+    if ([urlResponse statusCode] == 401) {
+        NSURLProtectionSpace *space;
+
+        if (nil != (space = [self _protectionSpaceFrom:urlResponse])) {
+        }
+    }
+
+    delegate = [session delegate];
+    delegateQueue = [session delegateQueue];
+    dataCompletionHandler = [task dataCompletionHandler];
+    downloadCompletionHandler = [task downloadCompletionHandler];
+
+    if (nil != (cache = [[session configuration] URLCache]) && [task isKindOfClass:[NSURLSessionDataTask class]] && nil != _cacheableData && nil != _cacheableResponse) {
+        NSCachedURLResponse *cacheable;
+        NSMutableData *data;
+        NSEnumerator *e;
+        NSData *d;
+
+        data = [NSMutableData data];
+        e = [_cacheableData objectEnumerator];
+        while (nil != (d = [e nextObject])) {
+            [data appendData:d];
         }
 
-      cacheable = [[NSCachedURLResponse alloc] initWithResponse: urlResponse 
-                                                           data: data 
-                                                       userInfo: nil 
-                                                  storagePolicy: _cachePolicy];
-      [cache storeCachedResponse: cacheable 
-                     forDataTask: (NSURLSessionDataTask*)task];
-      RELEASE(cacheable);
+        cacheable = [[NSCachedURLResponse alloc] initWithResponse:urlResponse
+                                                             data:data
+                                                         userInfo:nil
+                                                    storagePolicy:_cachePolicy];
+        [cache storeCachedResponse:cacheable
+                       forDataTask:(NSURLSessionDataTask *)task];
+        RELEASE(cacheable);
     }
 
-  if (nil != dataCompletionHandler)
-    {
-      NSData *data = [NSURLProtocol propertyForKey: @"tempData"
-                                         inRequest: [protocol request]];
+    if (nil != dataCompletionHandler) {
+        NSData *data = [NSURLProtocol propertyForKey:@"tempData"
+                                           inRequest:[protocol request]];
 
-      [delegateQueue addOperationWithBlock:
-        ^{
-          if (NSURLSessionTaskStateCompleted == [task state])
-            {
-              return;
+        [delegateQueue addOperationWithBlock:^{
+            if (NSURLSessionTaskStateCompleted == [task state]) {
+                return;
             }
 
-          dataCompletionHandler(data, urlResponse, nil);
+            dataCompletionHandler(data, urlResponse, nil);
 
-          [task setState: NSURLSessionTaskStateCompleted];
+            [task setState:NSURLSessionTaskStateCompleted];
 
-          dispatch_async([session workQueue],
-            ^{
-              [session removeTask: task];
+            dispatch_async([session workQueue], ^{
+                [session removeTask:task];
             });
         }];
-    }
-  else if (nil != downloadCompletionHandler)
-    {
-      NSURL *fileURL = [NSURLProtocol propertyForKey: @"tempFileURL"
-                                           inRequest: [protocol request]];
+    } else if (nil != downloadCompletionHandler) {
+        NSURL *fileURL = [NSURLProtocol propertyForKey:@"tempFileURL"
+                                             inRequest:[protocol request]];
 
-      [delegateQueue addOperationWithBlock:
-        ^{
-          if (NSURLSessionTaskStateCompleted == [task state])
-            {
-              return;
+        [delegateQueue addOperationWithBlock:^{
+            if (NSURLSessionTaskStateCompleted == [task state]) {
+                return;
             }
 
-          downloadCompletionHandler(fileURL, urlResponse, nil);
+            downloadCompletionHandler(fileURL, urlResponse, nil);
 
-          [task setState: NSURLSessionTaskStateCompleted];
+            [task setState:NSURLSessionTaskStateCompleted];
 
-          dispatch_async([session workQueue],
-            ^{
-              [session removeTask: task];
+            dispatch_async([session workQueue], ^{
+                [session removeTask:task];
             });
         }];
-    }
-  else if (nil != delegate)
-    {
-      // Send delegate with temporary fileURL
-      if ([task isKindOfClass: [NSURLSessionDownloadTask class]]
-        && [delegate respondsToSelector: @selector(URLSession:downloadTask:didFinishDownloadingToURL:)])
-        {
-          id<NSURLSessionDownloadDelegate> downloadDelegate;
-          NSURLSessionDownloadTask         *downloadTask;
-          NSURL                            *fileURL;
+    } else if (nil != delegate) {
+        // Send delegate with temporary fileURL
+        if ([task isKindOfClass:[NSURLSessionDownloadTask class]] && [delegate respondsToSelector:@selector(URLSession:downloadTask:didFinishDownloadingToURL:)]) {
+            id<NSURLSessionDownloadDelegate> downloadDelegate;
+            NSURLSessionDownloadTask *downloadTask;
+            NSURL *fileURL;
 
-          downloadDelegate = (id<NSURLSessionDownloadDelegate>)delegate;
-          downloadTask = (NSURLSessionDownloadTask *)task;
-          fileURL = [NSURLProtocol propertyForKey: @"tempFileURL"
-                                        inRequest: [protocol request]];
+            downloadDelegate = (id<NSURLSessionDownloadDelegate>)delegate;
+            downloadTask = (NSURLSessionDownloadTask *)task;
+            fileURL = [NSURLProtocol propertyForKey:@"tempFileURL"
+                                          inRequest:[protocol request]];
 
-          [delegateQueue addOperationWithBlock:
-            ^{
-              [downloadDelegate URLSession: session
-                              downloadTask: downloadTask
-                 didFinishDownloadingToURL: fileURL];
+            [delegateQueue addOperationWithBlock:^{
+                [downloadDelegate URLSession:session
+                                 downloadTask:downloadTask
+                    didFinishDownloadingToURL:fileURL];
             }];
         }
 
-      [delegateQueue addOperationWithBlock: 
-        ^{
-          if (NSURLSessionTaskStateCompleted == [task state])
-            {
-              return;
+        [delegateQueue addOperationWithBlock:^{
+            if (NSURLSessionTaskStateCompleted == [task state]) {
+                return;
             }
-          
-          if ([delegate respondsToSelector:
-            @selector(URLSession:task:didCompleteWithError:)])
-            {
-              [(id<NSURLSessionTaskDelegate>)delegate URLSession: session 
-                                                            task: task 
-                                            didCompleteWithError: nil];
-            }
-          
-          [task setState: NSURLSessionTaskStateCompleted];
 
-          dispatch_async([session workQueue],
-            ^{
-              [session removeTask: task];
+            if ([delegate respondsToSelector:@selector(URLSession:task:didCompleteWithError:)]) {
+                [(id<NSURLSessionTaskDelegate>)delegate URLSession:session
+                                                              task:task
+                                              didCompleteWithError:nil];
+            }
+
+            [task setState:NSURLSessionTaskStateCompleted];
+
+            dispatch_async([session workQueue], ^{
+                [session removeTask:task];
             });
         }];
-    }
-  else
-    {
-      if (NSURLSessionTaskStateCompleted != [task state])
-        {
-          [task setState: NSURLSessionTaskStateCompleted];
-          dispatch_async([session workQueue],
-            ^{
-              [session removeTask: task];
+    } else {
+        if (NSURLSessionTaskStateCompleted != [task state]) {
+            [task setState:NSURLSessionTaskStateCompleted];
+            dispatch_async([session workQueue], ^{
+                [session removeTask:task];
             });
         }
     }
 
-  [task invalidateProtocol];
+    [task invalidateProtocol];
 }
 
-- (void) URLProtocol: (NSURLProtocol *)protocol
-  didCancelAuthenticationChallenge: (NSURLAuthenticationChallenge *)challenge
+- (void)URLProtocol:(NSURLProtocol *)protocol didCancelAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge
 {
-  //FIXME
+    // FIXME
 }
 
 @end
 
-@implementation NSURLSessionTask
-{
-  NSURLSession                   *_session;
-  NSLock                         *_protocolLock;
-  NSURLSessionTaskProtocolState  _protocolState;
-  NSURLProtocol                  *_protocol;
-  NSMutableArray                 *_protocolBag;
-  Class                          _protocolClass;
-  BOOL                           _hasTriggeredResume;
-  float                          _priority;
+@implementation NSURLSessionTask {
+    NSURLSession *_session;
+    NSLock *_protocolLock;
+    NSURLSessionTaskProtocolState _protocolState;
+    NSURLProtocol *_protocol;
+    NSMutableArray *_protocolBag;
+    Class _protocolClass;
+    BOOL _hasTriggeredResume;
+    float _priority;
 }
 
-- (instancetype) initWithSession: (NSURLSession*)session
-                         request: (NSURLRequest*)request
-                  taskIdentifier: (NSUInteger)identifier
+- (instancetype)initWithSession:(NSURLSession *)session
+                        request:(NSURLRequest *)request
+                 taskIdentifier:(NSUInteger)identifier
 {
-  NSEnumerator  *e;
-  Class         protocolClass;
+    NSEnumerator *e;
+    Class protocolClass;
 
-  if (nil != (self = [super init]))
-    {
-      NSData		*data;
-      NSInputStream	*stream;
+    if (nil != (self = [super init])) {
+        NSData *data;
+        NSInputStream *stream;
 
-      /*
-       * Only retain the session once the -resume method is called
-       * and release the session as the last thing done once the
-       * task has completed. This avoids a retain loop causing
-       * session and tasks to be leaked. 
-       */
-      _session = session;
-      ASSIGN(_originalRequest, request);
-      ASSIGN(_currentRequest, request);
-      if ([(data = [request HTTPBody]) length] > 0)
-        {
-          _knownBody = [[GSURLSessionTaskBody alloc] initWithData: data];
+        /*
+         * Only retain the session once the -resume method is called
+         * and release the session as the last thing done once the
+         * task has completed. This avoids a retain loop causing
+         * session and tasks to be leaked.
+         */
+        _session = session;
+        ASSIGN(_originalRequest, request);
+        ASSIGN(_currentRequest, request);
+        if ([(data = [request HTTPBody]) length] > 0) {
+            _knownBody = [[GSURLSessionTaskBody alloc] initWithData:data];
+        } else if (nil != (stream = [request HTTPBodyStream])) {
+            _knownBody = [[GSURLSessionTaskBody alloc]
+                initWithInputStream:stream];
         }
-            else if (nil != (stream = [request HTTPBodyStream]))
-        {
-          _knownBody = [[GSURLSessionTaskBody alloc]
-            initWithInputStream: stream];
-        }
-      _taskIdentifier = identifier;
+        _taskIdentifier = identifier;
 #if HAVE_DISPATCH_QUEUE_CREATE_WITH_TARGET
-      _workQueue = dispatch_queue_create_with_target("org.gnustep.NSURLSessionTask.WorkQueue", DISPATCH_QUEUE_SERIAL, [session workQueue]);
+        _workQueue = dispatch_queue_create_with_target("org.gnustep.NSURLSessionTask.WorkQueue", DISPATCH_QUEUE_SERIAL, [session workQueue]);
 #else
-      _workQueue = dispatch_queue_create("org.gnustep.NSURLSessionTask.WorkQueue", DISPATCH_QUEUE_SERIAL);
-      dispatch_set_target_queue(_workQueue, [session workQueue]);
+        _workQueue = dispatch_queue_create("org.gnustep.NSURLSessionTask.WorkQueue", DISPATCH_QUEUE_SERIAL);
+        dispatch_set_target_queue(_workQueue, [session workQueue]);
 #endif
-      _state = NSURLSessionTaskStateSuspended;
-      _suspendCount = 1;
-      _protocolLock = [[NSLock alloc] init];
-      _protocolState = NSURLSessionTaskProtocolStateToBeCreated;
-      _protocol = nil;
-      _hasTriggeredResume = NO;
-      _priority = NSURLSessionTaskPriorityDefault;
-      e = [[[session configuration] protocolClasses] objectEnumerator];
-      while (nil != (protocolClass = [e nextObject]))
-        {
-          if ([protocolClass canInitWithTask: self])
-            {
-              _protocolClass = protocolClass;
-              break;
+        _state = NSURLSessionTaskStateSuspended;
+        _suspendCount = 1;
+        _protocolLock = [[NSLock alloc] init];
+        _protocolState = NSURLSessionTaskProtocolStateToBeCreated;
+        _protocol = nil;
+        _hasTriggeredResume = NO;
+        _priority = NSURLSessionTaskPriorityDefault;
+        e = [[[session configuration] protocolClasses] objectEnumerator];
+        while (nil != (protocolClass = [e nextObject])) {
+            if ([protocolClass canInitWithTask:self]) {
+                _protocolClass = protocolClass;
+                break;
             }
         }
-      NSAssert(nil != _protocolClass, @"Unsupported protocol for request: %@", request);
+        NSAssert(nil != _protocolClass, @"Unsupported protocol for request: %@", request);
     }
-  
-  return self;
+
+    return self;
 }
 
-- (void) dealloc
+- (void)dealloc
 {
-  DESTROY(_originalRequest);
-  DESTROY(_currentRequest);
-  DESTROY(_response);
-  DESTROY(_taskDescription);
-  DESTROY(_error);
-  DESTROY(_protocolLock);
-  DESTROY(_protocol);
-  DESTROY(_protocolBag);
-  DESTROY(_dataCompletionHandler);
-  DESTROY(_knownBody);
-  dispatch_release(_workQueue);
-  [super dealloc];
+    DESTROY(_originalRequest);
+    DESTROY(_currentRequest);
+    DESTROY(_response);
+    DESTROY(_taskDescription);
+    DESTROY(_error);
+    DESTROY(_protocolLock);
+    DESTROY(_protocol);
+    DESTROY(_protocolBag);
+    DESTROY(_dataCompletionHandler);
+    DESTROY(_knownBody);
+    dispatch_release(_workQueue);
+    [super dealloc];
 }
 
-- (NSURLSessionTaskState) updateTaskState
+- (NSURLSessionTaskState)updateTaskState
 {
-  if (0 == _suspendCount)
-    {
-      _state = NSURLSessionTaskStateRunning;
+    if (0 == _suspendCount) {
+        _state = NSURLSessionTaskStateRunning;
+    } else {
+        _state = NSURLSessionTaskStateSuspended;
     }
-  else
-    {
-      _state = NSURLSessionTaskStateSuspended;
-    }
-  
-  return _state;
+
+    return _state;
 }
 
-- (NSUInteger) taskIdentifier
+- (NSUInteger)taskIdentifier
 {
-  return _taskIdentifier;
+    return _taskIdentifier;
 }
 
-- (NSURLRequest*) originalRequest
+- (NSURLRequest *)originalRequest
 {
-  return _originalRequest;
+    return _originalRequest;
 }
 
-- (NSURLRequest*) currentRequest
+- (NSURLRequest *)currentRequest
 {
-  return _currentRequest;
+    return _currentRequest;
 }
 
-- (NSURLResponse*) response
+- (NSURLResponse *)response
 {
-  return _response;
+    return _response;
 }
 
-- (void) setResponse: (NSURLResponse*)response
+- (void)setResponse:(NSURLResponse *)response
 {
-  ASSIGN(_response, response);
+    ASSIGN(_response, response);
 }
 
-- (int64_t) countOfBytesReceived
+- (int64_t)countOfBytesReceived
 {
-  return _countOfBytesReceived;
+    return _countOfBytesReceived;
 }
 
-- (int64_t) countOfBytesSent
+- (int64_t)countOfBytesSent
 {
-  return _countOfBytesSent;
+    return _countOfBytesSent;
 }
 
-- (int64_t) countOfBytesExpectedToSend
+- (int64_t)countOfBytesExpectedToSend
 {
-  return _countOfBytesExpectedToSend;
+    return _countOfBytesExpectedToSend;
 }
 
-- (int64_t) countOfBytesExpectedToReceive
+- (int64_t)countOfBytesExpectedToReceive
 {
-  return _countOfBytesExpectedToReceive;
+    return _countOfBytesExpectedToReceive;
 }
 
-- (NSString*) taskDescription
+- (NSString *)taskDescription
 {
-  return _taskDescription;
+    return _taskDescription;
 }
 
-- (void) setTaskDescription: (NSString*)taskDescription
+- (void)setTaskDescription:(NSString *)taskDescription
 {
-  ASSIGN(_taskDescription, taskDescription);
+    ASSIGN(_taskDescription, taskDescription);
 }
 
-- (NSURLSessionTaskState) state
+- (NSURLSessionTaskState)state
 {
-  return _state;
+    return _state;
 }
 
-- (NSError*) error
+- (NSError *)error
 {
-  return _error;
+    return _error;
 }
 
-- (BOOL) isSuspendedAfterResume 
+- (BOOL)isSuspendedAfterResume
 {
-  return _hasTriggeredResume && (_state == NSURLSessionTaskStateSuspended);
+    return _hasTriggeredResume && (_state == NSURLSessionTaskStateSuspended);
 }
 
-- (void) cancel
+- (void)cancel
 {
-  dispatch_sync(_workQueue, 
-    ^{
-      if (!(NSURLSessionTaskStateRunning == _state
-        || NSURLSessionTaskStateSuspended == _state))
-        {
-          return;
+    dispatch_sync(_workQueue, ^{
+        if (!(NSURLSessionTaskStateRunning == _state || NSURLSessionTaskStateSuspended == _state)) {
+            return;
         }
 
-      _state = NSURLSessionTaskStateCanceling;
+        _state = NSURLSessionTaskStateCanceling;
 
-      [self getProtocolWithCompletion: 
-        ^(NSURLProtocol *protocol) {
-          dispatch_async(_workQueue,
-            ^{
-              _error = [[NSError alloc] initWithDomain: NSURLErrorDomain 
-                                                  code: NSURLErrorCancelled 
-                                              userInfo: nil];
-              if (nil != protocol)
-                {
-                  id<NSURLProtocolClient> client;
+        [self getProtocolWithCompletion:^(NSURLProtocol *protocol) {
+            dispatch_async(_workQueue, ^{
+                _error = [[NSError alloc] initWithDomain:NSURLErrorDomain
+                                                    code:NSURLErrorCancelled
+                                                userInfo:nil];
+                if (nil != protocol) {
+                    id<NSURLProtocolClient> client;
 
-                  [protocol stopLoading];
-                  if (nil != (client = [protocol client]))
-                    {
-                      [client URLProtocol: protocol didFailWithError: _error];
+                    [protocol stopLoading];
+                    if (nil != (client = [protocol client])) {
+                        [client URLProtocol:protocol didFailWithError:_error];
                     }
                 }
             });
         }];
-      
     });
 }
 
-- (void) suspend
+- (void)suspend
 {
-  dispatch_sync(_workQueue, 
-    ^{
-      if (NSURLSessionTaskStateCanceling == _state
-        || NSURLSessionTaskStateCompleted == _state)
-        {
-          return;
+    dispatch_sync(_workQueue, ^{
+        if (NSURLSessionTaskStateCanceling == _state || NSURLSessionTaskStateCompleted == _state) {
+            return;
         }
 
-      _suspendCount++;
+        _suspendCount++;
 
-      [self updateTaskState];
+        [self updateTaskState];
 
-      if (1 == _suspendCount)
-        {
-          [self getProtocolWithCompletion:
-            ^(NSURLProtocol *protocol){
-              dispatch_async(_workQueue, 
-                ^{
-                  if (nil != protocol)
-                    {
-                      [protocol stopLoading];
-                    }
-                });
-            }];
-        }    
-    });
-}
-
-- (void) resume
-{
-  /*
-   * Properly retain the session to keep a reference
-   * to the task. This ensures correct API behaviour.
-   */
-  RETAIN(_session);
-
-  dispatch_sync(_workQueue, 
-    ^{
-      if (NSURLSessionTaskStateCanceling == _state
-        || NSURLSessionTaskStateCompleted == _state)
-        {
-          return;
-        }
-
-      if (_suspendCount > 0)
-        {
-          _suspendCount--;
-        }
-
-      [self updateTaskState];
-
-      if (0 == _suspendCount)
-        {
-          _hasTriggeredResume = YES;
-          [self getProtocolWithCompletion: 
-            ^(NSURLProtocol* protocol) {
-              dispatch_async(_workQueue, 
-                ^{
-                  if (_suspendCount != 0
-                    || NSURLSessionTaskStateCanceling == _state
-                    || NSURLSessionTaskStateCompleted == _state)
-                    {
-                      return;
-                    }
-
-                  if (nil != protocol)
-                    {
-                      [protocol startLoading];
-                    }
-                  else if (nil == _error)
-                    {
-                      NSDictionary          *userInfo;
-                      _NSURLProtocolClient  *client;
-
-                      userInfo = [NSDictionary dictionaryWithObjectsAndKeys: 
-                        [_originalRequest URL], NSURLErrorFailingURLErrorKey,
-                        [[_originalRequest URL] absoluteString], NSURLErrorFailingURLStringErrorKey,
-                        nil];
-                      _error = [[NSError alloc] initWithDomain: NSURLErrorDomain 
-                                                          code: NSURLErrorUnsupportedURL 
-                                                      userInfo: userInfo];
-                      client = AUTORELEASE([[_NSURLProtocolClient alloc] init]);
-                      [client task: self didFailWithError: _error];
+        if (1 == _suspendCount) {
+            [self getProtocolWithCompletion:^(NSURLProtocol *protocol) {
+                dispatch_async(_workQueue, ^{
+                    if (nil != protocol) {
+                        [protocol stopLoading];
                     }
                 });
             }];
@@ -1289,202 +1107,235 @@ static unsigned nextSessionIdentifier()
     });
 }
 
-- (float) priority
+- (void)resume
 {
-  return _priority;;
+    /*
+     * Properly retain the session to keep a reference
+     * to the task. This ensures correct API behaviour.
+     */
+    RETAIN(_session);
+
+    dispatch_sync(_workQueue, ^{
+        if (NSURLSessionTaskStateCanceling == _state || NSURLSessionTaskStateCompleted == _state) {
+            return;
+        }
+
+        if (_suspendCount > 0) {
+            _suspendCount--;
+        }
+
+        [self updateTaskState];
+
+        if (0 == _suspendCount) {
+            _hasTriggeredResume = YES;
+            [self getProtocolWithCompletion:^(NSURLProtocol *protocol) {
+                dispatch_async(_workQueue, ^{
+                    if (_suspendCount != 0 || NSURLSessionTaskStateCanceling == _state || NSURLSessionTaskStateCompleted == _state) {
+                        return;
+                    }
+
+                    if (nil != protocol) {
+                        [protocol startLoading];
+                    } else if (nil == _error) {
+                        NSDictionary *userInfo;
+                        _NSURLProtocolClient *client;
+
+                        userInfo = [NSDictionary dictionaryWithObjectsAndKeys:
+                                                     [_originalRequest URL], NSURLErrorFailingURLErrorKey,
+                                                     [[_originalRequest URL] absoluteString], NSURLErrorFailingURLStringErrorKey,
+                                                     nil];
+                        _error = [[NSError alloc] initWithDomain:NSURLErrorDomain
+                                                            code:NSURLErrorUnsupportedURL
+                                                        userInfo:userInfo];
+                        client = AUTORELEASE([[_NSURLProtocolClient alloc] init]);
+                        [client task:self didFailWithError:_error];
+                    }
+                });
+            }];
+        }
+    });
 }
 
-- (void) setPriority: (float)priority
+- (float)priority
 {
-  _priority = priority;
+    return _priority;
+    ;
 }
 
-- (id) copyWithZone: (NSZone*)zone
+- (void)setPriority:(float)priority
 {
-  NSURLSessionTask *copy = [[[self class] alloc] init];
+    _priority = priority;
+}
 
-  if (copy) 
-    {
-      copy->_taskIdentifier = _taskIdentifier;
-      copy->_originalRequest = [_originalRequest copyWithZone: zone];
-      copy->_currentRequest = [_currentRequest copyWithZone: zone];
-      copy->_response = [_response copyWithZone: zone];
-      copy->_countOfBytesReceived = _countOfBytesReceived;
-      copy->_countOfBytesSent = _countOfBytesSent;
-      copy->_countOfBytesExpectedToSend = _countOfBytesExpectedToSend;
-      copy->_countOfBytesExpectedToReceive = _countOfBytesExpectedToReceive;
-      copy->_taskDescription = [_taskDescription copyWithZone: zone];
-      copy->_state = _state;
-      copy->_error = [_error copyWithZone: zone];
-      copy->_session = _session;
-      dispatch_retain(_workQueue);
-      copy->_workQueue = _workQueue;
-      copy->_suspendCount  = _suspendCount;
-      copy->_protocolLock = [_protocolLock copy];
+- (id)copyWithZone:(NSZone *)zone
+{
+    NSURLSessionTask *copy = [[[self class] alloc] init];
+
+    if (copy) {
+        copy->_taskIdentifier = _taskIdentifier;
+        copy->_originalRequest = [_originalRequest copyWithZone:zone];
+        copy->_currentRequest = [_currentRequest copyWithZone:zone];
+        copy->_response = [_response copyWithZone:zone];
+        copy->_countOfBytesReceived = _countOfBytesReceived;
+        copy->_countOfBytesSent = _countOfBytesSent;
+        copy->_countOfBytesExpectedToSend = _countOfBytesExpectedToSend;
+        copy->_countOfBytesExpectedToReceive = _countOfBytesExpectedToReceive;
+        copy->_taskDescription = [_taskDescription copyWithZone:zone];
+        copy->_state = _state;
+        copy->_error = [_error copyWithZone:zone];
+        copy->_session = _session;
+        dispatch_retain(_workQueue);
+        copy->_workQueue = _workQueue;
+        copy->_suspendCount = _suspendCount;
+        copy->_protocolLock = [_protocolLock copy];
     }
 
-  return copy;
+    return copy;
 }
 
-- (void) getProtocolWithCompletion: (void (^)(NSURLProtocol* protocol))completion 
+- (void)getProtocolWithCompletion:(void (^)(NSURLProtocol *protocol))completion
 {
-  [_protocolLock lock];
-  switch (_protocolState) 
-    {
-      case NSURLSessionTaskProtocolStateToBeCreated: 
-        {
-          NSURLCache               *cache;
-          NSURLRequestCachePolicy  cachePolicy;
-          NSCachedURLResponse      *cachedResponse;
+    [_protocolLock lock];
+    switch (_protocolState) {
+        case NSURLSessionTaskProtocolStateToBeCreated: {
+            NSURLCache *cache;
+            NSURLRequestCachePolicy cachePolicy;
+            NSCachedURLResponse *cachedResponse;
 
-          cache = [[_session configuration] URLCache];
-          cachePolicy = [[self currentRequest] cachePolicy];
+            cache = [[_session configuration] URLCache];
+            cachePolicy = [[self currentRequest] cachePolicy];
 
-          if (nil != cache 
-            && [self isUsingLocalCacheWithPolicy: cachePolicy]
-            && [self isKindOfClass: [NSURLSessionDataTask class]]) 
-            {
-              ASSIGN(_protocolBag, [NSMutableArray array]);
-              [_protocolBag addObject: completion];
+            if (nil != cache && [self isUsingLocalCacheWithPolicy:cachePolicy] && [self isKindOfClass:[NSURLSessionDataTask class]]) {
+                ASSIGN(_protocolBag, [NSMutableArray array]);
+                [_protocolBag addObject:completion];
 
-              _protocolState = NSURLSessionTaskProtocolStateAwaitingCacheReply;
+                _protocolState = NSURLSessionTaskProtocolStateAwaitingCacheReply;
 
-              [_protocolLock unlock];
+                [_protocolLock unlock];
 
-              cachedResponse = 
-                [cache cachedResponseForDataTask: (NSURLSessionDataTask*)self];
-              
-              _protocol = [[_protocolClass alloc] initWithTask: self 
-                                                cachedResponse: cachedResponse 
-                                                        client: nil];
-              [self satisfyProtocolRequest];
-            } 
-          else 
-            {
-              _protocol = [[_protocolClass alloc] initWithTask: self 
-                                                cachedResponse: nil 
-                                                        client: nil];
-              _protocolState = NSURLSessionTaskProtocolStateExisting;
-              [_protocolLock unlock];
-              completion(_protocol);
+                cachedResponse =
+                    [cache cachedResponseForDataTask:(NSURLSessionDataTask *)self];
+
+                _protocol = [[_protocolClass alloc] initWithTask:self
+                                                  cachedResponse:cachedResponse
+                                                          client:nil];
+                [self satisfyProtocolRequest];
+            } else {
+                _protocol = [[_protocolClass alloc] initWithTask:self
+                                                  cachedResponse:nil
+                                                          client:nil];
+                _protocolState = NSURLSessionTaskProtocolStateExisting;
+                [_protocolLock unlock];
+                completion(_protocol);
             }
-          break;
+            break;
         }
-      case NSURLSessionTaskProtocolStateAwaitingCacheReply: 
-        {
-          [_protocolBag addObject: completion];
-          [_protocolLock unlock];
-          break;
+        case NSURLSessionTaskProtocolStateAwaitingCacheReply: {
+            [_protocolBag addObject:completion];
+            [_protocolLock unlock];
+            break;
         }
-      case NSURLSessionTaskProtocolStateExisting: 
-        {
-          [_protocolLock unlock];
-          completion(_protocol);
-          break;
+        case NSURLSessionTaskProtocolStateExisting: {
+            [_protocolLock unlock];
+            completion(_protocol);
+            break;
         }
-      case NSURLSessionTaskProtocolStateInvalidated: 
-        {
-          [_protocolLock unlock];
-          completion(nil);
-          break;
+        case NSURLSessionTaskProtocolStateInvalidated: {
+            [_protocolLock unlock];
+            completion(nil);
+            break;
         }
     }
 }
 
-- (void) satisfyProtocolRequest 
+- (void)satisfyProtocolRequest
 {
-  [_protocolLock lock];
-  switch (_protocolState) 
-    {
-      case NSURLSessionTaskProtocolStateToBeCreated: 
-        {
-          _protocolState = NSURLSessionTaskProtocolStateExisting;
-          [_protocolLock unlock];
-          break;
+    [_protocolLock lock];
+    switch (_protocolState) {
+        case NSURLSessionTaskProtocolStateToBeCreated: {
+            _protocolState = NSURLSessionTaskProtocolStateExisting;
+            [_protocolLock unlock];
+            break;
         }
-      case NSURLSessionTaskProtocolStateAwaitingCacheReply: 
-        {
-          _protocolState = NSURLSessionTaskProtocolStateExisting;
-          [_protocolLock unlock];
-          void (^callback)(NSURLProtocol*);
-          for (int i = 0; i < [_protocolBag count]; i++)
-            {
-              callback = [_protocolBag objectAtIndex: i];
-              callback(_protocol);
+        case NSURLSessionTaskProtocolStateAwaitingCacheReply: {
+            _protocolState = NSURLSessionTaskProtocolStateExisting;
+            [_protocolLock unlock];
+            void (^callback)(NSURLProtocol *);
+            for (int i = 0; i < [_protocolBag count]; i++) {
+                callback = [_protocolBag objectAtIndex:i];
+                callback(_protocol);
             }
-          DESTROY(_protocolBag);
-          break;
+            DESTROY(_protocolBag);
+            break;
         }
-      case NSURLSessionTaskProtocolStateExisting:
-      case NSURLSessionTaskProtocolStateInvalidated: 
-        {
-          [_protocolLock unlock];
-          break;
+        case NSURLSessionTaskProtocolStateExisting:
+        case NSURLSessionTaskProtocolStateInvalidated: {
+            [_protocolLock unlock];
+            break;
         }
     }
 }
 
-- (BOOL) isUsingLocalCacheWithPolicy: (NSURLRequestCachePolicy)policy 
+- (BOOL)isUsingLocalCacheWithPolicy:(NSURLRequestCachePolicy)policy
 {
-  switch (policy) 
-    {
-      case NSURLRequestUseProtocolCachePolicy:
-        return true;
-      case NSURLRequestReloadIgnoringLocalCacheData:
-        return false;
-      case NSURLRequestReturnCacheDataElseLoad:
-        return true;
-      case NSURLRequestReturnCacheDataDontLoad:
-        return true;
-      case NSURLRequestReloadIgnoringLocalAndRemoteCacheData:
-      case NSURLRequestReloadRevalidatingCacheData:
-        return false;
-      default:
-        return false;
+    switch (policy) {
+        case NSURLRequestUseProtocolCachePolicy:
+            return true;
+        case NSURLRequestReloadIgnoringLocalCacheData:
+            return false;
+        case NSURLRequestReturnCacheDataElseLoad:
+            return true;
+        case NSURLRequestReturnCacheDataDontLoad:
+            return true;
+        case NSURLRequestReloadIgnoringLocalAndRemoteCacheData:
+        case NSURLRequestReloadRevalidatingCacheData:
+            return false;
+        default:
+            return false;
     }
 }
 
-- (NSURLSession*) session 
+- (NSURLSession *)session
 {
-  return _session;
+    return _session;
 }
 
-- (void) setState: (NSURLSessionTaskState)state
+- (void)setState:(NSURLSessionTaskState)state
 {
-  _state = state;
+    _state = state;
 }
 
-- (void) invalidateProtocol
+- (void)invalidateProtocol
 {
-  [_protocolLock lock];
-  _protocolState = NSURLSessionTaskProtocolStateInvalidated;
-  DESTROY(_protocol);
-  /*
-   * Release session at the end of the task
-   * and not when -dealloc is called.
-   */
-  DESTROY(_session);
-  [_protocolLock unlock];
+    [_protocolLock lock];
+    _protocolState = NSURLSessionTaskProtocolStateInvalidated;
+    DESTROY(_protocol);
+    /*
+     * Release session at the end of the task
+     * and not when -dealloc is called.
+     */
+    DESTROY(_session);
+    [_protocolLock unlock];
 }
 
-- (void (^)(NSData *data, NSURLResponse *response, NSError *error)) dataCompletionHandler
+- (void (^)(NSData *data, NSURLResponse *response, NSError *error))dataCompletionHandler
 {
-  return _dataCompletionHandler;
+    return _dataCompletionHandler;
 }
 
-- (void) setDataCompletionHandler: (void (^)(NSData *data, NSURLResponse *response, NSError *error))completionHandler
+- (void)setDataCompletionHandler:(void (^)(NSData *data, NSURLResponse *response, NSError *error))completionHandler
 {
-  ASSIGN(_dataCompletionHandler, completionHandler);
+    ASSIGN(_dataCompletionHandler, completionHandler);
 }
 
-- (void (^)(NSURL *location, NSURLResponse *response, NSError *error)) downloadCompletionHandler
+- (void (^)(NSURL *location, NSURLResponse *response, NSError *error))downloadCompletionHandler
 {
-  return _downloadCompletionHandler;
+    return _downloadCompletionHandler;
 }
 
-- (void) setDownloadCompletionHandler: (void (^)(NSURL *location, NSURLResponse *response, NSError *error))completionHandler
+- (void)setDownloadCompletionHandler:(void (^)(NSURL *location, NSURLResponse *response, NSError *error))completionHandler
 {
-  ASSIGN(_downloadCompletionHandler, completionHandler);
+    ASSIGN(_downloadCompletionHandler, completionHandler);
 }
 
 @end
@@ -1503,226 +1354,217 @@ static unsigned nextSessionIdentifier()
 
 @implementation NSURLSessionConfiguration
 
-static NSURLSessionConfiguration	*def = nil;
+static NSURLSessionConfiguration *def = nil;
 
-+ (void) initialize
++ (void)initialize
 {
-  if (nil == def)
-    {
-      def = [NSURLSessionConfiguration new];
+    if (nil == def) {
+        def = [NSURLSessionConfiguration new];
     }
 }
 
-+ (NSURLSessionConfiguration*) defaultSessionConfiguration
++ (NSURLSessionConfiguration *)defaultSessionConfiguration
 {
-  return AUTORELEASE([def copy]);
+    return AUTORELEASE([def copy]);
 }
 
-+ (NSURLSessionConfiguration*) ephemeralSessionConfiguration
++ (NSURLSessionConfiguration *)ephemeralSessionConfiguration
 {
-  // return default session since we don't store any data on disk anyway
-  return AUTORELEASE([def copy]);
+    // return default session since we don't store any data on disk anyway
+    return AUTORELEASE([def copy]);
 }
 
-+ (NSURLSessionConfiguration*) backgroundSessionConfigurationWithIdentifier:(NSString*)identifier
++ (NSURLSessionConfiguration *)backgroundSessionConfigurationWithIdentifier:(NSString *)identifier
 {
-  NSURLSessionConfiguration *configuration = [def copy];
-  configuration->_identifier = [identifier copy];
-  return AUTORELEASE(configuration);
+    NSURLSessionConfiguration *configuration = [def copy];
+    configuration->_identifier = [identifier copy];
+    return AUTORELEASE(configuration);
 }
 
-- (instancetype) init
+- (instancetype)init
 {
-  if (nil != (self = [super init]))
-    {
-      _protocolClasses = [[NSArray alloc] initWithObjects: 
-        [GSHTTPURLProtocol class], nil];
-      _HTTPMaximumConnectionsPerHost = 1;
-      _HTTPShouldUsePipelining = YES;
-      _HTTPCookieAcceptPolicy = NSHTTPCookieAcceptPolicyNever;
-      _HTTPCookieStorage = nil;
-      _HTTPShouldSetCookies = NO;
-      _HTTPAdditionalHeaders = nil;
-      _HTTPMaximumConnectionLifetime = 0;	// Zero or less means default
+    if (nil != (self = [super init])) {
+        _protocolClasses = [[NSArray alloc] initWithObjects:
+                                                [GSHTTPURLProtocol class], nil];
+        _HTTPMaximumConnectionsPerHost = 1;
+        _HTTPShouldUsePipelining = YES;
+        _HTTPCookieAcceptPolicy = NSHTTPCookieAcceptPolicyNever;
+        _HTTPCookieStorage = nil;
+        _HTTPShouldSetCookies = NO;
+        _HTTPAdditionalHeaders = nil;
+        _HTTPMaximumConnectionLifetime = 0; // Zero or less means default
     }
 
-  return self;
+    return self;
 }
 
-- (void) dealloc
+- (void)dealloc
 {
-  DESTROY(_identifier);
-  DESTROY(_HTTPAdditionalHeaders);
-  DESTROY(_HTTPCookieStorage);
-  DESTROY(_protocolClasses);
-  DESTROY(_URLCache);
-  DESTROY(_URLCredentialStorage);
-  [super dealloc];
+    DESTROY(_identifier);
+    DESTROY(_HTTPAdditionalHeaders);
+    DESTROY(_HTTPCookieStorage);
+    DESTROY(_protocolClasses);
+    DESTROY(_URLCache);
+    DESTROY(_URLCredentialStorage);
+    [super dealloc];
 }
 
-- (NSString*) identifier
+- (NSString *)identifier
 {
-  return _identifier;
+    return _identifier;
 }
 
-- (NSURLCache*) URLCache
+- (NSURLCache *)URLCache
 {
-  return _URLCache;
+    return _URLCache;
 }
 
-- (void) setURLCache: (NSURLCache*)cache
+- (void)setURLCache:(NSURLCache *)cache
 {
-  ASSIGN(_URLCache, cache);
+    ASSIGN(_URLCache, cache);
 }
 
-- (void) setURLCredentialStorage: (NSURLCredentialStorage*)storage
+- (void)setURLCredentialStorage:(NSURLCredentialStorage *)storage
 {
-  ASSIGN(_URLCredentialStorage, storage);
+    ASSIGN(_URLCredentialStorage, storage);
 }
 
-- (NSURLRequestCachePolicy) requestCachePolicy
+- (NSURLRequestCachePolicy)requestCachePolicy
 {
-  return _requestCachePolicy;
+    return _requestCachePolicy;
 }
 
-- (void) setRequestCachePolicy: (NSURLRequestCachePolicy)policy
+- (void)setRequestCachePolicy:(NSURLRequestCachePolicy)policy
 {
-  _requestCachePolicy = policy;
+    _requestCachePolicy = policy;
 }
 
-- (NSArray*) protocolClasses
+- (NSArray *)protocolClasses
 {
-  return _protocolClasses;
+    return _protocolClasses;
 }
 
-- (NSInteger) HTTPMaximumConnectionsPerHost
+- (NSInteger)HTTPMaximumConnectionsPerHost
 {
-  return _HTTPMaximumConnectionsPerHost;
+    return _HTTPMaximumConnectionsPerHost;
 }
 
-- (void) setHTTPMaximumConnectionsPerHost: (NSInteger)n
+- (void)setHTTPMaximumConnectionsPerHost:(NSInteger)n
 {
-  _HTTPMaximumConnectionsPerHost = n;
+    _HTTPMaximumConnectionsPerHost = n;
 }
 
-- (NSInteger) HTTPMaximumConnectionLifetime
+- (NSInteger)HTTPMaximumConnectionLifetime
 {
-  return _HTTPMaximumConnectionLifetime;
+    return _HTTPMaximumConnectionLifetime;
 }
 
-- (void) setHTTPMaximumConnectionLifetime: (NSInteger)n
+- (void)setHTTPMaximumConnectionLifetime:(NSInteger)n
 {
-  _HTTPMaximumConnectionLifetime = n;
+    _HTTPMaximumConnectionLifetime = n;
 }
 
-- (BOOL) HTTPShouldUsePipelining
+- (BOOL)HTTPShouldUsePipelining
 {
-  return _HTTPShouldUsePipelining;
+    return _HTTPShouldUsePipelining;
 }
 
-- (void) setHTTPShouldUsePipelining: (BOOL)flag
+- (void)setHTTPShouldUsePipelining:(BOOL)flag
 {
-  _HTTPShouldUsePipelining = flag;
+    _HTTPShouldUsePipelining = flag;
 }
 
-- (NSHTTPCookieAcceptPolicy) HTTPCookieAcceptPolicy
+- (NSHTTPCookieAcceptPolicy)HTTPCookieAcceptPolicy
 {
-  return _HTTPCookieAcceptPolicy;
+    return _HTTPCookieAcceptPolicy;
 }
 
-- (void) setHTTPCookieAcceptPolicy: (NSHTTPCookieAcceptPolicy)policy
+- (void)setHTTPCookieAcceptPolicy:(NSHTTPCookieAcceptPolicy)policy
 {
-  _HTTPCookieAcceptPolicy = policy;
+    _HTTPCookieAcceptPolicy = policy;
 }
 
-- (NSHTTPCookieStorage*) HTTPCookieStorage
+- (NSHTTPCookieStorage *)HTTPCookieStorage
 {
-  return _HTTPCookieStorage;
+    return _HTTPCookieStorage;
 }
 
-- (void) setHTTPCookieStorage: (NSHTTPCookieStorage*)storage
+- (void)setHTTPCookieStorage:(NSHTTPCookieStorage *)storage
 {
-  ASSIGN(_HTTPCookieStorage, storage);
+    ASSIGN(_HTTPCookieStorage, storage);
 }
 
-- (BOOL) HTTPShouldSetCookies
+- (BOOL)HTTPShouldSetCookies
 {
-  return _HTTPShouldSetCookies;
+    return _HTTPShouldSetCookies;
 }
 
-- (void) setHTTPShouldSetCookies: (BOOL)flag
+- (void)setHTTPShouldSetCookies:(BOOL)flag
 {
-  _HTTPShouldSetCookies = flag;
+    _HTTPShouldSetCookies = flag;
 }
 
-- (NSDictionary*) HTTPAdditionalHeaders
+- (NSDictionary *)HTTPAdditionalHeaders
 {
-  return _HTTPAdditionalHeaders;
+    return _HTTPAdditionalHeaders;
 }
 
-- (void) setHTTPAdditionalHeaders: (NSDictionary*)headers
+- (void)setHTTPAdditionalHeaders:(NSDictionary *)headers
 {
-  ASSIGN(_HTTPAdditionalHeaders, headers);
+    ASSIGN(_HTTPAdditionalHeaders, headers);
 }
 
-- (NSURLRequest*) configureRequest: (NSURLRequest*)request 
+- (NSURLRequest *)configureRequest:(NSURLRequest *)request
 {
-  return [self setCookiesOnRequest: request];
+    return [self setCookiesOnRequest:request];
 }
 
-- (NSURLRequest*) setCookiesOnRequest: (NSURLRequest*)request 
+- (NSURLRequest *)setCookiesOnRequest:(NSURLRequest *)request
 {
-  NSMutableURLRequest *r = AUTORELEASE([request mutableCopy]);
-  
-  if (_HTTPShouldSetCookies) 
-    {
-      if (nil != _HTTPCookieStorage && nil != [request URL]) 
-        {
-          NSArray *cookies = [_HTTPCookieStorage cookiesForURL: [request URL]];
-          if (nil != cookies && [cookies count] > 0) 
-            {
-              NSDictionary	*cookiesHeaderFields;
-              NSString		*cookieValue;
+    NSMutableURLRequest *r = AUTORELEASE([request mutableCopy]);
 
-              cookiesHeaderFields
-                = [NSHTTPCookie requestHeaderFieldsWithCookies: cookies];
-              cookieValue = [cookiesHeaderFields objectForKey: @"Cookie"];
-              if (nil != cookieValue && [cookieValue length] > 0) 
-                {
-                  [r setValue: cookieValue forHTTPHeaderField: @"Cookie"];
+    if (_HTTPShouldSetCookies) {
+        if (nil != _HTTPCookieStorage && nil != [request URL]) {
+            NSArray *cookies = [_HTTPCookieStorage cookiesForURL:[request URL]];
+            if (nil != cookies && [cookies count] > 0) {
+                NSDictionary *cookiesHeaderFields;
+                NSString *cookieValue;
+
+                cookiesHeaderFields = [NSHTTPCookie requestHeaderFieldsWithCookies:cookies];
+                cookieValue = [cookiesHeaderFields objectForKey:@"Cookie"];
+                if (nil != cookieValue && [cookieValue length] > 0) {
+                    [r setValue:cookieValue forHTTPHeaderField:@"Cookie"];
                 }
             }
         }
     }
-  
-  return AUTORELEASE([r copy]);
+
+    return AUTORELEASE([r copy]);
 }
 
-- (NSURLCredentialStorage*) URLCredentialStorage
+- (NSURLCredentialStorage *)URLCredentialStorage
 {
-  return _URLCredentialStorage;
+    return _URLCredentialStorage;
 }
 
-- (id) copyWithZone: (NSZone*)zone
+- (id)copyWithZone:(NSZone *)zone
 {
-  NSURLSessionConfiguration *copy = [[[self class] alloc] init];
+    NSURLSessionConfiguration *copy = [[[self class] alloc] init];
 
-  if (copy) 
-    {
-      copy->_identifier = [_identifier copy];
-      copy->_URLCache = [_URLCache copy];
-      copy->_URLCredentialStorage = [_URLCredentialStorage copy];
-      copy->_protocolClasses = [_protocolClasses copyWithZone: zone];
-      copy->_HTTPMaximumConnectionsPerHost = _HTTPMaximumConnectionsPerHost;
-      copy->_HTTPShouldUsePipelining = _HTTPShouldUsePipelining;
-      copy->_HTTPCookieAcceptPolicy = _HTTPCookieAcceptPolicy;
-      copy->_HTTPCookieStorage = [_HTTPCookieStorage copy];
-      copy->_HTTPShouldSetCookies = _HTTPShouldSetCookies;
-      copy->_HTTPAdditionalHeaders
-        = [_HTTPAdditionalHeaders copyWithZone: zone];
+    if (copy) {
+        copy->_identifier = [_identifier copy];
+        copy->_URLCache = [_URLCache copy];
+        copy->_URLCredentialStorage = [_URLCredentialStorage copy];
+        copy->_protocolClasses = [_protocolClasses copyWithZone:zone];
+        copy->_HTTPMaximumConnectionsPerHost = _HTTPMaximumConnectionsPerHost;
+        copy->_HTTPShouldUsePipelining = _HTTPShouldUsePipelining;
+        copy->_HTTPCookieAcceptPolicy = _HTTPCookieAcceptPolicy;
+        copy->_HTTPCookieStorage = [_HTTPCookieStorage copy];
+        copy->_HTTPShouldSetCookies = _HTTPShouldSetCookies;
+        copy->_HTTPAdditionalHeaders = [_HTTPAdditionalHeaders copyWithZone:zone];
     }
 
-  return copy;
+    return copy;
 }
 
 @end
