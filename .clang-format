@@ -1,77 +1,83 @@
-# Copyright (C) 2015 Free Software Foundation, Inc.
-#
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-# Modified from gcc's clang-format config.
-
-# clang-format 7.0.1 is required
-#
-# To utilize the tool to lines just touched by a patch, use
-# clang-format-diff script that is usually also packaged with clang-format.
-#
-# Example of usage:
-# git diff -U0 --no-color | clang-format-diff -p1
-# (here the tool will generate a patch)
-# git diff -U0 --no-color | clang-format-diff -p1 -i
-# (modifications are applied)
-
 ---
-AccessModifierOffset: -2
-AlwaysBreakAfterReturnType: TopLevel
-AlignConsecutiveDeclarations: true
+Language:        ObjC
+# BasedOnStyle:  Google
+AccessModifierOffset: -1
+ConstructorInitializerIndentWidth: 4
+SortIncludes: false
+
+AlignAfterOpenBracket: true
+AlignEscapedNewlinesLeft: true
+AlignOperands: false
+AlignTrailingComments: false
+
+AllowAllParametersOfDeclarationOnNextLine: false
+AllowShortBlocksOnASingleLine: false
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: false
+AllowShortIfStatementsOnASingleLine: false
+AllowShortLoopsOnASingleLine: false
+
+AlwaysBreakAfterDefinitionReturnType: false
+AlwaysBreakTemplateDeclarations: false
+AlwaysBreakBeforeMultilineStrings: false
+
+BreakBeforeBinaryOperators: None
+BreakBeforeTernaryOperators: false
+BreakConstructorInitializersBeforeComma: false
+
 BinPackArguments: true
 BinPackParameters: true
-BreakBeforeBinaryOperators: All
-BreakBeforeBraces: Custom
-# Newer clang-format has BS_GNU
-BraceWrapping:
-  AfterClass: true
-  AfterControlStatement: true
-  AfterEnum: true
-  AfterFunction: true
-  AfterNamespace: false
-  AfterObjCDeclaration: true
-  AfterStruct: true
-  AfterUnion: true
-  BeforeCatch: true
-  BeforeElse: true
-  IndentBraces: true
-  SplitEmptyFunction: false
-BreakBeforeTernaryOperators: true
-ColumnLimit: 80
-ConstructorInitializerIndentWidth: 2
-ContinuationIndentWidth: 2
-ObjCBlockIndentWidth: 2
-ObjCSpaceAfterProperty: true
-ObjCSpaceBeforeProtocolList: true
-ForEachMacros: []
-IndentCaseLabels: false
-NamespaceIndentation: None
-PenaltyBreakBeforeFirstCallParameter: 100
+ColumnLimit: 0
+ConstructorInitializerAllOnOneLineOrOnePerLine: true
 DerivePointerAlignment: false
-PointerAlignment: Right
-SortIncludes: false
-SpaceAfterCStyleCast: true
-SpaceBeforeParens: ControlStatements
-SpacesBeforeTrailingComments: 1
-UseTab: Always
-AlignEscapedNewlines: Right
-AlignTrailingComments: true
-AllowShortFunctionsOnASingleLine: All
-AlwaysBreakTemplateDeclarations: MultiLine
+ExperimentalAutoDetectBinPacking: false
+IndentCaseLabels: true
+IndentWrappedFunctionNames: false
+IndentFunctionDeclarationAfterType: false
+MaxEmptyLinesToKeep: 2
 KeepEmptyLinesAtTheStartOfBlocks: false
+NamespaceIndentation: Inner
+ObjCSpaceAfterProperty: false
+ObjCSpaceBeforeProtocolList: true
+ObjCBlockIndentWidth: 4
+PenaltyBreakBeforeFirstCallParameter: 10000
+PenaltyBreakComment: 300
+PenaltyBreakString: 1000
+PenaltyBreakFirstLessLess: 120
+PenaltyExcessCharacter: 1000000
+PenaltyReturnTypeOnItsOwnLine: 200
+PointerAlignment: Right
+SpacesBeforeTrailingComments: 1
+Cpp11BracedListStyle: true
+Standard:        Auto
+IndentWidth:     4
+TabWidth:        8
+UseTab:          Never
+BreakBeforeBraces: Custom
+BraceWrapping: 
+    AfterClass: true
+    AfterControlStatement: false
+    AfterEnum: false
+    AfterFunction: true
+    AfterNamespace: true
+    AfterObjCDeclaration: false
+    AfterStruct: false
+    AfterUnion: false
+    BeforeCatch: false
+    BeforeElse: false
+    IndentBraces: false
 
-# TODO
-# MacroBlockBegin: 
-# MacroBlockEnd:
+SpacesInParentheses: false
+SpacesInSquareBrackets: false
+SpacesInAngles:  false
+SpaceInEmptyParentheses: false
+SpacesInCStyleCastParentheses: false
+SpaceAfterCStyleCast: false
+SpacesInContainerLiterals: false
+SpaceBeforeAssignmentOperators: true
+
+ContinuationIndentWidth: 4
+CommentPragmas:  '^ IWYU pragma:'
+ForEachMacros:   [ foreach, Q_FOREACH, BOOST_FOREACH ]
+SpaceBeforeParens: ControlStatements
+DisableFormat:   false
