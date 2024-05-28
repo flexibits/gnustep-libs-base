@@ -1616,6 +1616,12 @@ fixBOM(unsigned char **bytes, NSUInteger*length, BOOL *owned,
   if (NULL == format)
     [NSException raise: NSInvalidArgumentException
       format: @"[GSPlaceholderString-initWithFormat:locale:arguments:]: NULL format"];
+
+  if ([format isKindOfClass:[GSLocalizedString class]])
+    {
+      // Get the appropriate format according to the pluralization rules.
+      format = [(GSLocalizedString *) format getPluralizedFormat:argList];
+    }
   /*
    * First we provide an array of unichar characters containing the
    * format string.  For performance reasons we try to use an on-stack
