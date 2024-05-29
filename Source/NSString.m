@@ -59,6 +59,7 @@
 #import "Foundation/NSPathUtilities.h"
 #import "Foundation/NSRange.h"
 #import "Foundation/NSRegularExpression.h"
+#import "Foundation/NSTextCheckingResult.h"
 #import "Foundation/NSException.h"
 #import "Foundation/NSData.h"
 #import "Foundation/NSURL.h"
@@ -1436,6 +1437,13 @@ GSICUCollatorOpen(NSStringCompareOptions mask, NSLocale *locale)
   if (NULL == format)
     [NSException raise: NSInvalidArgumentException
       format: @"[NSString-initWithFormat:locale:arguments:]: NULL format"];
+
+  if ([format isKindOfClass:[GSLocalizedString class]])
+    {
+      // Get the appropriate format according to the pluralization rules.
+      format = [(GSLocalizedString *) format getPluralizedFormat:argList];
+    }
+
   /*
    * First we provide an array of unichar characters containing the
    * format string.  For performance reasons we try to use an on-stack
@@ -6765,3 +6773,311 @@ static NSFileManager *fm = nil;
 
 @end
 
+/**
+ * An item in a .stringsdict file.
+ * https://developer.apple.com/documentation/xcode/localizing-strings-that-contain-plurals
+ */
+@implementation GSLocalizedString
+
+- (id)initWithDictionary:(NSDictionary *)dict defaultValue:(NSString *)value
+{
+  _dict = dict;
+  return [self initWithString:value];
+}
+
+/* Returns a format that's appropriate for the pluralization of the arguments in
+ * the current language */
+- (NSString *)getPluralizedFormat:(va_list)argList
+{
+  /* Sample dictionary:
+      NSStringLocalizedFormatKey=%#@x_hours@, %#@x_minutes@
+      x_hours=NSDictionary {
+	NSStringFormatSpecTypeKey=NSStringPluralRuleType
+	NSStringFormatValueTypeKey=ld
+	zero=0 hours
+	one=1 hour
+	other=%1$ld hours
+      }
+      x_minutes=NSDictionary {
+	NSStringFormatSpecTypeKey=NSStringPluralRuleType
+	NSStringFormatValueTypeKey=ld
+	zero=0 minutes
+	one=1 minute
+	other=%2$ld minutes
+      }
+   */
+
+  NSString *formatKey = _dict[@"NSStringLocalizedFormatKey"];
+  if (!formatKey)
+    {
+      return self;
+    }
+
+  NSRegularExpression *regex = nil;
+
+  regex = [NSRegularExpression
+    regularExpressionWithPattern:@"%#@([^@]+)@"
+			 options:NSRegularExpressionCaseInsensitive
+			   error:nil];
+
+  NSArray<NSTextCheckingResult *> *matches =
+    [regex matchesInString:formatKey
+		   options:0
+		     range:NSMakeRange(0, [formatKey length])];
+
+  va_list args;
+  va_copy(args, argList);
+
+  NSMutableString *newFormat = [formatKey mutableCopy];
+  NSInteger	   offset = 0;
+
+  for (NSTextCheckingResult *match in matches)
+    {
+      NSString *varKey = [formatKey substringWithRange:[match rangeAtIndex:1]];
+
+      NSDictionary<NSString *, NSString *> *varDict = _dict[varKey];
+
+      // Get the numeric value of the variable (luckily, only "%ld", "%lu", and
+      // "%1g" is used).
+      unsigned long number = 0;
+      NSString	   *type = varDict[@"NSStringFormatValueTypeKey"];
+
+      if ([type isEqualToString:@"ld"])
+	{
+	  number = va_arg(args, long);
+	}
+      else if ([type isEqualToString:@"lu"])
+	{
+	  number = va_arg(args, unsigned long);
+	}
+      else if ([type isEqualToString:@"d"])
+	{
+	  number = va_arg(args, int);
+	}
+      else if ([type isEqualToString:@"u"])
+	{
+	  number = va_arg(args, unsigned int);
+	}
+      else if ([type isEqualToString:@"1g"])
+	{
+	  double d = va_arg(args, double);
+	  // Casting to an int would mean 0.3 is "zero" and 1.2 would be "one", so
+	  // check against just 0 or 1 and let any other value be "other". 
+	  number = d == 0 ? 0 : (d == 1 || d == -1) ? 1 : 10;
+	}
+      else
+	{
+	  number = va_arg(args, int);
+	}
+
+      // Only supports languages which have similar rules to english (zero,
+      // none, or other), as well as japanese (zero or other).
+      NSString *variantKey;
+      if (number == 0)
+	{
+	  variantKey = @"zero";
+	}
+      else if (number == 1)
+	{
+	  variantKey = @"one";
+	}
+      else
+	{
+	  variantKey = @"other";
+	}
+
+      NSString *replacement = varDict[variantKey];
+      if (!replacement)
+	{
+	  // Fallback to the "other" variant.
+	  replacement = varDict[@"other"];
+	}
+
+      if (replacement)
+	{
+	  [newFormat
+	    replaceCharactersInRange:NSMakeRange(match.range.location + offset,
+						 match.range.length)
+			  withString:replacement];
+	  offset += (NSInteger) ([replacement length] - match.range.length);
+	}
+    }
+
+  va_end(args);
+
+  return newFormat;
+}
+
+- (BOOL)canBeConvertedToEncoding:(NSStringEncoding)enc
+{
+  return [_parent canBeConvertedToEncoding:enc];
+}
+
+- (unichar)characterAtIndex:(NSUInteger)index
+{
+  return [_parent characterAtIndex:index];
+}
+
+- (NSComparisonResult)compare:(NSString *)aString
+		      options:(NSUInteger)mask
+			range:(NSRange)aRange
+{
+  return [_parent compare:aString options:mask range:aRange];
+}
+
+- (const char *)cString
+{
+  return [_parent cString];
+}
+
+- (const char *)cStringUsingEncoding:(NSStringEncoding)encoding
+{
+  return [_parent cStringUsingEncoding:encoding];
+}
+
+- (NSUInteger)cStringLength
+{
+  return [_parent cStringLength];
+}
+
+- (NSData *)dataUsingEncoding:(NSStringEncoding)encoding
+	 allowLossyConversion:(BOOL)flag
+{
+  return [_parent dataUsingEncoding:encoding allowLossyConversion:flag];
+}
+
+- (void)dealloc
+{
+  RELEASE(_parent);
+  [super dealloc];
+}
+
+- (id)copyWithZone:(NSZone *)z
+{
+  return [_parent copyWithZone:z];
+}
+
+- (id)mutableCopyWithZone:(NSZone *)z
+{
+  return [_parent mutableCopyWithZone:z];
+}
+
+- (void)encodeWithCoder:(NSCoder *)aCoder
+{
+  [_parent encodeWithCoder:aCoder];
+}
+
+- (NSStringEncoding)fastestEncoding
+{
+  return [_parent fastestEncoding];
+}
+
+- (void)getCharacters:(unichar *)buffer
+{
+  [_parent getCharacters:buffer];
+}
+
+- (void)getCharacters:(unichar *)buffer range:(NSRange)aRange
+{
+  [_parent getCharacters:buffer range:aRange];
+}
+
+- (void)getCString:(char *)buffer
+{
+  [_parent getCString:buffer];
+}
+
+- (void)getCString:(char *)buffer maxLength:(NSUInteger)maxLength
+{
+  [_parent getCString:buffer maxLength:maxLength];
+}
+
+- (BOOL)getCString:(char *)buffer
+	 maxLength:(NSUInteger)maxLength
+	  encoding:(NSStringEncoding)encoding
+{
+  return [_parent getCString:buffer maxLength:maxLength encoding:encoding];
+}
+
+- (void)getCString:(char *)buffer
+	 maxLength:(NSUInteger)maxLength
+	     range:(NSRange)aRange
+    remainingRange:(NSRange *)leftoverRange
+{
+  [_parent getCString:buffer
+	    maxLength:maxLength
+		range:aRange
+       remainingRange:leftoverRange];
+}
+
+- (NSUInteger)hash
+{
+  return [_parent hash];
+}
+
+- (id)initWithString:(NSString *)parent
+{
+  _parent = RETAIN(parent);
+  return self;
+}
+
+- (BOOL)isEqual:(id)anObject
+{
+  return [_parent isEqual:anObject];
+}
+
+- (BOOL)isEqualToString:(NSString *)anObject
+{
+  return [_parent isEqualToString:anObject];
+}
+
+- (BOOL)isProxy
+{
+  return YES;
+}
+
+- (NSUInteger)length
+{
+  return [_parent length];
+}
+
+- (NSUInteger)lengthOfBytesUsingEncoding:(NSStringEncoding)encoding
+{
+  return [_parent lengthOfBytesUsingEncoding:encoding];
+}
+
+- (const char *)lossyCString
+{
+  return [_parent lossyCString];
+}
+
+- (NSUInteger)maximumLengthOfBytesUsingEncoding:(NSStringEncoding)encoding
+{
+  return [_parent maximumLengthOfBytesUsingEncoding:encoding];
+}
+
+- (NSRange)rangeOfComposedCharacterSequenceAtIndex:(NSUInteger)anIndex
+{
+  return [_parent rangeOfComposedCharacterSequenceAtIndex:anIndex];
+}
+
+- (NSRange)rangeOfCharacterFromSet:(NSCharacterSet *)aSet
+			   options:(NSUInteger)mask
+			     range:(NSRange)aRange
+{
+  return [_parent rangeOfCharacterFromSet:aSet options:mask range:aRange];
+}
+
+- (NSRange)rangeOfString:(NSString *)aString
+		 options:(NSUInteger)mask
+		   range:(NSRange)aRange
+{
+  return [_parent rangeOfString:aString options:mask range:aRange];
+}
+
+- (NSStringEncoding)smallestEncoding
+{
+  return [_parent smallestEncoding];
+}
+
+@end
