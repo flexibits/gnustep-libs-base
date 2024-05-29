@@ -45,8 +45,6 @@
 #define GS_UNSAFE_REGEX 1
 #import "common.h"
 #include <stdio.h>
-#import <dispatch/dispatch.h>
-#import <dispatch/once.h>
 
 #import "Foundation/NSAutoreleasePool.h"
 #import "Foundation/NSCalendarDate.h"
@@ -6815,8 +6813,7 @@ static NSFileManager *fm = nil;
       return self;
     }
 
-  static dispatch_once_t      onceToken;
-  static NSRegularExpression *regex = nil;
+  NSRegularExpression *regex = nil;
 
   regex = [NSRegularExpression
     regularExpressionWithPattern:@"%#@([^@]+)@"
