@@ -6839,7 +6839,7 @@ static NSFileManager *fm = nil;
 
       // Get the numeric value of the variable (luckily, only "%ld", "%lu", and
       // "%1g" is used).
-      unsigned long number;
+      unsigned long number = 0;
       NSString	   *type = varDict[@"NSStringFormatValueTypeKey"];
 
       if ([type isEqualToString:@"ld"])
@@ -6850,10 +6850,20 @@ static NSFileManager *fm = nil;
 	{
 	  number = va_arg(args, unsigned long);
 	}
+      else if ([type isEqualToString:@"d"])
+	{
+	  number = va_arg(args, int);
+	}
+      else if ([type isEqualToString:@"u"])
+	{
+	  number = va_arg(args, unsigned int);
+	}
       else if ([type isEqualToString:@"1g"])
 	{
 	  double d = va_arg(args, double);
-	  number = d == 0 ? 0 : d == 1 ? 1 : 10;
+      // Casting to an int would mean 0.3 is "zero" and 1.2 would be "one", so
+      // check against just 0 or 1 and let any other value be "other". 
+	  number = d == 0 ? 0 : (d == 1 || d == -1) ? 1 : 10;
 	}
       else
 	{
@@ -6905,13 +6915,6 @@ static NSFileManager *fm = nil;
 
 - (unichar)characterAtIndex:(NSUInteger)index
 {
-  if (index == 999)
-    {
-      NSString *s =
-	[NSString localizedStringWithFormat:self, (unsigned long) 123,
-					    (unsigned long) 555];
-      return 0;
-    }
   return [_parent characterAtIndex:index];
 }
 
