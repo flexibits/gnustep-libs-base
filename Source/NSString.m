@@ -6861,8 +6861,8 @@ static NSFileManager *fm = nil;
       else if ([type isEqualToString:@"1g"])
 	{
 	  double d = va_arg(args, double);
-      // Casting to an int would mean 0.3 is "zero" and 1.2 would be "one", so
-      // check against just 0 or 1 and let any other value be "other". 
+	  // Casting to an int would mean 0.3 is "zero" and 1.2 would be "one", so
+	  // check against just 0 or 1 and let any other value be "other". 
 	  number = d == 0 ? 0 : (d == 1 || d == -1) ? 1 : 10;
 	}
       else
