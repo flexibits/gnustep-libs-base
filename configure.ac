@@ -3549,26 +3549,31 @@ HAVE_ICU=0
 AC_ARG_ENABLE(icu,
   [  --disable-icu			Disable International Components for Unicode],,
   enable_icu=yes)
+AC_ARG_ENABLE(windows-icu,
+  [  --disable-windows-icu		Don't use the ICU library provided by Windows 10 and up],,
+  enable_windows_icu=yes)
 
 AS_IF([test "x$enable_icu" = "xyes"], [
-  case "$target_os" in
-    mingw*|windows)
-      # check for ICU bundled with Windows 10
-      old_LIBS="$LIBS"
-      LIBS="-licu $LIBS"
-      AC_CHECK_HEADERS([icu.h],
-        AC_RUN_IFELSE([AC_LANG_SOURCE([
-          #include <icu.h>
-          int main () {
-            return udat_countAvailable() > 0 ? 0 : 1;
-          }])], HAVE_ICU=1))
-      LIBS="$old_LIBS"
-      if test $HAVE_ICU = 1; then
-        ICU_LIBS=-licu
-        AC_MSG_NOTICE([Using system-provided ICU DLL (requires Windows 10 version 1903 or later)])
-      fi
-    ;;
-  esac
+  if test "x$enable_windows_icu" = "xyes"; then
+    case "$target_os" in
+      mingw*|windows)
+        # check for ICU bundled with Windows 10
+        old_LIBS="$LIBS"
+        LIBS="-licu $LIBS"
+        AC_CHECK_HEADERS([icu.h],
+          AC_RUN_IFELSE([AC_LANG_SOURCE([
+            #include <icu.h>
+            int main () {
+              return udat_countAvailable() > 0 ? 0 : 1;
+            }])], HAVE_ICU=1))
+        LIBS="$old_LIBS"
+        if test $HAVE_ICU = 1; then
+          ICU_LIBS=-licu
+          AC_MSG_NOTICE([Using system-provided ICU DLL (requires Windows 10 version 1903 or later)])
+        fi
+      ;;
+    esac
+  fi
   if test $HAVE_ICU = 0; then
     PKG_CHECK_MODULES([ICU], [icu-i18n > 49.0], [
       AC_CHECK_HEADERS([unicode/uloc.h unicode/ulocdata.h unicode/ucol.h unicode/ucurr.h unicode/uregex.h unicode/ucal.h unicode/unorm2.h unicode/unum.h unicode/udat.h unicode/udatpg.h unicode/ustring.h unicode/usearch.h unicode/ucnv.h unicode/utext.h unicode/ubrk.h unicode/utypes.h],
