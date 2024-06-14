@@ -860,6 +860,7 @@ enable_tlstest
 enable_zeroconf
 with_zeroconf_api
 enable_icu
+enable_windows_icu
 enable_libdispatch
 with_dispatch_include
 with_dispatch_library
@@ -1557,6 +1558,7 @@ Optional Features:
   --disable-tlstest		Do not try to compile and run a test TLS program
   --disable-zeroconf		Disable NSNetServices support
   --disable-icu			Disable International Components for Unicode
+  --disable-windows-icu		Don't use the ICU library provided by Windows 10 and up
   --disable-libdispatch		Disable dispatching blocks via libdispatch
   --disable-newkvo		Disable new KVO implementation
   --disable-nsurlsession  		Disable support for NSURLSession
@@ -14156,16 +14158,31 @@ else $as_nop
   enable_icu=yes
 fi
 
+# Check whether --enable-windows-icu was given.
+if test "${enable_windows_icu+set}" = set; then :
+  enableval=$enable_windows_icu;
+else
+  enable_windows_icu=yes
+fi
+
+# Check whether --enable-windows-icu was given.
+if test "${enable_windows_icu+set}" = set; then :
+  enableval=$enable_windows_icu;
+else
+  enable_windows_icu=yes
+fi
+
 
 if test "x$enable_icu" = "xyes"
 then :
 
-  case "$target_os" in
-    mingw*|windows)
-      # check for ICU bundled with Windows 10
-      old_LIBS="$LIBS"
-      LIBS="-licu $LIBS"
-             for ac_header in icu.h
+  if test "x$enable_windows_icu" = "xyes"; then
+    case "$target_os" in
+      mingw*|windows)
+        # check for ICU bundled with Windows 10
+        old_LIBS="$LIBS"
+        LIBS="-licu $LIBS"
+        for ac_header in icu.h
 do :
   ac_fn_c_check_header_compile "$LINENO" "icu.h" "ac_cv_header_icu_h" "$ac_includes_default"
 if test "x$ac_cv_header_icu_h" = xyes
@@ -14181,10 +14198,10 @@ else $as_nop
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-          #include <icu.h>
-          int main () {
-            return udat_countAvailable() > 0 ? 0 : 1;
-          }
+            #include <icu.h>
+            int main () {
+              return udat_countAvailable() > 0 ? 0 : 1;
+            }
 _ACEOF
 if ac_fn_c_try_run "$LINENO"
 then :
@@ -14197,14 +14214,16 @@ fi
 fi
 
 done
-      LIBS="$old_LIBS"
-      if test $HAVE_ICU = 1; then
-        ICU_LIBS=-licu
-        { printf "%s\n" "$as_me:${as_lineno-$LINENO}: Using system-provided ICU DLL (requires Windows 10 version 1903 or later)" >&5
-printf "%s\n" "$as_me: Using system-provided ICU DLL (requires Windows 10 version 1903 or later)" >&6;}
-      fi
-    ;;
-  esac
+
+        LIBS="$old_LIBS"
+        if test $HAVE_ICU = 1; then
+          ICU_LIBS=-licu
+          { $as_echo "$as_me:${as_lineno-$LINENO}: Using system-provided ICU DLL (requires Windows 10 version 1903 or later)" >&5
+$as_echo "$as_me: Using system-provided ICU DLL (requires Windows 10 version 1903 or later)" >&6;}
+        fi
+      ;;
+    esac
+  fi
   if test $HAVE_ICU = 0; then
 
 pkg_failed=no
