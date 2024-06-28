@@ -141,13 +141,8 @@ enum
   NSWrapCalendarComponents = (1UL << 0)
 };
 
-enum
-{
-  NSDateComponentUndefined = NSIntegerMax,
-  NSUndefinedDateComponent = NSDateComponentUndefined
-};
-
-
+GS_EXPORT const NSInteger NSDateComponentUndefined;
+GS_EXPORT const NSInteger NSUndefinedDateComponent;
 
 GS_EXPORT_CLASS
 @interface NSDateComponents : NSObject <NSCopying>
