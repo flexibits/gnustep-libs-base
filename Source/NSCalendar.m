@@ -46,6 +46,23 @@
 GS_DECLARE const NSInteger NSDateComponentUndefined = NSIntegerMax;
 GS_DECLARE const NSInteger NSUndefinedDateComponent = NSDateComponentUndefined;
 
+const NSUInteger AllCalendarUnits =
+      NSCalendarUnitEra
+    | NSCalendarUnitYear
+    | NSCalendarUnitMonth
+    | NSCalendarUnitDay
+    | NSCalendarUnitHour
+    | NSCalendarUnitMinute
+    | NSCalendarUnitSecond
+    | NSCalendarUnitWeekday
+    | NSCalendarUnitWeekdayOrdinal
+    | NSCalendarUnitWeekOfMonth
+    | NSCalendarUnitWeekOfYear
+    | NSCalendarUnitYearForWeekOfYear
+    | NSCalendarUnitNanosecond
+    | NSCalendarUnitCalendar
+    | NSCalendarUnitTimeZone;
+
 #if GS_USE_ICU == 1
 static UCalendarDateFields _NSCalendarUnitToDateField(NSCalendarUnit unit)
 {
@@ -670,17 +687,90 @@ static NSRecursiveLock *classLock = nil;
     return [self dateByAddingComponents:components toDate:date options:options];
 }
 
+static inline UCalendarDateFields NSCalendarUnitToUCalendarDateField(NSCalendarUnit unit, BOOL* out_success)
+{
+    *out_success = YES;
+
+    switch (unit)
+    {
+        case NSCalendarUnitEra:
+            return UCAL_ERA;
+        case NSCalendarUnitYear:
+            return UCAL_YEAR;
+        case NSCalendarUnitMonth:
+            return UCAL_MONTH;
+        case NSCalendarUnitDay:
+            return UCAL_DAY_OF_MONTH;
+        case NSCalendarUnitHour:
+            return UCAL_HOUR_OF_DAY;
+        case NSCalendarUnitMinute:
+            return UCAL_MINUTE;
+        case NSCalendarUnitSecond:
+            return UCAL_SECOND;
+        case NSCalendarUnitWeekday:
+            return UCAL_DAY_OF_WEEK;
+        case NSCalendarUnitWeekdayOrdinal:
+            return UCAL_DAY_OF_WEEK_IN_MONTH;
+        case NSCalendarUnitWeekOfMonth:
+            return UCAL_WEEK_OF_MONTH;
+        case NSCalendarUnitWeekOfYear:
+            return UCAL_WEEK_OF_YEAR;
+        case NSCalendarUnitYearForWeekOfYear:
+            return UCAL_YEAR_WOY;
+
+        // No equivalent in ICU
+        case NSCalendarUnitQuarter:
+        case NSCalendarUnitNanosecond:
+        case NSCalendarUnitCalendar:
+        case NSCalendarUnitTimeZone:
+        default:
+            *out_success = NO;
+            return 0;
+    }
+}
+
 - (NSDate *)dateBySettingUnit:(NSCalendarUnit)unit value:(NSInteger)value ofDate:(NSDate *)date options:(NSCalendarOptions)opts
 {
-    NSDateComponents *components = [[NSDateComponents alloc] init];
+    [_lock lock];
 
-    [components setValue:value forComponent:unit];
-    return [self dateFromComponents:components];
+    NSTimeZone *timeZone = [self timeZone];
+
+    void *cal = [self _locked_openCalendarFor:timeZone];
+
+    if (cal == NULL) {
+        [_lock unlock];
+        return nil;
+    }
+
+    ucal_clear(cal);
+
+    // Convert to ICU-equivalent calendar unit
+    BOOL ok;
+    UCalendarDateFields ucalField = NSCalendarUnitToUCalendarDateField(unit, &ok);
+    NSAssert(ok, @"GNUStep does not implement the given date field.");
+
+    // Set the ICU calendar to this date
+    NSTimeInterval epochTime = [date timeIntervalSince1970] * SECOND_TO_MILLI;
+    UErrorCode error = U_ZERO_ERROR;
+    ucal_setMillis(cal, epochTime, &error);
+    NSAssert(!U_FAILURE(error), ([NSString stringWithFormat:@"Couldn't setMillis to calendar: %s", u_errorName(error)]));
+
+    // Set the field on the ICU calendar
+    ucal_set(cal, ucalField, value);
+
+    // Get the date back from the ICU calendar
+    NSTimeInterval newEpochTime = ucal_getMillis(cal, &error);
+    ucal_close(cal);
+
+    NSAssert(!U_FAILURE(error), ([NSString stringWithFormat:@"Couldn't getMillis from calendar: %s", u_errorName(error)]));
+
+    [_lock unlock];
+    return [NSDate dateWithTimeIntervalSince1970:(newEpochTime / SECOND_TO_MILLI)];
 }
 
 - (NSDate *)dateBySettingHour:(NSInteger)h minute:(NSInteger)m second:(NSInteger)s ofDate:(NSDate *)date options:(NSCalendarOptions)opts
 {
-    NSDateComponents *components = [self components:-1 fromDate:date];
+    NSDateComponents *components = [self components:AllCalendarUnits fromDate:date];
 
     [components setHour:h];
     [components setMinute:m];
@@ -689,13 +779,13 @@ static NSRecursiveLock *classLock = nil;
     return [self dateFromComponents:components];
 }
 
-- (NSDate *)dateWithEra:(NSInteger)eraValue 
-                   year:(NSInteger)yearValue 
-                  month:(NSInteger)monthValue 
-                    day:(NSInteger)dayValue 
-                   hour:(NSInteger)hourValue 
-                 minute:(NSInteger)minuteValue 
-                 second:(NSInteger)secondValue 
+- (NSDate *)dateWithEra:(NSInteger)eraValue
+                   year:(NSInteger)yearValue
+                  month:(NSInteger)monthValue
+                    day:(NSInteger)dayValue
+                   hour:(NSInteger)hourValue
+                 minute:(NSInteger)minuteValue
+                 second:(NSInteger)secondValue
              nanosecond:(NSInteger)nanosecondValue
 {
     NSDateComponents *components = [[NSDateComponents alloc] init];
