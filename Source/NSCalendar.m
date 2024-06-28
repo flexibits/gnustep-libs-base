@@ -43,6 +43,8 @@
 #include <icu.h>
 #endif
 
+GS_DECLARE const NSInteger NSDateComponentUndefined = NSIntegerMax;
+GS_DECLARE const NSInteger NSUndefinedDateComponent = NSDateComponentUndefined;
 
 #if GS_USE_ICU == 1
 static UCalendarDateFields _NSCalendarUnitToDateField(NSCalendarUnit unit)
