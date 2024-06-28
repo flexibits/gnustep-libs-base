@@ -151,6 +151,9 @@ static NSRecursiveLock *classLock = nil;
 
     my->cal = [self _locked_openCalendarFor:my->tz];
 
+    my->firstWeekday = NSNotFound;
+    my->minimumDaysInFirstWeek = NSNotFound;
+
     if (NSNotFound == my->firstWeekday) {
         my->firstWeekday = ucal_getAttribute(my->cal, UCAL_FIRST_DAY_OF_WEEK);
     } else {
