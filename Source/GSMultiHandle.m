@@ -220,6 +220,20 @@ static int curl_timer_function(CURL *easyHandle, int timeout, void *userdata) {
 {
   int runningHandlesCount = 0;
   
+  do
+    {
+      CURLMcode mc = curl_multi_perform(_rawHandle, &runningHandlesCount);
+
+      if (mc == CURLM_OK && runningHandlesCount)
+	{
+	  mc = curl_multi_poll(_rawHandle, NULL, 0, 10000, NULL);
+	}
+      else
+	{
+	  break;
+	}
+  } while (runningHandlesCount);
+
   handleMultiCode(curl_multi_socket_action(_rawHandle, socket, 0, &runningHandlesCount));
   
   [self readMessages];
