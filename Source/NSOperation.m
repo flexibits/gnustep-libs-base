@@ -1038,49 +1038,48 @@ static NSOperationQueue *mainQueue = nil;
       found = [internal->cond lockWhenCondition: 1 beforeDate: when];
       RELEASE(when);
       if (NO == found)
-	{
-	  break;	// Idle for 5 seconds ... exit thread.
-	}
+        {
+          break;	// Idle for 5 seconds ... exit thread.
+        }
 
       if ([internal->starting count] > 0)
-	{
+        {
           op = RETAIN([internal->starting objectAtIndex: 0]);
-	  [internal->starting removeObjectAtIndex: 0];
-	}
+          [internal->starting removeObjectAtIndex: 0];
+        }
       else
-	{
-	  op = nil;
-	}
+        {
+          op = nil;
+        }
 
       if ([internal->starting count] > 0)
-	{
-	  // Signal any other idle threads,
+        {
+          // Signal any other idle threads,
           [internal->cond unlockWithCondition: 1];
-	}
+        }
       else
-	{
-	  // There are no more operations starting.
+        {
+          // There are no more operations starting.
           [internal->cond unlockWithCondition: 0];
-	}
+        }
 
       if (nil != op)
-	{
+        {
           NS_DURING
-	    {
-	      ENTER_POOL
+            {
+              ENTER_POOL
               [NSThread setThreadPriority: [op threadPriority]];
               [op start];
-	      LEAVE_POOL
-	    }
+              LEAVE_POOL
+            }
           NS_HANDLER
-	    {
-	      NSLog(@"Problem running operation %@ ... %@",
-		op, localException);
-	    }
+            {
+              NSLog(@"Problem running operation %@ ... %@",
+                op, localException);
+            }
           NS_ENDHANDLER
-	  [op _finish];
           RELEASE(op);
-	}
+        }
     }
 
   [[[NSThread currentThread] threadDictionary] removeObjectForKey: threadKey];
@@ -1121,43 +1120,37 @@ static NSOperationQueue *mainQueue = nil;
       [internal->waiting removeObjectAtIndex: 0];
       [op removeObserver: self forKeyPath: @"queuePriority"];
       [op addObserver: self
-	   forKeyPath: @"isFinished"
-	      options: NSKeyValueObservingOptionNew
-	      context: isFinishedCtxt];
+           forKeyPath: @"isFinished"
+              options: NSKeyValueObservingOptionNew
+              context: isFinishedCtxt];
       internal->executing++;
-      if (YES == [op isConcurrent])
-	{
-          [op start];
-	}
-      else
-	{
-	  [internal->cond lock];
-	  [internal->starting addObject: op];
 
-	  /* Create a new thread if all existing threads are busy and
-	   * we haven't reached the pool limit.
-	   */
-	  if (internal->threadCount < max)
-	    {
-	      internal->threadCount++;
-	      NS_DURING
-		{
-      NSNumber *threadNumber = [NSNumber numberWithInteger: internal->threadCount - 1];
-		  [NSThread detachNewThreadSelector: @selector(_thread:)
-					   toTarget: self
-					 withObject: threadNumber];
-		}
-	      NS_HANDLER
-		{
-		  NSLog(@"Failed to create thread for %@: %@",
-		    self, localException);
-		}
-	      NS_ENDHANDLER
-	    }
-	  /* Tell the thread pool that there is an operation to start.
-	   */
-	  [internal->cond unlockWithCondition: 1];
-	}
+      [internal->cond lock];
+      [internal->starting addObject: op];
+
+      /* Create a new thread if all existing threads are busy and
+       * we haven't reached the pool limit.
+       */
+      if (internal->threadCount < max)
+        {
+          internal->threadCount++;
+          NS_DURING
+            {
+              NSNumber *threadNumber = [NSNumber numberWithInteger: internal->threadCount - 1];
+              [NSThread detachNewThreadSelector: @selector(_thread:)
+                                       toTarget: self
+                                     withObject: threadNumber];
+    	      }
+          NS_HANDLER
+            {
+              NSLog(@"Failed to create thread for %@: %@",
+                self, localException);
+            }
+          NS_ENDHANDLER
+        }
+      /* Tell the thread pool that there is an operation to start.
+       */
+      [internal->cond unlockWithCondition: 1];
     }
   NS_HANDLER
     {
