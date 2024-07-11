@@ -1059,7 +1059,6 @@ static NSOperationQueue *mainQueue = nil;
 		op, localException);
 	    }
           NS_ENDHANDLER
-	  [op _finish];
           RELEASE(op);
 	}
     }
@@ -1106,38 +1105,32 @@ static NSOperationQueue *mainQueue = nil;
 	      options: NSKeyValueObservingOptionNew
 	      context: isFinishedCtxt];
       internal->executing++;
-      if (YES == [op isConcurrent])
-	{
-          [op start];
-	}
-      else
-	{
-	  [internal->cond lock];
-	  [internal->starting addObject: op];
 
-	  /* Create a new thread if all existing threads are busy and
-	   * we haven't reached the pool limit.
-	   */
-	  if (internal->threadCount < max)
-	    {
-	      internal->threadCount++;
-	      NS_DURING
-		{
-		  [NSThread detachNewThreadSelector: @selector(_thread)
-					   toTarget: self
-					 withObject: nil];
-		}
-	      NS_HANDLER
-		{
-		  NSLog(@"Failed to create thread for %@: %@",
-		    self, localException);
-		}
-	      NS_ENDHANDLER
-	    }
-	  /* Tell the thread pool that there is an operation to start.
-	   */
-	  [internal->cond unlockWithCondition: 1];
-	}
+      [internal->cond lock];
+      [internal->starting addObject: op];
+
+      /* Create a new thread if all existing threads are busy and
+       * we haven't reached the pool limit.
+       */
+      if (internal->threadCount < max)
+        {
+          internal->threadCount++;
+          NS_DURING
+            {
+              [NSThread detachNewThreadSelector: @selector(_thread)
+                                       toTarget: self
+                                     withObject: nil];
+            }
+          NS_HANDLER
+            {
+              NSLog(@"Failed to create thread for %@: %@",
+                self, localException);
+            }
+          NS_ENDHANDLER
+        }
+      /* Tell the thread pool that there is an operation to start.
+       */
+      [internal->cond unlockWithCondition: 1];
     }
   NS_HANDLER
     {
@@ -1147,6 +1140,7 @@ static NSOperationQueue *mainQueue = nil;
   NS_ENDHANDLER
   [internal->lock unlock];
 }
+
 
 @end
 
