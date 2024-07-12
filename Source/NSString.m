@@ -3471,6 +3471,17 @@ GSICUCollatorOpen(NSStringCompareOptions mask, NSLocale *locale)
                remainingRange:NULL];
 }
 
+// GNUStep doesn't provide any hook for getting the character width of
+// a string encoding. This makes it hard to generically determine the width
+// of a null terminator.
+inline static int HACK_GetCharacterWidth(NSStringEncoding encoding)
+{
+    const static NSString *testString = @"a";
+    NSData *data = [testString dataUsingEncoding:encoding];
+    assert(data != nil);
+    return [data length];
+}
+
 /**
  * Retrieve up to maxLength bytes from the receiver into the buffer.<br />
  * In GNUstep, this method implements the actual behavior of the MacOS-X
@@ -3493,36 +3504,61 @@ GSICUCollatorOpen(NSStringCompareOptions mask, NSLocale *locale)
          maxLength:(NSUInteger)maxLength
           encoding:(NSStringEncoding)encoding
 {
-    if (0 == maxLength || 0 == buffer)
+    // Rename the argument to make it clear that we're talking about *bytes* here,
+    // not UTF-16 characters!
+    NSUInteger maxBytes = maxLength;
+
+    if (maxBytes == 0 || buffer == 0) {
         return NO;
+    }
+
     if (encoding == NSUnicodeStringEncoding) {
-        unsigned length = [self length];
+        NSUInteger totalStringBytes = ([self length] + 1) * sizeof(unichar); // account for the null terminator
+        NSUInteger stringLengthInChars = [self length];
 
-        if (maxLength > length * sizeof(unichar)) {
-            unichar *ptr = (unichar *)(void *)buffer;
-
-            maxLength = (maxLength - 1) / sizeof(unichar);
-            [self getCharacters:ptr
-                          range:NSMakeRange(0, maxLength)];
-            ptr[maxLength] = 0;
-            return YES;
+        if (totalStringBytes > maxBytes) {
+            return NO;
         }
-        return NO;
-    } else {
-        NSData *d = [self dataUsingEncoding:encoding];
-        unsigned length = [d length];
-        BOOL result = (length < maxLength) ? YES : NO;
 
-        if (d == nil) {
+        unichar *bufferChars = (unichar *)buffer;
+
+        [self getCharacters:bufferChars range:NSMakeRange(0, stringLengthInChars)];
+
+        bufferChars[stringLengthInChars] = L'\0';
+        return YES;
+    } else {
+        NSData *data = [self dataUsingEncoding:encoding];
+        if (data == nil) {
             [NSException raise:NSCharacterConversionException
                         format:@"Can't convert to C string."];
         }
-        if (length >= maxLength) {
-            length = maxLength - 1;
+
+        NSUInteger stringBytesWithoutTerminator = [data length];
+
+        // HACK: get size of null terminator for this encoding
+        int characterWidth = HACK_GetCharacterWidth(encoding);
+        NSUInteger totalStringBytes = stringBytesWithoutTerminator + characterWidth;
+
+        // If the buffer is too small, we have to copy as much as possible and
+        // then return NO. (Not how I'd design it, but that's how it is...)
+        BOOL partialCopy = totalStringBytes > maxBytes;
+
+        if (partialCopy) {
+            // Copy as much as possible, ignoring the null terminator
+            NSUInteger partialCopyBytes = MIN(stringBytesWithoutTerminator, maxBytes);
+            [data getBytes:buffer range:NSMakeRange(0, partialCopyBytes)];
+
+            return NO;
+        } else {
+            // Much simpler case
+            [data getBytes:buffer range:NSMakeRange(0, stringBytesWithoutTerminator)];
+            NSUInteger nullTerminatorOffset = totalStringBytes - characterWidth;
+            for (int i = 0; i < characterWidth; i++) {
+                buffer[nullTerminatorOffset + i] = '\0';
+            }
+
+            return YES;
         }
-        memcpy(buffer, [d bytes], length);
-        buffer[length] = '\0';
-        return result;
     }
 }
 
