@@ -3476,10 +3476,27 @@ GSICUCollatorOpen(NSStringCompareOptions mask, NSLocale *locale)
 // of a null terminator.
 inline static int HACK_GetCharacterWidth(NSStringEncoding encoding)
 {
+    // return quickly on common encodings
+    switch (encoding) {
+        case NSASCIIStringEncoding:
+        case NSUTF8StringEncoding:
+        case NSISOLatin1StringEncoding:
+            return 1;
+        case NSUnicodeStringEncoding:
+            return 2;
+        default:
+            break;
+    }
+
+    // otherwise, do the hacky thing
     const static NSString *testString = @"a";
+
     NSData *data = [testString dataUsingEncoding:encoding];
     assert(data != nil);
-    return [data length];
+
+    NSUInteger width =  [data length];
+
+    return width;
 }
 
 /**
