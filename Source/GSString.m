@@ -2300,14 +2300,13 @@ getCStringE_c(GSStr self, char *buffer, unsigned int maxLength,
             unichar *u = (unichar *)(void *)buffer;
 
             if (GSToUnicode(&u, &bytes, self->_contents.c, self->_count,
-                            internalEncoding, NSDefaultMallocZone(), GSUniTerminate) == NO) {
+                            internalEncoding, NULL, GSUniTerminate) == NO
+                || u != (unichar *)(void *)buffer) {
                 [NSException raise:NSCharacterConversionException
                             format:@"Can't convert to Unicode string."];
             }
-            if (u == (unichar *)(void *)buffer) {
-                return YES;
-            }
-            NSZoneFree(NSDefaultMallocZone(), u);
+
+            return YES;
         }
         return NO;
     } else {
