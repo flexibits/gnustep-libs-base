@@ -700,6 +700,9 @@ GS_EXPORT_CLASS
 
 #endif
 - (NSUInteger) cStringLength;
+
+#define HIDE_DEPRECATED_METHODS 1
+#if !HIDE_DEPRECATED_METHODS
 - (void) getCString: (char*)buffer;
 - (void) getCString: (char*)buffer
 	  maxLength: (NSUInteger)maxLength;
@@ -707,6 +710,7 @@ GS_EXPORT_CLASS
 	  maxLength: (NSUInteger)maxLength
 	      range: (NSRange)aRange
      remainingRange: (NSRange*)leftoverRange;
+#endif
 
 // Getting Numeric Values
 - (float) floatValue;
