@@ -1006,6 +1006,7 @@ otherTime(NSDate* other)
   NSCalendarDate *d = [calendarClass alloc];
 
   d = [d initWithTimeIntervalSinceReferenceDate: otherTime(self)];
+  [d setTimeZone:[NSTimeZone timeZoneForSecondsFromGMT:0]];
   s = [d description];
   RELEASE(d);
   return s;
@@ -1045,6 +1046,7 @@ otherTime(NSDate* other)
   NSCalendarDate *d = [calendarClass alloc];
 
   d = [d initWithTimeIntervalSinceReferenceDate: otherTime(self)];
+  [d setTimeZone:[NSTimeZone timeZoneForSecondsFromGMT:0]];
   s = [d descriptionWithLocale: locale];
   RELEASE(d);
   return s;
