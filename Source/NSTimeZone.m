@@ -530,9 +530,18 @@ static NSString *_time_zone_path(NSString *subpath, NSString *type)
       NSString* windowsZoneString = [NSString stringWithCharacters: windowsZoneStringBuffer
                                                             length: windowsZoneStringLength];
 
-      zone = [[GSWindowsTimeZone alloc] initWithName: windowsZoneString data: 0 ianaName: name];
-      DESTROY(self);
-      return (GSPlaceholderTimeZone *)zone;
+      zone = [[GSWindowsTimeZone alloc] initWithName: windowsZoneString data: data ianaName: name];
+
+      if (zone != nil)
+        {
+          // Cache with the ianaName for future lookup
+          GS_MUTEX_LOCK(zone_mutex);
+          [zoneDictionary setObject:zone forKey:name];
+          GS_MUTEX_UNLOCK(zone_mutex);
+        }
+
+        DESTROY(self);
+        return (GSPlaceholderTimeZone *)zone;
     }
 
   NSLog(@"Couldn't convert timezone '%@' to Windows format", name);
