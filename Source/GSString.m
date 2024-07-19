@@ -862,7 +862,7 @@ tsbytes(uintptr_t s, char *buf)
     }
     if (NSUnicodeStringEncoding == encoding) {
         maxLength /= 2;
-        if (maxLength > 1) {
+        if (maxLength > 0) {
             unichar *buf = (unichar *)(void *)buffer;
             BOOL result = (length < maxLength) ? YES : NO;
 
