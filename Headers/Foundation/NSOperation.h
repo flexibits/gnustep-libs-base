@@ -26,6 +26,17 @@
 #define __NSOperation_h_GNUSTEP_BASE_INCLUDE
 
 #import <Foundation/NSObject.h>
+
+#ifdef __has_include
+#if __has_include(<dispatch.h>)
+#define HAVE_DISPATCH_H 1
+#include <dispatch.h>
+#elif __has_include(<dispatch/dispatch.h>)
+#define HAVE_DISPATCH_DISPATCH_H 1
+#include <dispatch/dispatch.h>
+#endif
+#endif
+
 #if OS_API_VERSION(MAC_OS_X_VERSION_10_5, GS_API_LATEST)
 
 #if	defined(__cplusplus)
@@ -267,6 +278,11 @@ GS_EXPORT_CLASS
  */
 + (id) mainQueue;
 #endif
+
+#if HAVE_DISPATCH_H || HAVE_DISPATCH_DISPATCH_H
+- (dispatch_queue_t) underlyingQueue;
+- (void) setUnderlyingQueue: (dispatch_queue_t)underlyingQueue;
+#endif // HAVE_DISPATCH_H || HAVE_DISPATCH_DISPATCH_H
 
 /** Adds an operation to the receiver.
  */

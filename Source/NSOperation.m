@@ -42,6 +42,12 @@
   NSMutableArray *dependencies; \
   id completionBlock;
 
+#if HAVE_DISPATCH_H || HAVE_DISPATCH_DISPATCH_H
+#define NSOPERATION_QUEUE_UNDERLYING_QUEUE_IVAR dispatch_queue_t		underlyingQueue;
+#else
+#define NSOPERATION_QUEUE_UNDERLYING_QUEUE_IVAR
+#endif // HAVE_DISPATCH_H || HAVE_DISPATCH_DISPATCH_H
+
 #define	GS_NSOperationQueue_IVARS \
   NSRecursiveLock	*lock; \
   NSConditionLock	*cond; \
@@ -53,7 +59,8 @@
   BOOL			suspended; \
   NSInteger		executing; \
   NSInteger		threadCount; \
-  NSInteger		maxThreads;
+  NSInteger		maxThreads; \
+  NSOPERATION_QUEUE_UNDERLYING_QUEUE_IVAR
 
 #import "Foundation/NSOperation.h"
 #import "Foundation/NSArray.h"
@@ -648,6 +655,10 @@ static NSOperationQueue *mainQueue = nil;
   if (nil == mainQueue)
     {
       mainQueue = [self new];
+
+#if HAVE_DISPATCH_H || HAVE_DISPATCH_DISPATCH_H
+      mainQueue->underlyingQueue = dispatch_get_main_queue();
+#endif // HAVE_DISPATCH_H || HAVE_DISPATCH_DISPATCH_H
     }
 }
 
@@ -655,6 +666,50 @@ static NSOperationQueue *mainQueue = nil;
 {
   return mainQueue;
 }
+
+#if HAVE_DISPATCH_H || HAVE_DISPATCH_DISPATCH_H
+
+- (dispatch_queue_t) underlyingQueue
+{
+  return internal->underlyingQueue;
+}
+
+- (void) setUnderlyingQueue: (dispatch_queue_t)queue
+{
+  if (queue == dispatch_get_main_queue())
+    {
+      [NSException raise: NSInvalidArgumentException
+                  format: @"Cannot use dispatch_get_main_queue as an underlying queue"];
+    }
+
+  [internal->lock lock];
+
+  if (0 != [self operationCount])
+    {
+      [internal->lock unlock];
+
+      [NSException raise: NSInvalidArgumentException
+                  format: @"Cannot set the underlyingQueue of an NSOperationQueue while operations are pending"];
+    }
+
+  dispatch_queue_t previousQueue = internal->underlyingQueue;
+
+  internal->underlyingQueue = queue;
+
+  if (previousQueue && previousQueue != dispatch_get_main_queue())
+    {
+      dispatch_release(previousQueue);
+    }
+
+  if (queue)
+    {
+      dispatch_retain(queue);
+    }
+
+  [internal->lock unlock];
+}
+
+#endif // HAVE_DISPATCH_H || HAVE_DISPATCH_DISPATCH_H
 
 - (void) addOperation: (NSOperation *)op
 {
@@ -808,6 +863,19 @@ static NSOperationQueue *mainQueue = nil;
       DESTROY(internal->name);
       DESTROY(internal->cond);
       DESTROY(internal->lock);
+
+#if HAVE_DISPATCH_H || HAVE_DISPATCH_DISPATCH_H
+      if (internal->underlyingQueue)
+        {
+          if (internal->underlyingQueue != dispatch_get_main_queue())
+            {
+              dispatch_release(internal->underlyingQueue);
+            }
+
+          internal->underlyingQueue = nil;
+        }
+#endif // HAVE_DISPATCH_H || HAVE_DISPATCH_DISPATCH_H
+      
       GS_DESTROY_INTERNAL(NSOperationQueue);
     }
   DEALLOC
@@ -839,6 +907,10 @@ static NSOperationQueue *mainQueue = nil;
        * Worker threads are not renamed during their lifetime.
        */
       internal->threadName = @"NSOperationQ";
+
+#if HAVE_DISPATCH_H || HAVE_DISPATCH_DISPATCH_H
+      internal->underlyingQueue = nil;
+#endif // HAVE_DISPATCH_H || HAVE_DISPATCH_DISPATCH_H
     }
   return self;
 }
@@ -1069,7 +1141,24 @@ static NSOperationQueue *mainQueue = nil;
             {
               ENTER_POOL
               [NSThread setThreadPriority: [op threadPriority]];
+
+#if HAVE_DISPATCH_H || HAVE_DISPATCH_DISPATCH_H
+              dispatch_queue_t queue = [self underlyingQueue];
+
+              if (nil != queue)
+                {
+                  dispatch_sync(queue, ^(void)
+                    {
+                        [op start];
+                    });
+                }
+              else
+                {
+                    [op start];
+                }
+#else
               [op start];
+#endif // HAVE_DISPATCH_H || HAVE_DISPATCH_DISPATCH_H
               LEAVE_POOL
             }
           NS_HANDLER
