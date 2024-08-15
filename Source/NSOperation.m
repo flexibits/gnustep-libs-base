@@ -43,6 +43,12 @@
   NSMutableArray *dependencies; \
   id completionBlock;
 
+#if HAVE_DISPATCH_H || HAVE_DISPATCH_DISPATCH_H
+#define NSOPERATION_QUEUE_UNDERLYING_QUEUE_IVAR dispatch_queue_t		underlyingQueue;
+#else
+#define NSOPERATION_QUEUE_UNDERLYING_QUEUE_IVAR
+#endif // HAVE_DISPATCH_H || HAVE_DISPATCH_DISPATCH_H
+
 #define	GS_NSOperationQueue_IVARS \
   NSRecursiveLock	*lock; \
   NSConditionLock	*cond; \
@@ -53,7 +59,8 @@
   BOOL			suspended; \
   NSInteger		executing; \
   NSInteger		threadCount; \
-  NSInteger		maxThreads;
+  NSInteger		maxThreads; \
+  NSOPERATION_QUEUE_UNDERLYING_QUEUE_IVAR
 
 #import "Foundation/NSOperation.h"
 #import "Foundation/NSArray.h"
@@ -651,6 +658,10 @@ static NSOperationQueue *mainQueue = nil;
   if (nil == mainQueue)
     {
       mainQueue = [self new];
+
+#if HAVE_DISPATCH_H || HAVE_DISPATCH_DISPATCH_H
+      mainQueue->underlyingQueue = dispatch_get_main_queue();
+#endif // HAVE_DISPATCH_H || HAVE_DISPATCH_DISPATCH_H
     }
 }
 
@@ -658,6 +669,38 @@ static NSOperationQueue *mainQueue = nil;
 {
   return mainQueue;
 }
+
+#if HAVE_DISPATCH_H || HAVE_DISPATCH_DISPATCH_H
+
+- (dispatch_queue_t) underlyingQueue
+{
+    return internal->underlyingQueue;
+}
+
+- (void) setUnderlyingQueue: (dispatch_queue_t)underlyingQueue
+{
+    if (underlyingQueue == dispatch_get_main_queue())
+      {
+        [NSException raise: NSInvalidArgumentException
+        format: @"Cannot use dispatch_get_main_queue as an underlying queue"];
+      }
+
+    [internal->lock lock];
+
+    if (0 != [self operationCount])
+      {
+        [internal->lock unlock];
+
+        [NSException raise: NSInvalidArgumentException
+        format: @"Cannot set the underlyingQueue of an NSOperationQueue while operations are pending"];
+      }
+
+    internal->underlyingQueue = underlyingQueue;
+
+    [internal->lock unlock];
+}
+
+#endif
 
 - (void) addOperation: (NSOperation *)op
 {
@@ -1050,7 +1093,24 @@ static NSOperationQueue *mainQueue = nil;
 	    {
 	      ENTER_POOL
               [NSThread setThreadPriority: [op threadPriority]];
+
+#if HAVE_DISPATCH_H || HAVE_DISPATCH_DISPATCH_H
+              dispatch_queue_t underlyingQueue = [self underlyingQueue];
+
+              if (nil != underlyingQueue)
+                {
+                  dispatch_sync(underlyingQueue, ^(void)
+                    {
+                        [op start];
+                    });
+                }
+              else
+                {
+                    [op start];
+                }
+#else
               [op start];
+#endif
 	      LEAVE_POOL
 	    }
           NS_HANDLER
