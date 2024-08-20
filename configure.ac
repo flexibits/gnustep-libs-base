@@ -73,7 +73,7 @@ builtin(include, config/addlibrarypath.m4)dnl
 builtin(include, config/pkg.m4)dnl
 
 AC_INIT
-AC_PREREQ([2.60])
+AC_PREREQ([2.71])
 AC_CONFIG_SRCDIR([Source/NSArray.m])
 
 # If GNUSTEP_MAKEFILES is undefined, try to use gnustep-config to determine it.
@@ -143,13 +143,21 @@ CURRENT_GNUSTEP_MAKEFILES="$GNUSTEP_MAKEFILES"
 
 #--------------------------------------------------------------------
 # Use config.guess, config.sub and install-sh provided by gnustep-make
+# Evaluation order of the configure script means we can not depend on
+# GNUSTEP_MAKEFILES being set for simple variable substitution, so we
+# execute a bit of shell code to dynamically get the directory.
 #--------------------------------------------------------------------
-AC_CONFIG_AUX_DIR($CURRENT_GNUSTEP_MAKEFILES)
+AC_CONFIG_AUX_DIR([`if test -z "$GNUSTEP_MAKEFILES"; then
+  gnustep-config --variable=GNUSTEP_MAKEFILES 2>&5
+else
+  echo $GNUSTEP_MAKEFILES
+fi`])
+
 
 #--------------------------------------------------------------------
 # Use a .h file with #define's, instead of -D command-line switches
 #--------------------------------------------------------------------
-AC_CONFIG_HEADER(Headers/GNUstepBase/config.h)
+AC_CONFIG_HEADERS([Headers/GNUstepBase/config.h:Headers/GNUstepBase/config.h.in])
 
 #--------------------------------------------------------------------
 # Determine the host, build, and target systems
@@ -170,7 +178,7 @@ AC_ARG_WITH(cross-compilation-info,
   cross_result="$withval",
   cross_result="no"
 )
-CROSS_CONFIG="./cross.config"
+CROSS_CONFIG="$srcdir/cross.config"
 if test "$cross_result" != "no"
 then
  if test -f "$cross_result" && test -r "$cross_result"
@@ -538,59 +546,45 @@ AC_SUBST(GNUSTEP_BASE_DOMAIN)
 #
 case "$target_os" in
   mingw*|windows)
-    # TODO: Improve this hack.
-    # According to Wikipedia, this is the default for Windows 2000,
-    # Windows XP and Windows Server 2003.  For Windows Vista this will
-    # change to C:\Users.  The directory name needs to be localized though
-    # (and the disk may need changing as well ?).
-    GNUSTEP_SYSTEM_USERS_DIR="C:\Documents and Settings"
-    GNUSTEP_NETWORK_USERS_DIR="C:\Documents and Settings"
-    GNUSTEP_LOCAL_USERS_DIR="C:\Documents and Settings"
+    GNUSTEP_SYSTEM_USERS_DIR="C:\Users"
+    GNUSTEP_NETWORK_USERS_DIR="C:\Users"
+    GNUSTEP_LOCAL_USERS_DIR="C:\Users"
 
-    # TODO: It would be nice to use the 'short' output of
-    # relative_path.sh, but older versions of relative_path.sh
-    # did not support specifying the type of output and
-    # would abort if they were given more than 2 parameters,
-    # so we can not use the 'short' option if we want gnustep-base
-    # to work with older versions of gnustep-make.
-    # Once everyone has upgraded to gnustep-make >= 2.0.5 (I'd say
-    # two years after it has been released ?), we could switch to the
-    # 'short' output though.
-    GNUSTEP_SYSTEM_APPS=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_SYSTEM_APPS`
-    GNUSTEP_SYSTEM_ADMIN_APPS=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_SYSTEM_ADMIN_APPS`
-    GNUSTEP_SYSTEM_WEB_APPS=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_SYSTEM_WEB_APPS`
-    GNUSTEP_SYSTEM_TOOLS=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_SYSTEM_TOOLS`
-    GNUSTEP_SYSTEM_ADMIN_TOOLS=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_SYSTEM_ADMIN_TOOLS`
-    GNUSTEP_SYSTEM_LIBRARY=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_SYSTEM_LIBRARY`
-    GNUSTEP_SYSTEM_LIBRARIES=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_SYSTEM_LIBRARIES`
-    GNUSTEP_SYSTEM_HEADERS=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_SYSTEM_HEADERS`
-    GNUSTEP_SYSTEM_DOC=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_SYSTEM_DOC`
-    GNUSTEP_SYSTEM_DOC_MAN=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_SYSTEM_DOC_MAN`
-    GNUSTEP_SYSTEM_DOC_INFO=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_SYSTEM_DOC_INFO`
+    GNUSTEP_SYSTEM_APPS=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_SYSTEM_APPS short`
+    GNUSTEP_SYSTEM_ADMIN_APPS=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_SYSTEM_ADMIN_APPS short`
+    GNUSTEP_SYSTEM_WEB_APPS=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_SYSTEM_WEB_APPS short`
+    GNUSTEP_SYSTEM_TOOLS=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_SYSTEM_TOOLS short`
+    GNUSTEP_SYSTEM_ADMIN_TOOLS=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_SYSTEM_ADMIN_TOOLS short`
+    GNUSTEP_SYSTEM_LIBRARY=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_SYSTEM_LIBRARY short`
+    GNUSTEP_SYSTEM_LIBRARIES=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_SYSTEM_LIBRARIES short`
+    GNUSTEP_SYSTEM_HEADERS=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_SYSTEM_HEADERS short`
+    GNUSTEP_SYSTEM_DOC=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_SYSTEM_DOC short`
+    GNUSTEP_SYSTEM_DOC_MAN=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_SYSTEM_DOC_MAN short`
+    GNUSTEP_SYSTEM_DOC_INFO=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_SYSTEM_DOC_INFO short`
 
-    GNUSTEP_NETWORK_APPS=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_NETWORK_APPS`
-    GNUSTEP_NETWORK_ADMIN_APPS=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_NETWORK_ADMIN_APPS`
-    GNUSTEP_NETWORK_WEB_APPS=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_NETWORK_WEB_APPS`
-    GNUSTEP_NETWORK_TOOLS=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_NETWORK_TOOLS`
-    GNUSTEP_NETWORK_ADMIN_TOOLS=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_NETWORK_ADMIN_TOOLS`
-    GNUSTEP_NETWORK_LIBRARY=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_NETWORK_LIBRARY`
-    GNUSTEP_NETWORK_LIBRARIES=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_NETWORK_LIBRARIES`
-    GNUSTEP_NETWORK_HEADERS=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_NETWORK_HEADERS`
-    GNUSTEP_NETWORK_DOC=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_NETWORK_DOC`
-    GNUSTEP_NETWORK_DOC_MAN=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_NETWORK_DOC_MAN`
-    GNUSTEP_NETWORK_DOC_INFO=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_NETWORK_DOC_INFO`
+    GNUSTEP_NETWORK_APPS=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_NETWORK_APPS short`
+    GNUSTEP_NETWORK_ADMIN_APPS=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_NETWORK_ADMIN_APPS short`
+    GNUSTEP_NETWORK_WEB_APPS=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_NETWORK_WEB_APPS short`
+    GNUSTEP_NETWORK_TOOLS=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_NETWORK_TOOLS short`
+    GNUSTEP_NETWORK_ADMIN_TOOLS=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_NETWORK_ADMIN_TOOLS short`
+    GNUSTEP_NETWORK_LIBRARY=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_NETWORK_LIBRARY short`
+    GNUSTEP_NETWORK_LIBRARIES=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_NETWORK_LIBRARIES short`
+    GNUSTEP_NETWORK_HEADERS=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_NETWORK_HEADERS short`
+    GNUSTEP_NETWORK_DOC=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_NETWORK_DOC short`
+    GNUSTEP_NETWORK_DOC_MAN=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_NETWORK_DOC_MAN short`
+    GNUSTEP_NETWORK_DOC_INFO=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_NETWORK_DOC_INFO short`
 
-    GNUSTEP_LOCAL_APPS=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_LOCAL_APPS`
-    GNUSTEP_LOCAL_ADMIN_APPS=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_LOCAL_ADMIN_APPS`
-    GNUSTEP_LOCAL_WEB_APPS=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_LOCAL_WEB_APPS`
-    GNUSTEP_LOCAL_TOOLS=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_LOCAL_TOOLS`
-    GNUSTEP_LOCAL_ADMIN_TOOLS=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_LOCAL_ADMIN_TOOLS`
-    GNUSTEP_LOCAL_LIBRARY=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_LOCAL_LIBRARY`
-    GNUSTEP_LOCAL_LIBRARIES=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_LOCAL_LIBRARIES`
-    GNUSTEP_LOCAL_HEADERS=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_LOCAL_HEADERS`
-    GNUSTEP_LOCAL_DOC=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_LOCAL_DOC`
-    GNUSTEP_LOCAL_DOC_MAN=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_LOCAL_DOC_MAN`
-    GNUSTEP_LOCAL_DOC_INFO=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_LOCAL_DOC_INFO`
+    GNUSTEP_LOCAL_APPS=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_LOCAL_APPS short`
+    GNUSTEP_LOCAL_ADMIN_APPS=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_LOCAL_ADMIN_APPS short`
+    GNUSTEP_LOCAL_WEB_APPS=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_LOCAL_WEB_APPS short`
+    GNUSTEP_LOCAL_TOOLS=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_LOCAL_TOOLS short`
+    GNUSTEP_LOCAL_ADMIN_TOOLS=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_LOCAL_ADMIN_TOOLS short`
+    GNUSTEP_LOCAL_LIBRARY=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_LOCAL_LIBRARY short`
+    GNUSTEP_LOCAL_LIBRARIES=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_LOCAL_LIBRARIES short`
+    GNUSTEP_LOCAL_HEADERS=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_LOCAL_HEADERS short`
+    GNUSTEP_LOCAL_DOC=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_LOCAL_DOC short`
+    GNUSTEP_LOCAL_DOC_MAN=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_LOCAL_DOC_MAN short`
+    GNUSTEP_LOCAL_DOC_INFO=`$GNUSTEP_MAKEFILES/relative_path.sh $GNUSTEP_BASE_PATH $GNUSTEP_LOCAL_DOC_INFO short`
 # It would be nice to now store this stuff into a ./GNUstep.conf file
 # installed with gnustep-base.dll.  This would clarify.
     ;;
@@ -1372,12 +1366,12 @@ fi
 #--------------------------------------------------------------------
 AC_MSG_NOTICE(for gdomap network details)
 AC_MSG_CHECKING(for variable length socket addresses)
-AC_TRY_COMPILE([
+AC_LANG(C)
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
   #include <sys/types.h>
   #include <sys/socket.h>
-  #include <net/if.h>
-  ],
-  [struct ifreq s; s.ifr_addr.sa_len = 0;],
+  #include <net/if.h>]],
+  [[struct ifreq s; s.ifr_addr.sa_len = 0;]])],
   sa_len=1, sa_len=0)
 if test $sa_len = 1; then
   AC_MSG_RESULT([found])
@@ -1409,10 +1403,11 @@ CFLAGS="$saved_CFLAGS"
 # Check if system has buggy SO_REUSEADDR
 #--------------------------------------------------------------------
 AC_MSG_CHECKING(whether SO_REUSEADDR is broken)
-AC_TRY_RUN([#include "$srcdir/config/config.reuseaddr.c"],
-	reuseaddr_ok=1,
-	reuseaddr_ok=0,
-	reuseaddr_ok="$cross_reuseaddr_ok")
+AC_RUN_IFELSE(
+	[AC_LANG_SOURCE([[#include "$srcdir/config/config.reuseaddr.c"]])],
+	[reuseaddr_ok=1],
+	[reuseaddr_ok=0],
+	[reuseaddr_ok="$cross_reuseaddr_ok"])
 if test $reuseaddr_ok = 0; then
   AC_DEFINE(BROKEN_SO_REUSEADDR,1,
             [Define if SO_REUSEADDR is broken on this system])
@@ -1873,7 +1868,7 @@ fi
 if test $HAVE_WIN32_THREADS_AND_LOCKS = 1; then
   AC_CHECK_SIZEOF(gs_mutex_t,,[AC_INCLUDES_DEFAULT
     #define GS_USE_WIN32_THREADS_AND_LOCKS 1
-    #include "Source/GSPThread.h"])
+    #include "$srcdir/Source/GSPThread.h"])
   GS_SIZEOF_MUTEX_T=$ac_cv_sizeof_gs_mutex_t
   if test $ac_cv_sizeof_gs_mutex_t = 0 ; then
     AC_MSG_ERROR([Unable to find size of gs_mutex_t (required).])
@@ -1882,7 +1877,7 @@ if test $HAVE_WIN32_THREADS_AND_LOCKS = 1; then
   
   AC_CHECK_ALIGNOF(gs_mutex_t,[AC_INCLUDES_DEFAULT
     #define GS_USE_WIN32_THREADS_AND_LOCKS 1
-    #include "Source/GSPThread.h"])
+    #include "$srcdir/Source/GSPThread.h"])
   GS_ALIGNOF_MUTEX_T=$ac_cv_alignof_gs_mutex_t
   if test $ac_cv_alignof_gs_mutex_t = 0 ; then
     AC_MSG_ERROR([Unable to find align of gs_mutex_t (required).])
@@ -1951,13 +1946,16 @@ CFLAGS=$saved_CFLAGS
 # Check whether we can get the system thread ID
 #--------------------------------------------------------------------
 AC_CACHE_CHECK([for gettid()], ac_cv_gettid,
-[AC_TRY_RUN(#define _GNU_SOURCE
+[AC_RUN_IFELSE(
+	[AC_LANG_SOURCE([[#define _GNU_SOURCE
 #include <unistd.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
 int main(int argc, char **argv) {
-pid_t t = syscall(SYS_gettid); return t == -1 ? 1 : 0; },
-[ac_cv_gettid=yes], [ac_cv_gettid=no], [ac_cv_gettid=no])])
+pid_t t = syscall(SYS_gettid); return t == -1 ? 1 : 0; }]])],
+	[ac_cv_gettid=yes],
+	[ac_cv_gettid=no],
+	[ac_cv_gettid=no])])
 if test "$ac_cv_gettid" = "yes"; then
   AC_DEFINE(HAVE_GETTID, 1, [Define if you have gettid()])
 fi
@@ -1975,10 +1973,11 @@ if test x"$objc_threaded" != x""; then
 fi
 LIBS="$LIBS $extra_LIBS"
 AC_CACHE_VAL(gs_cv_objc_works,
-  AC_TRY_RUN([#include "$srcdir/config/config.objc.m"],
-  gs_cv_objc_works=yes,
-  gs_cv_objc_works=no,
-  gs_cv_objc_works="$cross_gs_cv_objc_works")
+  AC_RUN_IFELSE(
+	[AC_LANG_SOURCE([[#include "$srcdir/config/config.objc.m"]])],
+  	[gs_cv_objc_works=yes],
+  	[gs_cv_objc_works=no],
+  	[gs_cv_objc_works="$cross_gs_cv_objc_works"])
 )
 if test $gs_cv_objc_works = yes; then
   AC_MSG_RESULT(yes)
@@ -2010,10 +2009,12 @@ else
   CPPFLAGS="$CPPFLAGS -fconstant-string-class=FooConstantString"
   AC_MSG_CHECKING(if the compiler supports -fconstant-string-class)
   AC_CACHE_VAL(gs_cv_objc_compiler_supports_constant_string_class,
-    AC_TRY_RUN([#include "$srcdir/config/config.constant-string-class.m"],
-    gs_cv_objc_compiler_supports_constant_string_class=yes,
-    gs_cv_objc_compiler_supports_constant_string_class=no,
-    gs_cv_objc_compiler_supports_constant_string_class="$cross_gs_cv_objc_compiler_supports_constant_string_class")
+    AC_RUN_IFELSE(
+	[AC_LANG_SOURCE(
+	  [[#include "$srcdir/config/config.constant-string-class.m"]])],
+    	[gs_cv_objc_compiler_supports_constant_string_class=yes],
+    	[gs_cv_objc_compiler_supports_constant_string_class=no],
+    	[gs_cv_objc_compiler_supports_constant_string_class="$cross_gs_cv_objc_compiler_supports_constant_string_class"])
   )
   if test $gs_cv_objc_compiler_supports_constant_string_class = yes; then
     NX_CONST_STRING_OBJCFLAGS="-fconstant-string-class=NSConstantString"
@@ -2049,10 +2050,11 @@ AC_SUBST(NX_CONST_STRING_CLASS)
 #---------------------------------------------------------------------
 AC_MSG_CHECKING(if +load method is executed before main)
 AC_CACHE_VAL(gs_cv_objc_load_method_worked,
-  AC_TRY_RUN([#include "$srcdir/config/config.loadtest.m"],
-	gs_cv_objc_load_method_worked=yes,
-	gs_cv_objc_load_method_worked=no,
-	gs_cv_objc_load_method_worked="$cross_gs_cv_objc_load_method_worked")
+  AC_RUN_IFELSE(
+	[AC_LANG_SOURCE([[#include "$srcdir/config/config.loadtest.m"]])],
+	[gs_cv_objc_load_method_worked=yes],
+	[gs_cv_objc_load_method_worked=no],
+	[gs_cv_objc_load_method_worked="$cross_gs_cv_objc_load_method_worked"])
 )
 if test $gs_cv_objc_load_method_worked = yes; then
   AC_DEFINE(HAVE_LOAD_METHOD,1,
@@ -2330,7 +2332,7 @@ AC_C_INLINE
 #--------------------------------------------------------------------
 # Following header checks needed for bzero in Storage.m and other places
 #--------------------------------------------------------------------
-AC_HEADER_STDC
+
 AC_CHECK_HEADERS(string.h memory.h alloca.h)
 
 #--------------------------------------------------------------------
@@ -2470,11 +2472,10 @@ AC_CHECK_LIB(z, gzseek)
 AC_SEARCH_LIBS(sframe, sframe_decode)
 AC_CHECK_LIB(bfd, bfd_openr)
 
-AC_TRY_COMPILE([
-  #include <bfd.h>
-  ],
-  [bfd_section_vma(0);],
-  bfd_section_vma=1, bfd_section_vma=0)
+AC_COMPILE_IFELSE(
+	[AC_LANG_PROGRAM([[#include <bfd.h>]],[[bfd_section_vma(0);]])],
+	[bfd_section_vma=1],
+	[bfd_section_vma=0])
 if test $bfd_section_vma = 1; then
   AC_MSG_RESULT([bfd_section_vma found])
   AC_DEFINE([HAVE_BFD_SECTION_VMA], [1], [Have bfd_section_vma])
@@ -2539,7 +2540,11 @@ if test $ac_cv_header_poll_h = yes; then
   if test $have_poll = yes; then
     AC_MSG_RESULT(no)
     AC_MSG_CHECKING([if poll supports devices])
-    AC_TRY_RUN([#include "$srcdir/config/config.poll-dev.c"i], ,have_poll=no, have_poll="$cross_have_poll" )
+    AC_RUN_IFELSE(
+	[AC_LANG_SOURCE([[#include "$srcdir/config/config.poll-dev.c"]])],
+	,
+	[have_poll=no],
+	[have_poll="$cross_have_poll"])
     if test $have_poll = yes; then
       AC_MSG_RESULT(yes)
       AC_DEFINE(HAVE_POLL_F,1, [ Define if poll is NOT emulated via select])
@@ -2556,18 +2561,20 @@ fi
 #--------------------------------------------------------------------
 AC_CHECK_FUNCS(vsprintf vasprintf snprintf vsnprintf)
 if test $ac_cv_func_vsprintf = yes ; then
-    AC_TRY_RUN([#include "$srcdir/config/config.vsprintf.c"],
-		VSPRINTF_RETURNS_LENGTH=1,
-		VSPRINTF_RETURNS_LENGTH=0,
-		VSPRINTF_RETURNS_LENGTH="$cross_VSPRINTF_RETURNS_LENGTH")
+    AC_RUN_IFELSE(
+	[AC_LANG_SOURCE([[#include "$srcdir/config/config.vsprintf.c"]])],
+	[VSPRINTF_RETURNS_LENGTH=1],
+	[VSPRINTF_RETURNS_LENGTH=0],
+	[VSPRINTF_RETURNS_LENGTH="$cross_VSPRINTF_RETURNS_LENGTH"])
     AC_DEFINE_UNQUOTED(VSPRINTF_RETURNS_LENGTH, $VSPRINTF_RETURNS_LENGTH,
                        [Define if vsprintf returns the length printed])
 fi
 if test $ac_cv_func_vasprintf = yes ; then
-    AC_TRY_RUN([#include "$srcdir/config/config.vasprintf.c"],
-		VASPRINTF_RETURNS_LENGTH=1,
-		VASPRINTF_RETURNS_LENGTH=0,
-		VASPRINTF_RETURNS_LENGTH="$cross_VASPRINTF_RETURNS_LENGTH")
+    AC_RUN_IFELSE(
+	[AC_LANG_SOURCE([[#include "$srcdir/config/config.vasprintf.c"]])],
+	[VASPRINTF_RETURNS_LENGTH=1],
+	[VASPRINTF_RETURNS_LENGTH=0],
+	[VASPRINTF_RETURNS_LENGTH="$cross_VASPRINTF_RETURNS_LENGTH"])
     AC_DEFINE_UNQUOTED(VASPRINTF_RETURNS_LENGTH, $VASPRINTF_RETURNS_LENGTH,
                        [Define if vasprintf returns the length printed])
 fi
@@ -2756,10 +2763,11 @@ AC_CHECK_HEADERS(wchar.h)
 saved_CFLAGS="$CFLAGS"
 CFLAGS="$CFLAGS -O0"
 AC_MSG_CHECKING(short/int needs to be word aligned)
-AC_TRY_RUN([#include "$srcdir/config/config.align.c"],
-	NEED_WORD_ALIGNMENT=0,
-	NEED_WORD_ALIGNMENT=1,
-	NEED_WORD_ALIGNMENT="$cross_NEED_WORD_ALIGNMENT")
+AC_RUN_IFELSE(
+	[AC_LANG_SOURCE([[#include "$srcdir/config/config.align.c"]])],
+	[NEED_WORD_ALIGNMENT=0],
+	[NEED_WORD_ALIGNMENT=1],
+	[NEED_WORD_ALIGNMENT="$cross_NEED_WORD_ALIGNMENT"])
 CFLAGS="$saved_CFLAGS"
 AC_DEFINE_UNQUOTED(NEED_WORD_ALIGNMENT, $NEED_WORD_ALIGNMENT,
                    [Define if your system needs to have short/int word aligned])
@@ -2776,15 +2784,19 @@ AC_CHECK_FUNCS(register_printf_specifier)
 AC_CHECK_FUNC(register_printf_function, register_printf=1,
 register_printf=0)
 if test $register_printf = 1; then
-  AC_TRY_RUN([#include "$srcdir/config/config.printf.c"],
-	       working_register_printf=1, working_register_printf=0,
-               working_register_printf="$cross_working_register_printf")
+  AC_RUN_IFELSE(
+	[AC_LANG_SOURCE([[#include "$srcdir/config/config.printf.c"]])],
+	[working_register_printf=1],
+	[working_register_printf=0],
+       	[working_register_printf="$cross_working_register_printf"])
   if test $working_register_printf = 1; then
     AC_DEFINE(HAVE_REGISTER_PRINTF_FUNCTION,1,
               [Define if you have the register_printf_function function])
-    AC_TRY_RUN([#include "$srcdir/config/config.wprintf.c"],
-	       wide_register_printf=1, wide_register_printf=0,
-               wide_register_printf="$cross_wide_register_printf")
+    AC_RUN_IFELSE(
+	[AC_LANG_SOURCE([[#include "$srcdir/config/config.wprintf.c"]])],
+	[wide_register_printf=1],
+	[wide_register_printf=0],
+	[wide_register_printf="$cross_wide_register_printf"])
     if test $wide_register_printf = 1; then
       AC_DEFINE(HAVE_WIDE_PRINTF_FUNCTION,1,
               [Define if register_printf_function supports wide characters])
@@ -2804,7 +2816,8 @@ AC_CHECK_FUNCS(realpath)
 #--------------------------------------------------------------------
 AC_MSG_CHECKING(program_invocation_name in C Library)
 AC_CACHE_VAL(gs_cv_program_invocation_name_worked,
-[AC_TRY_RUN([
+[AC_RUN_IFELSE(
+	[AC_LANG_SOURCE([[
 #include <string.h>
 int
 main (int argc, char *argv[])
@@ -2812,8 +2825,10 @@ main (int argc, char *argv[])
   extern char *program_invocation_name;
   return (strcmp (program_invocation_name, argv[0]));
 }
-], gs_cv_program_invocation_name_worked=yes, gs_cv_program_invocation_name_worked=no,
- gs_cv_program_invocation_name_worked="$cross_gs_cv_program_invocation_name_worked")])
+]])],
+	[gs_cv_program_invocation_name_worked=yes],
+	[gs_cv_program_invocation_name_worked=no],
+	[gs_cv_program_invocation_name_worked="$cross_gs_cv_program_invocation_name_worked"])])
 if test $gs_cv_program_invocation_name_worked = yes; then
   AC_DEFINE(HAVE_PROGRAM_INVOCATION_NAME,1,
             [Define if your Lib C defines program_invocation_name])
@@ -2846,10 +2861,11 @@ AC_SYS_PROCFS_EXE_LINK
 # Check if /proc/$$/cmdline terminates the last argument with a nul
 #--------------------------------------------------------------------
 AC_MSG_CHECKING(/proc/$$/cmdline terminated by nul)
-AC_TRY_RUN([#include "$srcdir/config/config.proccmd.c"],
-	CMDLINE_TERMINATED=1,
-	CMDLINE_TERMINATED=0,
-	CMDLINE_TERMINATED="$cross_CMDLINE_TERMINATED")
+AC_RUN_IFELSE(
+	[AC_LANG_SOURCE([[#include "$srcdir/config/config.proccmd.c"]])],
+	[CMDLINE_TERMINATED=1],
+	[CMDLINE_TERMINATED=0],
+	[CMDLINE_TERMINATED="$cross_CMDLINE_TERMINATED"])
 AC_DEFINE_UNQUOTED(CMDLINE_TERMINATED, $CMDLINE_TERMINATED,
 		   [Define if your system terminates the final argument in /proc/$$/cmdline])
 if test $CMDLINE_TERMINATED = 1; then
@@ -2866,10 +2882,11 @@ save_LIBS="$LIBS"
 AC_CHECK_LIB(kvm, kvm_getenvv)
 if test "$ac_cv_lib_kvm_kvm_getenvv" = yes; then
   AC_MSG_CHECKING(if we can access kernel memory)
-  AC_TRY_RUN([#include "$srcdir/config/config.kvmopen.c"],
-	have_kvm_env=1,
-	have_kvm_env=0,
-	have_kvm_env="$cross_have_kvm_env")
+  AC_RUN_IFELSE(
+	[AC_LANG_SOURCE[[#include "$srcdir/config/config.kvmopen.c"]])],
+	[have_kvm_env=1],
+	[have_kvm_env=0],
+	[have_kvm_env="$cross_have_kvm_env"])
   if test $have_kvm_env = 1; then
     AC_MSG_RESULT(yes)
     AC_DEFINE(HAVE_KVM_ENV, 1,
@@ -3095,8 +3112,11 @@ if test $enable_libffi = yes; then
     ffi_LIBS=-lffi
   fi
   LIBS="$ffi_LIBS $LIBS"
-  AC_TRY_RUN([#include "$srcdir/config/config.ffi.c"],
-             ffi_ok="yes",ffi_ok="no",ffi_ok="$cross_ffi_ok")
+  AC_RUN_IFELSE(
+	[AC_LANG_SOURCE([[#include "$srcdir/config/config.ffi.c"]])],
+	[ffi_ok="yes"],
+	[ffi_ok="no"],
+	[ffi_ok="$cross_ffi_ok"])
   if test $ffi_ok = yes; then
     AC_MSG_RESULT(libffi)
     if test $do_broken_libffi = yes; then
@@ -3111,7 +3131,10 @@ elif test $enable_ffcall = yes; then
             [Define if using the ffcall library for invocations])
   WITH_FFI=ffcall
   LIBS="-lcallback -lavcall $LIBS"
-  AC_TRY_LINK([#include <callback.h>], , ffi_ok="yes", ffi_ok="no")
+  AC_LINK_IFELSE(
+	[AC_LANG_PROGRAM([[#include <callback.h>]],)],
+	[ffi_ok="yes"],
+	[ffi_ok="no"])
   if test $ffi_ok = yes; then
     AC_MSG_RESULT(ffcall)
   fi
@@ -3629,7 +3652,10 @@ if test $enable_libdispatch = yes; then
       # This check is needed because libdispatch might be linked against a
       # version of libBlocksRuntime that defines symbols conflicting with libobjc
       AC_MSG_CHECKING(whether we can link libdispatch and libobjc at the same time)
-      AC_TRY_LINK(,,have_dispatch=yes, have_dispatch=no)
+      AC_LINK_IFELSE(
+	[AC_LANG_PROGRAM(,)],
+	[have_dispatch=yes],
+	[have_dispatch=no])
       if test "$have_dispatch" = "yes"; then
 	LIBS="$saveLIBS -ldispatch";
 	AC_MSG_RESULT(yes);
@@ -3660,6 +3686,8 @@ if test $HAVE_LIBDISPATCH = 1; then
   if test "$ac_cv_func__dispatch_main_queue_callback_4CF" = "yes" && test "$ac_cv_func__dispatch_get_main_queue_handle_4CF" = "yes"; then
     HAVE_LIBDISPATCH_RUNLOOP=1
   fi
+  # Check for availability of functions in more recent libdispatch versions.
+  AC_CHECK_FUNCS(dispatch_cancel)
 fi
 AC_SUBST(HAVE_LIBDISPATCH_RUNLOOP)
 
@@ -3803,6 +3831,13 @@ fi
 
 AC_SUBST(USE_GMP)
 
+#--------------------------------------------------------------------
+# Check dor 'dot', needed for graphs in autogsdoc output.
+#--------------------------------------------------------------------
+AC_ARG_VAR([DOT], [The name or full path of the graphviz dot command.])
+
+AC_PATH_PROG([DOT], [dot], [])
+AC_SUBST(HAVE_DOT, [$ac_cv_path_DOT])
 
 #--------------------------------------------------------------------
 # Check whether nl_langinfo(CODESET) is supported, needed by Unicode.m.

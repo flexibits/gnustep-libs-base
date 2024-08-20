@@ -1,12 +1,289 @@
+2024-12-08 Hugo Melder <hugo@algoriddim.com>
+	* Source/NSThread.m:
+	Fix threadPriority and setThreadPriority: on Android.
+
+2024-08-08 Richard Frith-Macdonald <rfm@gnu.org>
+
+	* Tools/AGSHtml.m:
+	Add protocols to the graphing.
+
+2024-08-07 Richard Frith-Macdonald <rfm@gnu.org>
+
+	* Tools/AGSHtml.m:
+	* Tools/GNUmakefile:
+	* config.mak.in:
+	* configure.ac:
+	* configure:
+	Preliminary changes add inheritance diagrams to class documentation.
+	Uses the graphviz 'dot' tool if it is available at configure time.
+	Just draws class/superclass relationship for now.
+	Should add protocols and prettify boxes later.
+
+2024-07-25 Richard Frith-Macdonald <rfm@gnu.org>
+
+	* Headers/Foundation/NSHashTable.h:
+	* Headers/Foundation/NSMapTable.h:
+	* Headers/Foundation/NSPointerArray.h:
+	* Headers/Foundation/NSPointerFunctions.h:
+	* Headers/Foundation/NSZone.h:
+	* Headers/GNUstepBase/config.h.in:
+	* Source/GSSocketStream.m:
+	* Source/GSStream.m:
+	* Source/NSConcreteHashTable.m:
+	* Source/NSConcreteMapTable.m:
+	* Source/NSConcretePointerFunctions.h:
+	* Source/NSConcretePointerFunctions.m:
+	* Source/NSConnection.m:
+	* Source/NSHashTable.m:
+	* Source/NSKeyedArchiver.m:
+	* Source/NSKeyedUnarchiver.m:
+	* Source/NSKeyValueObserving.m:
+	* Source/NSMapTable.m:
+	* Source/NSPointerArray.m:
+	* Source/NSPort.m:
+	* Source/NSZone.m:
+	* Tests/base/NSHashTable/create.m:
+	* Tests/base/NSHashTable/weakObjects.m:
+	* Tests/base/NSIndexSet/enumerateRanges.m:
+	* Tests/base/NSMapTable/create.m:
+	* Tests/base/NSMapTable/weakObjects.m:
+	* Tests/base/NSPointerArray/weakObjects.m:
+	* Tests/base/NSPointerFunctions/basic.m:
+	* Tests/base/NSPointerFunctions/general.m:
+	* Tests/base/NSPointerFunctions/TestInfo:
+	General fixups for pointer functions, removing obsolete (non-working)
+	GC related internal code.  There is probably still a little of that old
+	stuff lurking in the internals which should be removed when found, but
+	the vast majority is cleaned up.
+
+2024-07-15 Richard Frith-Macdonald <rfm@gnu.org>
+
+	* Headers/Foundation/NSPointerFunctions.h: deprecate GC methods.
+	* Source/NSConcreteHashTable.m: add brackets around test.
+	* Source/NSConcreteMapTable.m: correct test for weak value and key.
+	* Source/NSConcretePointerFunctions.m: Obsolete GC code changes ...
+	Raise exception for setter of GC write barriers.
+	Log error for n getter of GC write barriers.
+
+2024-07-09 Richard Frith-Macdonald <rfm@gnu.org>
+
+	* Source/NSString.m: Implement regular expression search in replace
+	methods (github issue 424) by using -rangeOfString:options:range: in
+	place of obsolete optimisation function.
+
+2024-07-09 Richard Frith-Macdonald <rfm@gnu.org>
+
+	* config/codeset.m4:
+ 	* config/objc-con-autoload.m4:
+ 	* config/pathtls.m4:
+ 	* config/pathxml.m4:
+ 	* config/procfs.m4:
+ 	* configure.ac:
+	Changes to avoid the use of most obsolete/deprecated autoconf macros.
+	Change usage of AC_CONFIG_AUX_DIR() to deal with altered behavior in
+	autoconf-2.71 (shipped on many new systems) where the value we set
+	in CURRENT_GNUSTEP_MAKEFILES is not available.  This should now use
+	the GNUSTEP_MAKEFILES environment variable or get the output of the
+	gnustep-config script directly.
+
+2024-07-02 Hugo Melder <hugo@algoriddim.com>
+
+	* Source/GSEasyHandle.h:
+	* Source/GSEasyHandle.m:
+	* Source/GSHTTPURLProtocol.h:
+	* Source/GSHTTPURLProtocol.m:
+	* Source/GSMultiHandle.h:
+	* Source/GSMultiHandle.m:
+	* Source/GSNativeProtocol.h:
+	* Source/GSNativeProtocol.m:
+	* Source/GSTaskRegistry.h:
+	* Source/GSTaskRegistry.m:
+	* Source/GSTimeoutSource.h:
+	* Source/GSTimeoutSource.m:
+	* Source/GSTransferState.h:
+	* Source/GSTransferState.m:
+	* Source/GSURLPrivate.h:
+	* Source/GSURLSessionTaskBody.h:
+	* Source/GSURLSessionTaskBody.m:
+	* Source/GSURLSessionTaskBodySource.h:
+	* Source/GSURLSessionTaskBodySource.m:
+	Deleted old NSURLSession implementation.
+
+	* Headers/Foundation/NSURLSession.h:
+	* Source/NSURLSessionPrivate.h:
+	* Source/NSURLSession.m:
+	* Source/NSURLSessionConfiguration.m:
+	* Source/NSURLSessionTaskPrivate.h:
+	* Source/NSURLSessionTask.m:
+	* Source/NSURLSessionConfiguration.m:
+	The new NSURLSession implementation was reduced to just two main classes:
+	NSURLSession and NSURLSessionTask. URLSession manages a libcurl multi
+	handle and the required plumming via libdispatch. Timeout and socket actions
+	are handled in the libdispatch workqueue. Delegate messages and completion
+	handlers are submitted to a seperate serial NSOperationQueue.
+
+	* Headers/Foundation/NSUserDefaults.h:
+	* Source/externs.m:
+	Added GSCACertificateFilePath for custom CA certificate file configuration.
+
+	* Source/NSHTTPCookie.m:
+	Reworked cookie expiration date parsing.
+
+	* Source/NSOperation.m:
+	Clear all blocks in _executionBlocks after completion.
+
+	* Headers/Foundation/NSURLRequest.h:
+	* Source/NSURLRequest.m:
+	Implemented  -[NSURLRequest assumesHTTP3Capable] and -[NSURLRequest
+	setAssumesHTTP3Capable:] respectively.  The internal case-insensitive header
+	dictionary is now exposed for private usage with -[NSURLRequest
+	_insensitiveHeaders].
+
+2024-06-21 Richard Frith-Macdonald <rfm@gnu.org>
+
+	* Source/NSDistantObject.m: Use standard method name conventions
+	* Tools/AGSOutput.m:
+	* Tools/AGSParser.m:
+	* Tools/autogsdoc.m:
+	* Tools/make_strings/make_strings.m:
+	* Tools/plutil.m:
+	Fix various memory leaks.
+	* Tools/NSObject.m:
+	* Documentation/Base.gsdoc:
+	Make GSLogZombie() an external function for debuggers which can't find
+	it as a static function. Add [NSZombie -logZombie:] method to call the
+	function in case there is a debugger which can set a breakpoint on the
+	method more easily than on the function.
+
+2024-06-21 Richard Frith-Macdonald <rfm@gnu.org>
+
+	* Source/Additions/Unicode.m:
+	* Source/GSTLS.m:
+	* Source/NSDictionary.m:
+	* Source/NSThread.m:
+	* Source/NSURLSession.m:
+	* Tools/AGSHtml.m:
+	* Tools/AGSOutput.m:
+	* Tools/AGSParser.m:
+	Fix dead assignments.
+
+2024-06-21 Richard Frith-Macdonald <rfm@gnu.org>
+
+	* Source/GSHTTPURLProtocol.m:
+	* Source/GSTLS.m:
+	* Source/NSConnection.m:
+	* Source/NSSpellServer.m:
+	* Tools/AGSParser.m
+	Fix dead initialisations.
+	* Source/GSAttributedString.m:
+	* Source/tzdb.h:
+	Fix dead assignments
+	* Source/NSTask.m:
+	Use fork() becuse vfork() behavior is undefined when we make assignments
+	to variables or system calls before exec().
+	* Source/GSArray.m:
+	Ignore nil values in collection (should never happen) possibly caused
+	by retain/release errors.  Old code would have crashed.
+	* Source/NSException.m:
+	Avoid compiler warning about malloced memory type compatibility.
+ 
+2024-06-19 Richard Frith-Macdonald <rfm@gnu.org>
+
+	* Source/Additions/GSInsensitiveDictionary.m:
+	* Source/NSKeyedUnarchiver.m:
+	* Source/NSXMLParser.m:
+	Fix rare memory management issues.
+	* Source/NSURL.m: Fix C-string termination issues
+	and a few dead assignments
+	* Source/NSOrderedSet.m: Fix ranged initialisation index errors
+	* Source/GSDictionary.m: Avoid excess copies of dictionary keys
+	* Source/NSPropertyList.m: Fix potential leaks
+	* Source/NSSortDescriptor.m: Fix potential use after dealloc
+
+2024-06-18 Richard Frith-Macdonald <rfm@gnu.org>
+
+	* Headers/Foundation/NSDebug.h: Remove deprecated function and add
+	new function to turn on tracing objects of a specific class.
+	* Source/NSDebug.m: Fix locking issues when recording object allocation.
+	Fix bug removing recoded objects.  Implement tracing recorded object
+	allocation with stack trace (also option to veto recording of
+	individual objects).
+	* Source/GSFileHandle.m: Fix memory leak found using changes above.
+
+2024-06-10 Marco Rebhan <me@dblsaiko.net>
+
+  	* Headers/Foundation/NSFileManager.h:
+  	* Source/NSFileManager.m:
+  	Implement -[NSFileManager URLsForDirectory:inDomains:].
+
+2024-06-10 Richard Frith-Macdonald <rfm@gnu.org>
+
+	* Source/GSFileHandle.m: debug log of closing a closed file handle
+	rather than raising exception (reported by Wolfgang).
+
+2024-05-31 Hugo Melder <hugo@algoriddim.com>
+
+	* Source/NSPredicate.m:
+	* Tests/base/NSPredicate/basic.m:
+	Improve implementation of BETWEEN operator in NSPredicate
+	for data types other than NSNumber. Proper support
+	for constant values.
+  
+2024-05-18 Hugo Melder <hugo@algoriddim.com>
+
+	* Source/NSString.m:
+	* Headers/Foundation/NSString.h:
+	* Tests/base/NSString/enumerateLinesUsingBlock.m:
+	Implemented -[NSString enumerateLinesUsingBlock:].
+
+2024-04-30 Richard Frith-Macdonald <rfm@gnu.org>
+
+	* Headers/Foundation/NSObject.h:
+	* Headers/GNUstepBase/GSLock.h:
+	* Headers/GNUstepBase/NSLock+GNUstepBase.h:
+	* Source/Additions/GNUmakefile:
+	* Source/Additions/GSLock.m:
+	* Source/Additions/NSError+GNUstepBase.m:
+	* Source/Additions/NSLock+GNUstepBase.m:
+	* Source/Additions/NSObject+GNUstepBase.m:
+	* Source/Additions/Unicode.m:
+	* Source/DocMakefile:
+	* Source/GSLocale.m:
+	* Source/NSDistributedNotificationCenter.m:
+	* Source/NSFileManager.m:
+	* Source/NSHTTPCookieStorage.m:
+	* Source/NSKeyValueObserving.m:
+	* Source/NSLog.m:
+	* Source/NSObject.m:
+	* Source/NSPortNameServer.m:
+	* Source/NSTask.m:
+	* Source/NSThread.m:
+	* Source/NSURLCache.m:
+	* Source/NSURLCredentialStorage.m:
+	* Source/ObjectiveC2/properties.m:
+	Remove deprecated locking code.  Use lightweight and more fine-grained
+	locking for simple cases protecting short regions.  Retain a global
+	lock for more complex siutations where there is a significant chance of
+	deadlock.
+
+2024-04-26 Richard Frith-Macdonald <rfm@gnu.org>
+
+	* ChangeLog: Update for new release
+	* ANNOUNCE:
+	* NEWS:
+	* Documentation/ReleaseNotes.gsdoc:
+	* Documentation/news.texi:
+	Update release notes for 1.30.0 release.
+	* Version: bump to 1.30.0
+
 2024-04-29  Doug Simons <douglas.simons@keysight.com>
 
-    * NSXMLNode.m:
-       Fix execute_xpath() to return an NSError when xpath expression can't
-	   be evaluated instead of just calling NSLog.
-       	   
-    * NSXMLElement.m: 
-	   Fix setAttributes: and setAttributesWithDictionary: to remove previous
-	   attributes.
+	* NSXMLNode.m:
+	Fix execute_xpath() to return an NSError when xpath expression can't
+	be evaluated instead of just calling NSLog.
+	* NSXMLElement.m: 
+	Fix setAttributes: and setAttributesWithDictionary: to remove previous
+	attributes.
 
 2024-05-12 ethanc8R (github user)
 
@@ -61,7 +338,8 @@
 2024-03-10 Hugo Melder <service@hugomelder.com>
 	* Headers/Foundation/NSDate.h:
 	* Source/NSDate.m:
-	Added the +[NSDate now] constructor, which was introduced in macOS 10.15.
+	Added the +[NSDate now] constructor, which was introduced
+	in macOS 10.15.
 
 2024-03-04 Richard Frith-Macdonald <rfm@gnu.org>
 

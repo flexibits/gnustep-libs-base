@@ -41,8 +41,8 @@
 #import "Foundation/NSValue.h"
 #import "GNUstepBase/GSObjCRuntime.h"
 #import "GNUstepBase/Unicode.h"
-#import "GNUstepBase/GSLock.h"
 #import "GSInvocation.h"
+#import "GSPThread.h"
 
 #if defined(USE_LIBFFI)
 #import "cifframe.h"
@@ -78,9 +78,11 @@ static id               null;
 static inline void
 setup()
 {
+  static gs_mutex_t     setupLock = GS_MUTEX_INIT_STATIC;
+
   if (nil == kvoLock)
     {
-      [gnustep_global_lock lock];
+      GS_MUTEX_LOCK(setupLock);
       if (nil == kvoLock)
 	{
 	  kvoLock = [NSRecursiveLock new];
@@ -93,7 +95,7 @@ setup()
 	      NSOwnedPointerMapValueCallBacks, 128);
 	  baseClass = NSClassFromString(@"GSKVOBase");
 	}
-      [gnustep_global_lock unlock];
+      GS_MUTEX_UNLOCK(setupLock);
     }
 }
 /*
@@ -1160,8 +1162,7 @@ cifframe_callback(ffi_cif *cif, void *retp, void **args, void *user)
   if (observation == nil)
     {
       observation = [GSKVOObservation new];
-      GSAssignZeroingWeakPointer((void**)&observation->observer,
-	(void*)anObserver);
+      observation->observer = anObserver;
       observation->context = aContext;
       observation->options = options;
       [pathInfo->observations addObject: observation];

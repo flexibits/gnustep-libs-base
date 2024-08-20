@@ -25,6 +25,7 @@
    */
 
 #import "common.h"
+#import "GSPThread.h"
 #define	EXPOSE_NSTask_IVARS	1
 #import "Foundation/FoundationErrors.h"
 #import "Foundation/NSAutoreleasePool.h"
@@ -250,7 +251,9 @@ pty_slave(const char* name)
 {
   if (self == [NSTask class])
     {
-      [gnustep_global_lock lock];
+      static gs_mutex_t	classLock = GS_MUTEX_INIT_STATIC;
+
+      GS_MUTEX_LOCK(classLock);
       if (tasksLock == nil)
         {
           tasksLock = [NSRecursiveLock new];
@@ -281,7 +284,7 @@ pty_slave(const char* name)
                 NSObjectMapValueCallBacks, 0);
           [[NSObject leakAt: &activeTasks] release];
         }
-      [gnustep_global_lock unlock];
+      GS_MUTEX_UNLOCK(classLock);
 
 #ifndef _WIN32
       signal(SIGCHLD, handleSignal);
@@ -877,10 +880,17 @@ pty_slave(const char* name)
     }
   [timer invalidate];
 
-  /* Run loop one last time (with limit date in past) so that any
-   * notification about the task ending is sent immediately.
+  /* Run loop twice more (with limit date in past) so that if the
+   * notification about the task ending is to be delivered in this
+   * thread it is delivered before this method completes. (Twice
+   * because the first time runs the _notifyOfTermination performer,
+   * which queues the notification, and the second dequeues and posts
+   * the notification.)
+   * If the task was launched in another thread, the notification
+   * is delivered when that thread executes its run loop.
    */
   limit = [NSDate dateWithTimeIntervalSinceNow: 0.0];
+  [loop runMode: NSDefaultRunLoopMode beforeDate: limit];
   [loop runMode: NSDefaultRunLoopMode beforeDate: limit];
   LEAVE_POOL
 }
@@ -1666,13 +1676,14 @@ GSPrivateCheckTasks()
     }
   edesc = [hdl fileDescriptor];
 
-#ifdef __APPLE__
-  /* Use fork instead of vfork on Darwin because setsid() fails under
-   * Darwin 7 (aka OS X 10.3) and later while the child is in the vfork.
+  /* NB. we use fork() rather than vfork() because the bahavior of vfork()
+   * is undefined when we assign to variables or make system calls (as we
+   * do below) other than a very limited set.
+   * For performance it might be possible to use vfork on systems where
+   * there is a guarantee that vfork() is safe, but when in doubt we must
+   * assume the standard POSIX behavior.
    */
-#define vfork fork
-#endif
-  pid = vfork();
+  pid = fork();
   if (pid < 0)
     {
       if (error)

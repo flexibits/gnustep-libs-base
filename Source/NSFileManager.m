@@ -59,6 +59,7 @@
 #import "Foundation/NSSet.h"
 #import "Foundation/NSURL.h"
 #import "Foundation/NSValue.h"
+#import "GSFastEnumeration.h"
 #import "GSPrivate.h"
 #import "GSPThread.h"
 #import "GNUstepBase/NSString+GNUstepBase.h"
@@ -273,7 +274,7 @@ static Class	GSAttrDictionaryClass = 0;
 @end
 
 
-gs_thread_key_t thread_last_error_key;
+static gs_thread_key_t thread_last_error_key;
 
 static void GS_WINAPI
 exitedThread(void *lastErrorPtr)
@@ -348,8 +349,9 @@ exitedThread(void *lastErrorPtr)
 
 // Getting the default manager
 
-static NSFileManager* defaultManager = nil;
+static NSFileManager	*defaultManager = nil;
 static NSStringEncoding	defaultEncoding;
+static gs_mutex_t       classLock = GS_MUTEX_INIT_STATIC;
 
 + (NSFileManager*) defaultManager
 {
@@ -357,17 +359,17 @@ static NSStringEncoding	defaultEncoding;
     {
       NS_DURING
 	{
-	  [gnustep_global_lock lock];
+	  GS_MUTEX_LOCK(classLock);
 	  if (defaultManager == nil)
 	    {
 	      defaultManager = [[self alloc] init];
 	    }
-	  [gnustep_global_lock unlock];
+	  GS_MUTEX_UNLOCK(classLock);
 	}
       NS_HANDLER
 	{
 	  // unlock then re-raise the exception
-	  [gnustep_global_lock unlock];
+	  GS_MUTEX_UNLOCK(classLock);
 	  [localException raise];
 	}
       NS_ENDHANDLER
@@ -379,7 +381,10 @@ static NSStringEncoding	defaultEncoding;
 {
   defaultEncoding = [NSString defaultCStringEncoding];
   GSAttrDictionaryClass = [GSAttrDictionary class];
-  GS_THREAD_KEY_INIT(thread_last_error_key, exitedThread);
+  if (!GS_THREAD_KEY_INIT(thread_last_error_key, exitedThread))
+    {
+      NSLog(@"Problem initialising thread error key");
+    }
 }
 
 - (void) dealloc
@@ -486,14 +491,14 @@ static NSStringEncoding	defaultEncoding;
 #if     defined(HAVE_GETPWNAM)
 	  struct passwd *pw;
 
-          [gnustep_global_lock lock];
+          GS_MUTEX_LOCK(classLock);
 	  pw = getpwnam([str cStringUsingEncoding: defaultEncoding]);
 	  if (pw != 0)
 	    {
 	      ok = (chown(lpath, pw->pw_uid, -1) == 0);
 	      (void)chown(lpath, -1, pw->pw_gid);
 	    }
-          [gnustep_global_lock unlock];
+          GS_MUTEX_UNLOCK(classLock);
 #endif
 #endif
 #endif
@@ -550,14 +555,14 @@ static NSStringEncoding	defaultEncoding;
 #ifdef HAVE_GETGRNAM
       struct group *gp;
       
-      [gnustep_global_lock lock];
+      GS_MUTEX_LOCK(classLock);
       gp = getgrnam([str cStringUsingEncoding: defaultEncoding]);
       if (gp)
 	{
 	  if (chown(lpath, -1, gp->gr_gid) == 0)
 	    ok = YES;
 	}
-      [gnustep_global_lock unlock];
+      GS_MUTEX_UNLOCK(classLock);
 #endif
 #endif
 #endif
@@ -888,13 +893,13 @@ static NSStringEncoding	defaultEncoding;
   return result;  
 }
 
-- (NSURL *)URLForDirectory: (NSSearchPathDirectory)directory 
+- (NSURL*) URLForDirectory: (NSSearchPathDirectory)directory 
                   inDomain: (NSSearchPathDomainMask)domain 
-         appropriateForURL: (NSURL *)url 
+         appropriateForURL: (NSURL*)url 
                     create: (BOOL)shouldCreate 
-                     error: (NSError **)error
+                     error: (NSError**)error
 {
-  NSString *path = nil;
+  NSString	*path = nil;
 
   if (directory == NSItemReplacementDirectory)
     {
@@ -902,7 +907,9 @@ static NSStringEncoding	defaultEncoding;
     }
   else
     {
-      NSArray *pathArray = NSSearchPathForDirectoriesInDomains(directory, domain, YES);
+      NSArray	*pathArray;
+
+      pathArray = NSSearchPathForDirectoriesInDomains(directory, domain, YES);
 
       if ([pathArray count] > 0)
         {
@@ -911,14 +918,29 @@ static NSStringEncoding	defaultEncoding;
     }
 
   if (shouldCreate && ![self fileExistsAtPath: path])
-      {
-        [self       createDirectoryAtPath: path
-              withIntermediateDirectories: YES
-                               attributes: nil
-                                    error: error];
-      }
+    {
+      [self createDirectoryAtPath: path
+      withIntermediateDirectories: YES
+		       attributes: nil
+			    error: error];
+    }
   
   return [NSURL fileURLWithPath: path];
+}
+
+- (GS_GENERIC_CLASS(NSArray, NSURL*)*)
+  URLsForDirectory: (NSSearchPathDirectory)directory
+  inDomains: (NSSearchPathDomainMask)domain
+{
+  NSArray		*paths;
+  NSMutableArray	*urls;
+
+  paths = NSSearchPathForDirectoriesInDomains(directory, domain, YES);
+  urls = [NSMutableArray arrayWithCapacity: [paths count]];
+  FOR_IN(NSString*, path, paths)
+    [urls addObject: [NSURL fileURLWithPath: path]];
+  END_FOR_IN(paths)
+  return urls;
 }
 
 - (NSDirectoryEnumerator*) enumeratorAtURL: (NSURL*)url
@@ -3926,14 +3948,14 @@ static NSSet	*fileKeys = nil;
 #if defined(HAVE_GETGRGID)
   struct group	*gp;
 
-  [gnustep_global_lock lock];
+  GS_MUTEX_LOCK(classLock);
   gp = getgrgid(statbuf.st_gid);
   if (gp != 0)
     {
       group = [NSString stringWithCString: gp->gr_name
 				 encoding: defaultEncoding];
     }
-  [gnustep_global_lock unlock];
+  GS_MUTEX_UNLOCK(classLock);
 #endif
 #endif
 #endif
@@ -4093,14 +4115,14 @@ static NSSet	*fileKeys = nil;
 #if     defined(HAVE_GETPWUID)
   struct passwd *pw;
 
-  [gnustep_global_lock lock];
+  GS_MUTEX_LOCK(classLock);
   pw = getpwuid(statbuf.st_uid);
   if (pw != 0)
     {
       owner = [NSString stringWithCString: pw->pw_name
 				 encoding: defaultEncoding];
     }
-  [gnustep_global_lock unlock];
+  GS_MUTEX_UNLOCK(classLock);
 #endif
 #endif
 #endif /* HAVE_PWD_H */

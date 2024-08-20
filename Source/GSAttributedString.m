@@ -45,7 +45,6 @@
  */
 
 #import "common.h"
-#import "GNUstepBase/GSLock.h"
 #import "GNUstepBase/NSMutableString+GNUstepBase.h"
 #import "Foundation/NSAttributedString.h"
 #import "Foundation/NSException.h"
@@ -720,10 +719,6 @@ SANITY();
           if (effectiveRange.location < beginRangeLoc)
             {
               beginRangeLoc = effectiveRange.location;
-            }
-          if (NSMaxRange(effectiveRange) > afterRangeLoc)
-            {
-              afterRangeLoc = NSMaxRange(effectiveRange);
             }
         }
       else if (effectiveRange.location > beginRangeLoc)

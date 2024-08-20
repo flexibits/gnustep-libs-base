@@ -355,6 +355,19 @@ static BOOL snuggleStart(NSString *t)
       [str appendString: @"\""];
     }
 
+  tmp = [info objectForKey: @"stylesheeturl"];
+  if (nil == tmp)
+    {
+      tmp = [[NSUserDefaults standardUserDefaults]
+	stringForKey: @"StylesheetURL"];
+    }
+  if (tmp)
+    {
+      [str appendString: @" stylesheeturl=\""];
+      [str appendString: tmp];
+      [str appendString: @"\""];
+    }
+
   tmp = [info objectForKey: @"up"];
   if (tmp != nil)
     {
@@ -1498,7 +1511,8 @@ static BOOL snuggleStart(NSString *t)
    * or end tag, or one of the whitespace separated words.
    * What about str?
    */
-  data = [[NSMutableData alloc] initWithLength: l * sizeof(unichar)];
+  data = AUTORELEASE([[NSMutableData alloc]
+    initWithLength: l * sizeof(unichar)]);
   ptr = buf = [data mutableBytes];
   [str getCharacters: buf];
   end = buf + l;
@@ -1977,7 +1991,7 @@ static BOOL snuggleStart(NSString *t)
 		  pos++;
 		  if (pos < ePos
 		    && [identStart characterIsMember:
-		      (c = [tmp characterAtIndex: pos])] == YES)
+		      [tmp characterAtIndex: pos]] == YES)
 		    {
 		      while (pos < ePos)
 			{
@@ -2341,7 +2355,7 @@ static BOOL snuggleStart(NSString *t)
 	   * No pre-existing file, and no blank template available ...
 	   * Generate a standard template.
 	   */
-	  str = [[NSMutableString alloc] initWithCapacity: 1024];
+	  str = [NSMutableString stringWithCapacity: 1024];
 
 	  [str appendString: @"<?xml version=\"1.0\"?>\n"];
 	  [str appendString: @"<!DOCTYPE gsdoc PUBLIC "];
@@ -2350,6 +2364,18 @@ static BOOL snuggleStart(NSString *t)
 
 	  [str appendString: @"<gsdoc base=\""];
 	  [str appendString: [name lastPathComponent]];
+	  [str appendString: @"\""];
+	  if (nil == tmp)
+	    {
+	      tmp = [[NSUserDefaults standardUserDefaults]
+		stringForKey: @"StylesheetURL"];
+	    }
+	  if (tmp)
+	    {
+	      [str appendString: @" stylesheeturl=\""];
+	      [str appendString: tmp];
+	      [str appendString: @"\""];
+	    }
 	  /*
 	   * If a -Up default has been set, create an up link in this
 	   * template file... as long as the specified up link is not
@@ -2359,8 +2385,9 @@ static BOOL snuggleStart(NSString *t)
 	    {
 	      [str appendString: @"\" up=\""];
 	      [str appendString: up];
+	      [str appendString: @"\""];
 	    }
-	  [str appendString: @"\">\n"];
+	  [str appendString: @">\n"];
 	  [str appendString: @"  <head>\n"];
 	  [str appendString: @"    <title>"];
 	  [str appendString: kind];

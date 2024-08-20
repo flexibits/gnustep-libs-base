@@ -1012,7 +1012,7 @@ NSLog(@"_processTag <%@%@ %@>", flag?@"/": @"", tag, attributes);
     }
   else
     {
-      entity = @"";             // not resolved
+      ASSIGN(entity, @"");	// not resolved
     }
   return entity;
 }
@@ -1861,8 +1861,6 @@ NSLog(@"_processTag <%@%@ %@>", flag?@"/": @"", tag, attributes);
 
 + (void) initialize
 {
-  GSMakeWeakPointer(self, "_delegate");
-  GSMakeWeakPointer(self, "_owner");
 }
 
 - (void) dealloc

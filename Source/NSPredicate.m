@@ -48,6 +48,7 @@
 #import "Foundation/NSValue.h"
 
 #import "GSPrivate.h"
+#import "GSFastEnumeration.h"
 
 // For pow()
 #include <math.h>
@@ -138,6 +139,40 @@ extern void     GSPropertyListMake(id,NSDictionary*,BOOL,BOOL,unsigned,id*);
   @public
   NSExpression	*_left;
   NSExpression  *_right;
+}
+@end
+
+@interface GSUnionSetExpression : NSExpression
+{
+  @public
+  NSExpression	*_left;
+  NSExpression  *_right;
+}
+@end
+
+@interface GSIntersectSetExpression : NSExpression
+{
+  @public
+  NSExpression	*_left;
+  NSExpression  *_right;
+}
+@end
+
+@interface GSMinusSetExpression : NSExpression
+{
+  @public
+  NSExpression	*_left;
+  NSExpression  *_right;
+}
+@end
+
+@interface GSSubqueryExpression : NSExpression
+@end
+
+@interface GSAggregateExpression : NSExpression
+{
+  @public
+  id _collection;
 }
 @end
 
@@ -901,18 +936,6 @@ GSICUStringMatchesRegex(NSString *string, NSString *regex, NSStringCompareOption
 }
 #endif
 
-- (double) doubleValueFor: (id)value
-{
-  if ([value isKindOfClass: [NSDate class]])
-    {
-      return [(NSDate*)value timeIntervalSinceReferenceDate];
-    }
-  else
-    {
-      return [value doubleValue];
-    }
-}
-
 - (BOOL) _evaluateLeftValue: (id)leftResult
 		 rightValue: (id)rightResult
 		     object: (id)object
@@ -920,6 +943,8 @@ GSICUStringMatchesRegex(NSString *string, NSString *regex, NSStringCompareOption
   unsigned compareOptions = 0;
   BOOL leftIsNil;
   BOOL rightIsNil;
+  Class constantValueClass;
+  
 
   leftIsNil = (leftResult == nil || [leftResult isEqual: [NSNull null]]);
   rightIsNil = (rightResult == nil || [rightResult isEqual: [NSNull null]]);
@@ -957,35 +982,87 @@ GSICUStringMatchesRegex(NSString *string, NSString *regex, NSStringCompareOption
       compareOptions |= NSCaseInsensitiveSearch;
     }
 
-  /* This is a very optimistic implementation,
-   * hoping that the values are of the right type.
+  /* If the left or right result is a constant value expression, we need to
+   * extract the constant value from it.
    */
+  constantValueClass = [GSConstantValueExpression class];
+  if ([leftResult isKindOfClass: constantValueClass])
+    {
+      leftResult = [(GSConstantValueExpression *)leftResult constantValue];
+    }
+  if ([rightResult isKindOfClass: constantValueClass])
+    {
+      rightResult = [(GSConstantValueExpression *)rightResult constantValue];
+    }
+
+  /* We are assuming that the API is stable and enumeration values
+   * won't change. This covers:
+   * - NSLessThanPredicateOperatorType = 0,
+   * - NSLessThanOrEqualToPredicateOperatorType = 1,
+   * - NSGreaterThanPredicateOperatorType = 2,
+   * - NSGreaterThanOrEqualToPredicateOperatorType = 3
+   */
+  if (_type < NSEqualToPredicateOperatorType)
+    {
+      NSComparisonResult comparisonResult;
+      Class              stringClass;
+
+      stringClass = [NSString class];
+
+      /* We first check if the left and right result are strings.
+       * If this is not the case, check if we can do a comparison with
+       * doubleValue: (Mainly useful as a shortcut for expressions like
+       * "abc" == 3
+       */
+      if ([leftResult isKindOfClass:stringClass] &&
+          [rightResult isKindOfClass:stringClass])
+        {
+          comparisonResult = [leftResult compare:rightResult
+                                         options:compareOptions];
+        }
+      else if ([leftResult respondsToSelector:@selector(compare:)])
+        {
+          // Attempt a comparison
+          comparisonResult = [leftResult compare:rightResult];
+        }
+      else
+        {
+          // We can't compare these objects
+          [NSException raise:NSInvalidArgumentException
+                      format:@"Cannot compare objects of type %@ and %@",
+                             NSStringFromClass([leftResult class]),
+                             NSStringFromClass([rightResult class])];
+          return NO;
+        }
+
+      switch (_type)
+        {
+          case NSLessThanPredicateOperatorType:
+          {
+            return (comparisonResult == NSOrderedAscending) ? YES : NO;
+          }
+          case NSLessThanOrEqualToPredicateOperatorType:
+          {
+            /* True if left value is less then (NSOrderedAscending) or equal
+             * (NSOrderedSame) */
+            return (comparisonResult != NSOrderedDescending) ? YES : NO;
+          }
+          case NSGreaterThanPredicateOperatorType:
+          {
+            return (comparisonResult == NSOrderedDescending) ? YES : NO;
+          }
+          case NSGreaterThanOrEqualToPredicateOperatorType:
+          {
+            return (comparisonResult != NSOrderedAscending) ? YES : NO;
+          }
+        default: // This should never happen
+          return NO;
+        }
+    }
+
+  /* Handle remaining cases */
   switch (_type)
     {
-      case NSLessThanPredicateOperatorType:
-        {
-          double ld = [self doubleValueFor: leftResult];
-          double rd = [self doubleValueFor: rightResult];
-          return (ld < rd) ? YES : NO;
-        }
-      case NSLessThanOrEqualToPredicateOperatorType:
-        {
-          double ld = [self doubleValueFor: leftResult];
-          double rd = [self doubleValueFor: rightResult];
-          return (ld <= rd) ? YES : NO;
-        }
-      case NSGreaterThanPredicateOperatorType:
-        {
-          double ld = [self doubleValueFor: leftResult];
-          double rd = [self doubleValueFor: rightResult];
-          return (ld > rd) ? YES : NO;
-        }
-      case NSGreaterThanOrEqualToPredicateOperatorType:
-        {
-          double ld = [self doubleValueFor: leftResult];
-          double rd = [self doubleValueFor: rightResult];
-          return (ld >= rd) ? YES : NO;
-        }
       case NSEqualToPredicateOperatorType:
 	return [leftResult isEqual: rightResult];
       case NSNotEqualToPredicateOperatorType:
@@ -1243,6 +1320,99 @@ GSICUStringMatchesRegex(NSString *string, NSString *regex, NSStringCompareOption
   return AUTORELEASE(e);
 }
 
+// 10.5 methods...
++ (NSExpression *) expressionForIntersectSet: (NSExpression *)left
+                                        with: (NSExpression *)right
+{
+  GSIntersectSetExpression *e;
+
+  e = [[GSIntersectSetExpression alloc]
+	initWithExpressionType: NSIntersectSetExpressionType];
+  ASSIGN(e->_left, left);
+  ASSIGN(e->_right, right);
+  
+  return AUTORELEASE(e);
+}
+
++ (NSExpression *) expressionForAggregate: (NSArray *)subExpressions
+{
+  GSAggregateExpression *e;
+
+  e = [[GSAggregateExpression alloc]
+	initWithExpressionType: NSAggregateExpressionType];
+  ASSIGN(e->_collection, [NSSet setWithArray: subExpressions]);
+  
+  return AUTORELEASE(e);
+}
+
++ (NSExpression *) expressionForUnionSet: (NSExpression *)left
+                                    with: (NSExpression *)right
+{
+  GSUnionSetExpression *e;
+
+  e = [[GSUnionSetExpression alloc]
+	initWithExpressionType: NSUnionSetExpressionType];
+  ASSIGN(e->_left, left);
+  ASSIGN(e->_right, right);
+  
+  return AUTORELEASE(e);
+}
+
++ (NSExpression *) expressionForMinusSet: (NSExpression *)left
+                                    with: (NSExpression *)right
+{
+  GSMinusSetExpression *e;
+
+  e = [[GSMinusSetExpression alloc]
+	initWithExpressionType: NSMinusSetExpressionType];
+  ASSIGN(e->_left, left);
+  ASSIGN(e->_right, right);
+  
+  return AUTORELEASE(e);
+}
+// end 10.5 methods
+
+// 10.6 methods...
++ (NSExpression *) expressionWithFormat: (NSString *)format, ...
+{
+  va_list ap;
+  NSExpression *obj;
+
+  if (NULL == format)
+    {
+      [NSException raise: NSInvalidArgumentException
+		  format: @"[NSExpression+expressionWithFormat:]: NULL format"];
+    }
+
+  va_start(ap, format);
+  obj = [self expressionWithFormat: format
+			 arguments: ap];
+  va_end(ap);
+
+  return obj;
+}
+
++ (NSExpression *) expressionWithFormat: (NSString *)format
+			      arguments: (va_list)args
+{
+  NSString *expString = AUTORELEASE([[NSString alloc] initWithFormat: format
+							   arguments: args]);
+  GSPredicateScanner *scanner = AUTORELEASE([[GSPredicateScanner alloc]
+					      initWithString: expString
+							args: nil]);
+  return [scanner parseExpression];
+}
+
++ (NSExpression *) expressionWithFormat: (NSString *)format
+			  argumentArray: (NSArray *)args
+{
+  GSPredicateScanner *scanner = AUTORELEASE([[GSPredicateScanner alloc]
+					      initWithString: format
+							args: args]);
+  return [scanner parseExpression];
+}
+// End 10.6 methods
+
 - (id) initWithExpressionType: (NSExpressionType)type
 {
   if ((self = [super init]) != nil)
@@ -1306,6 +1476,24 @@ GSICUStringMatchesRegex(NSString *string, NSString *regex, NSStringCompareOption
 }
 
 - (NSString *) variable
+{
+  [self subclassResponsibility: _cmd];
+  return nil;
+}
+
+- (NSExpression *) leftExpression
+{
+  [self subclassResponsibility: _cmd];
+  return nil;
+}
+
+- (NSExpression *) rightExpression
+{
+  [self subclassResponsibility: _cmd];
+  return nil;
+}
+
+- (id) collection
 {
   [self subclassResponsibility: _cmd];
   return nil;
@@ -1579,6 +1767,179 @@ GSICUStringMatchesRegex(NSString *string, NSString *regex, NSStringCompareOption
 							 right: right];
 }
 
+- (NSExpression *) leftExpression
+{
+  return _left;
+}
+
+- (NSExpression *) rightExpression
+{
+  return _right;
+}
+
+@end
+
+// Macro for checking set related expressions
+#define CHECK_SETS \
+do { \
+  if ([rightValue isKindOfClass: [NSArray class]]) \
+    { \
+      rightSet = [NSSet setWithArray: rightValue]; \
+    } \
+  if (!rightSet) \
+    { \
+      [NSException raise: NSInvalidArgumentException \
+	          format: @"Can't evaluate set expression; right subexpression is not a set (lhs = %@ rhs = %@)", leftValue, rightValue]; \
+    } \
+  if ([leftValue isKindOfClass: [NSArray class]]) \
+    { \
+      leftSet = [NSSet setWithArray: leftValue]; \
+    } \
+  if (!leftSet) \
+    { \
+      [NSException raise: NSInvalidArgumentException \
+	          format: @"Can't evaluate set expression; left subexpression is not a set (lhs = %@ rhs = %@)", leftValue, rightValue]; \
+    } \
+ } while (0)
+
+@implementation GSUnionSetExpression
+
+- (NSString *) description
+{
+  return [NSString stringWithFormat: @"%@.%@", _left, _right];
+}
+
+- (NSExpression *) leftExpression
+{
+  return _left;
+}
+
+- (NSExpression *) rightExpression
+{
+  return _right;
+}
+
+- (id) expressionValueWithObject: (id)object
+			 context: (NSMutableDictionary *)context
+{
+  id leftValue = [_left expressionValueWithObject: object context: context];
+  id rightValue = [_right expressionValueWithObject: object context: context];
+  NSSet *leftSet = nil;
+  NSSet *rightSet = nil;
+  NSMutableSet *result = nil;
+
+  CHECK_SETS;
+    
+  result = [NSMutableSet setWithSet: leftSet];
+  [result unionSet: rightSet];
+
+  return result;  
+}
+
+@end
+
+@implementation GSIntersectSetExpression
+
+- (NSString *) description
+{
+  return [NSString stringWithFormat: @"%@.%@", _left, _right];
+}
+
+- (NSExpression *) leftExpression
+{
+  return _left;
+}
+
+- (NSExpression *) rightExpression
+{
+  return _right;
+}
+
+- (id) expressionValueWithObject: (id)object
+			 context: (NSMutableDictionary *)context
+{
+  id leftValue = [_left expressionValueWithObject: object context: context];
+  id rightValue = [_right expressionValueWithObject: object context: context];
+  NSSet *leftSet = nil;
+  NSSet *rightSet = nil;
+  NSMutableSet *result = nil;
+
+  CHECK_SETS;
+  
+  result = [NSMutableSet setWithSet: leftSet];
+  [result intersectSet: rightSet];
+
+  return result;
+}
+
+@end
+
+@implementation GSMinusSetExpression
+
+- (NSString *) description
+{
+  return [NSString stringWithFormat: @"%@.%@", _left, _right];
+}
+
+- (NSExpression *) leftExpression
+{
+  return _left;
+}
+
+- (NSExpression *) rightExpression
+{
+  return _right;
+}
+
+- (id) expressionValueWithObject: (id)object
+			 context: (NSMutableDictionary *)context
+{
+  id leftValue = [_left expressionValueWithObject: object context: context];
+  id rightValue = [_right expressionValueWithObject: object context: context];
+  NSSet *leftSet = nil;
+  NSSet *rightSet = nil;
+  NSMutableSet *result = nil;
+
+  CHECK_SETS;
+  
+  result = [NSMutableSet setWithSet: leftSet];
+  [result minusSet: rightSet];
+
+  return result;
+}
+
+@end
+
+@implementation GSSubqueryExpression
+@end
+
+@implementation GSAggregateExpression
+
+- (NSString *) description
+{
+  return [NSString stringWithFormat: @"%@", _collection];
+}
+
+- (id) collection
+{
+  return _collection;
+}
+
+- (id) expressionValueWithObject: (id)object
+			 context: (NSMutableDictionary *)context
+{ 
+  NSMutableArray	*result = [NSMutableArray arrayWithCapacity:
+						    [_collection count]];
+
+  FOR_IN(NSExpression*, exp, _collection)
+    {
+      NSExpression *value = [exp expressionValueWithObject: object context: context];
+      [result addObject: value];
+    }
+  END_FOR_IN(_collection);
+
+  return result;
+}
 @end
 
 @implementation GSFunctionExpression
@@ -2290,12 +2651,12 @@ GSICUStringMatchesRegex(NSString *string, NSString *regex, NSStringCompareOption
       lp = [NSComparisonPredicate predicateWithLeftExpression: left 
                                   rightExpression: lexp
                                   modifier: modifier 
-                                  type: NSGreaterThanPredicateOperatorType 
+                                  type: NSGreaterThanOrEqualToPredicateOperatorType 
                                   options: opts];
       up = [NSComparisonPredicate predicateWithLeftExpression: left 
                                   rightExpression: uexp
                                   modifier: modifier 
-                                  type: NSLessThanPredicateOperatorType 
+                                  type: NSLessThanOrEqualToPredicateOperatorType 
                                   options: opts];
       return [NSCompoundPredicate andPredicateWithSubpredicates: 
                                        [NSArray arrayWithObjects: lp, up, nil]];
@@ -2341,7 +2702,6 @@ GSICUStringMatchesRegex(NSString *string, NSString *regex, NSStringCompareOption
 
 - (NSExpression *) parseExpression
 {
-//  return [self parseAdditionExpression];
   return [self parseBinaryExpression];
 }
 

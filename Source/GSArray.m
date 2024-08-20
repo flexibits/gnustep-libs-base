@@ -649,12 +649,15 @@ static Class	GSInlineArrayClass;
           id    o = _contents_array[pos];
           Class c = object_getClass(o);
 
-          if (c != last)
-            {
-              last = c;
-              rel = [o methodForSelector: @selector(release)];
-            }
-          (*rel)(o, @selector(release));
+	  if (c)
+	    {
+	      if (c != last)
+		{
+		  last = c;
+		  rel = [o methodForSelector: @selector(release)];
+		}
+	      (*rel)(o, @selector(release));
+	    }
           _contents_array[pos] = nil;
         }
       _version++;
@@ -666,8 +669,7 @@ static Class	GSInlineArrayClass;
   _version++;
   if (_count == 0)
     {
-      [NSException raise: NSRangeException
-		  format: @"Trying to remove from an empty array."];
+      return;
     }
   _count--;
   RELEASE(_contents_array[_count]);
@@ -796,12 +798,15 @@ static Class	GSInlineArrayClass;
           id    o = _contents_array[end];
           Class c = object_getClass(o);
 
-          if (c != last)
-            {
-              last = c;
-              rel = [o methodForSelector: @selector(release)];
-            }
-          (*rel)(o, @selector(release));
+	  if (c)
+	    {
+	      if (c != last)
+		{
+		  last = c;
+		  rel = [o methodForSelector: @selector(release)];
+		}
+	      (*rel)(o, @selector(release));
+	    }
           _contents_array[end] = nil;
         }
 

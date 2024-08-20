@@ -4,7 +4,7 @@ dnl  Copying and distribution of this file, with or without modification,
 dnl  are permitted in any medium without royalty provided the copyright
 dnl  notice and this notice are preserved.
 dnl AM_PATH_TLS([MINIMUM-VERSION [, ACTION-IF-FOUND [, ACTION-IF-NOT-FOUND]]])
-AC_DEFUN(AM_PATH_TLS,[
+AC_DEFUN([AM_PATH_TLS],[
 AC_ARG_WITH(tls-prefix,
             [  --with-tls-prefix=PFX    Prefix where libgnutls is installed (optional)],
             tls_config_prefix="$withval", tls_config_prefix="")
@@ -43,7 +43,8 @@ dnl
 dnl Now check if the installed libgnutls is sufficiently new.
 dnl
     rm -f conf.tlstest
-    AC_TRY_RUN([
+    AC_RUN_IFELSE(
+	[AC_LANG_SOURCE([[
 #include <stdlib.h>
 #include <stdio.h>
 #include <gnutls/gnutls.h>
@@ -66,7 +67,10 @@ main()
     }
   return 0;
 }
-],, no_tls=yes,[echo $ac_n "cross compiling; assumed OK... $ac_c"])
+]])],
+	,
+	[no_tls=yes],
+	[echo $ac_n "cross compiling; assumed OK... $ac_c"])
 
     CFLAGS="$ac_save_CFLAGS"
     LIBS="$ac_save_LIBS"
@@ -89,7 +93,8 @@ dnl
 dnl Now check if the installed libtgnuls is sufficiently new.
 dnl
       rm -f conf.tlstest
-      AC_TRY_RUN([
+      AC_RUN_IFELSE(
+	[AC_LANG_SOURCE([[
 #include <stdlib.h>
 #include <stdio.h>
 #include <gnutls/gnutls.h>
@@ -112,7 +117,10 @@ main()
     }
   return 0;
 }
-],, no_tls=yes,[echo $ac_n "cross compiling; assumed OK... $ac_c"])
+]])],
+	,
+	[no_tls=yes],
+	[echo $ac_n "cross compiling; assumed OK... $ac_c"])
 
       CFLAGS="$ac_save_CFLAGS"
       LIBS="$ac_save_LIBS"

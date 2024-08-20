@@ -178,6 +178,7 @@ static int	tuneSndBuf = 0;
    * that multiple processes can serve the same port simultaneously.
    * We don't want that broken behavior!
    */
+  value = 1;
   if (setsockopt(desc, SOL_SOCKET, SO_REUSEADDR, (char*)&value, sizeof(value))
     < 0)
     {
@@ -489,8 +490,6 @@ GSPrivateSockaddrSetup(NSString *machine, uint16_t port,
 
 + (void) initialize
 {
-  GSMakeWeakPointer(self, "istream");
-  GSMakeWeakPointer(self, "ostream");
 }
 
 + (void) tryInput: (GSSocketInputStream*)i output: (GSSocketOutputStream*)o
@@ -2001,7 +2000,6 @@ setNonBlocking(SOCKET fd)
 
 + (void) initialize
 {
-  GSMakeWeakPointer(self, "_sibling");
   if (self == [GSSocketInputStream class])
     {
       GSObjCAddClassBehavior(self, [GSSocketStream class]);
@@ -2496,7 +2494,6 @@ setNonBlocking(SOCKET fd)
 
 + (void) initialize
 {
-  GSMakeWeakPointer(self, "_sibling");
   if (self == [GSSocketOutputStream class])
     {
       GSObjCAddClassBehavior(self, [GSSocketStream class]);
@@ -3009,7 +3006,6 @@ setNonBlocking(SOCKET fd)
 
 + (void) initialize
 {
-  GSMakeWeakPointer(self, "_sibling");
   if (self == [GSSocketServerStream class])
     {
       GSObjCAddClassBehavior(self, [GSSocketStream class]);

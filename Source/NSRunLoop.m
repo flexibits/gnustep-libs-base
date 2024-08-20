@@ -426,6 +426,12 @@ static inline BOOL timerInvalidated(NSTimer *t)
 #if HAVE_DISPATCH_MAIN_QUEUE_DRAIN_NP
   dispatch_main_queue_drain_np();
 #elif HAVE__DISPATCH_MAIN_QUEUE_CALLBACK_4CF
+#if defined(__linux__)
+  uint64_t value;
+  int fd = (int)(intptr_t)data;
+  int n = eventfd_read(fd, &value);
+  (void) n;
+#endif
   _dispatch_main_queue_callback_4CF(NULL);
 #else
 #error libdispatch missing main queue callback function
@@ -780,6 +786,9 @@ static inline BOOL timerInvalidated(NSTimer *t)
           NSInvocation		        *inv;
           NSTimer                       *timer;
           SEL			        sel;
+          #ifdef RL_INTEGRATE_DISPATCH
+          GSMainQueueDrainer 		*drain;
+          #endif
 
           ctr = [NSNotificationCenter defaultCenter];
           not = [NSNotification notificationWithName: @"GSHousekeeping"
@@ -802,10 +811,10 @@ static inline BOOL timerInvalidated(NSTimer *t)
           [current addTimer: timer forMode: NSDefaultRunLoopMode];
 
           #ifdef RL_INTEGRATE_DISPATCH
-          // We leak the queue drainer, because it's integral part of RL
-          // operations
-          GSMainQueueDrainer *drain =
-            [NSObject leak: [[GSMainQueueDrainer new] autorelease]];
+          /* We leak the queue drainer, because it's integral part of RL
+           * operations
+	   */
+          drain = [NSObject leak: [[GSMainQueueDrainer new] autorelease]];
           [current addEvent: [GSMainQueueDrainer mainQueueFileDescriptor]
 #ifdef _WIN32
                        type: ET_HANDLE
