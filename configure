@@ -14157,9 +14157,10 @@ else $as_nop
 fi
 
 # Check whether --enable-windows-icu was given.
-if test "${enable_windows_icu+set}" = set; then :
+if test ${enable_windows_icu+y}
+then :
   enableval=$enable_windows_icu;
-else
+else $as_nop
   enable_windows_icu=yes
 fi
 
@@ -14173,7 +14174,7 @@ then :
         # check for ICU bundled with Windows 10
         old_LIBS="$LIBS"
         LIBS="-licu $LIBS"
-        for ac_header in icu.h
+               for ac_header in icu.h
 do :
   ac_fn_c_check_header_compile "$LINENO" "icu.h" "ac_cv_header_icu_h" "$ac_includes_default"
 if test "x$ac_cv_header_icu_h" = xyes
@@ -14189,10 +14190,10 @@ else $as_nop
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-          #include <icu.h>
-          int main () {
-            return udat_countAvailable() > 0 ? 0 : 1;
-          }
+            #include <icu.h>
+            int main () {
+              return udat_countAvailable() > 0 ? 0 : 1;
+            }
 _ACEOF
 if ac_fn_c_try_run "$LINENO"
 then :
@@ -14205,14 +14206,15 @@ fi
 fi
 
 done
-      LIBS="$old_LIBS"
-      if test $HAVE_ICU = 1; then
-        ICU_LIBS=-licu
-        { printf "%s\n" "$as_me:${as_lineno-$LINENO}: Using system-provided ICU DLL (requires Windows 10 version 1903 or later)" >&5
+        LIBS="$old_LIBS"
+        if test $HAVE_ICU = 1; then
+          ICU_LIBS=-licu
+          { printf "%s\n" "$as_me:${as_lineno-$LINENO}: Using system-provided ICU DLL (requires Windows 10 version 1903 or later)" >&5
 printf "%s\n" "$as_me: Using system-provided ICU DLL (requires Windows 10 version 1903 or later)" >&6;}
-      fi
-    ;;
-  esac
+        fi
+      ;;
+    esac
+  fi
   if test $HAVE_ICU = 0; then
 
 pkg_failed=no
@@ -14521,16 +14523,12 @@ fi
     HAVE_LIBDISPATCH_RUNLOOP=1
   fi
   # Check for availability of functions in more recent libdispatch versions.
-  for ac_func in dispatch_cancel
-do :
   ac_fn_c_check_func "$LINENO" "dispatch_cancel" "ac_cv_func_dispatch_cancel"
-if test "x$ac_cv_func_dispatch_cancel" = xyes; then :
-  cat >>confdefs.h <<_ACEOF
-#define HAVE_DISPATCH_CANCEL 1
-_ACEOF
+if test "x$ac_cv_func_dispatch_cancel" = xyes
+then :
+  printf "%s\n" "#define HAVE_DISPATCH_CANCEL 1" >>confdefs.h
 
 fi
-done
 
 fi
 
