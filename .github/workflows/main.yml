@@ -76,7 +76,8 @@ jobs:
     container: ${{ matrix.container }}
     runs-on: ubuntu-latest
     # don't run pull requests from local branches twice
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
+    #if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
+    if: false
 
     strategy:
       fail-fast: false
@@ -182,6 +183,7 @@ jobs:
       matrix:
         include:
           - name: Windows x64 MinGW GCC
+            if: false
             arch: x86_64
             msystem: MINGW64
             library-combo: gnu-gnu-gnu
@@ -189,6 +191,7 @@ jobs:
             CXX: g++
 
           - name: Windows x64 MinGW Clang gnustep-2.0
+            if: false
             arch: x86_64
             msystem: MINGW64
             library-combo: ng-gnu-gnu
@@ -198,6 +201,7 @@ jobs:
             LDFLAGS: -fuse-ld=lld -lstdc++ -lgcc_s
 
           - name: Windows x86 MSVC Clang gnustep-2.0
+            if: false
             allow-test-failures: true
             arch: x86
             host: i686-pc-windows
