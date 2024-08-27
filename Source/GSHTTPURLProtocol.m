@@ -529,6 +529,16 @@ parseArgumentPart(NSString *part, NSString *name)
     }
 
   [_easyHandle setFollowLocation: NO];
+  
+  // Allow a higher level to adjust the curl handle.
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wundeclared-selector"
+  id delegate = [[task session] delegate];
+  if ([delegate respondsToSelector:@selector(configureCurlHandle:forRequest:)]) {
+    [delegate configureCurlHandle:[_easyHandle rawHandle] forRequest:request];
+  }
+#pragma clang diagnostic pop
+  
 
   /* The httpAdditionalHeaders from session configuration has to be added to 
    * the request. The request.allHTTPHeaders can override the 
