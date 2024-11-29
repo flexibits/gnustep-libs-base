@@ -378,6 +378,13 @@ GSPrivateExecutablePath()
 #endif
 	  if (executablePath == nil || [executablePath length] == 0)
 	    {
+	      // Allow the executable path to be overridden, for when invoked
+	      // from a test runner.
+	      executablePath =
+		[[NSProcessInfo processInfo] environment][@"GNUSTEP_EXE"];
+	    }
+	  if (executablePath == nil || [executablePath length] == 0)
+	    {
 	      executablePath
 		= [[[NSProcessInfo processInfo] arguments] objectAtIndex: 0];
 	    }
@@ -2876,6 +2883,35 @@ IF_NO_ARC(
           NSDebugMLLog(@"NSBundle", @"Failed to locate strings file %@",
                        tableName);
         }
+
+      if (table)
+	{
+	  // Add the corresponding stringsdict file
+	  NSString *dictPath = [self pathForResource:tableName
+					      ofType:@"stringsdict"];
+	  if (dictPath != nil)
+	    {
+	      NSDictionary *stringsDict =
+		[[NSDictionary alloc] initWithContentsOfFile:dictPath];
+	      if (stringsDict)
+		{
+		  NSMutableDictionary *newTable = [table mutableCopy];
+
+		  [stringsDict
+		    enumerateKeysAndObjectsUsingBlock:
+		      (GSKeysAndObjectsEnumeratorBlock)
+		      ^ (NSString * k, NSDictionary * v, BOOL * stop) {
+			  GSLocalizedString *ls =
+			    [[GSLocalizedString alloc] initWithDictionary:v
+							     defaultValue:k];
+			  [newTable setObject:ls forKey:k];
+			}];
+
+		  table = [newTable copy];
+		}
+	    }
+	}
+
       /*
        * If we couldn't found and parsed the strings table, we put it in
        * the cache of strings tables in this bundle, otherwise we will just

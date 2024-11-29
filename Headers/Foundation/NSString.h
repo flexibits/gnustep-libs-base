@@ -1225,4 +1225,22 @@ extern struct objc_class _NSConstantStringClassReference;
 #import <GNUstepBase/NSMutableString+GNUstepBase.h>
 #endif
 
+@interface GSLocalizedString : NSString
+{
+  NSDictionary *_dict;
+  NSString     *_parent;
+}
+
+/** Initialize with a dictionary from a .stringsdict file.
+ */
+- (instancetype)initWithDictionary:(NSDictionary *)dict
+		      defaultValue:(NSString *)value;
+
+/** Returns a format that's appropriate for the pluralization of the arguments
+ * in the current language
+ */
+- (NSString *)getPluralizedFormat:(va_list)argList;
+
+@end
+
 #endif /* __NSString_h_GNUSTEP_BASE_INCLUDE */
