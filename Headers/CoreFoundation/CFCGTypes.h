@@ -79,13 +79,13 @@ struct CGRect {
 };
 typedef struct CF_BOXABLE CGRect CGRect;
 
-enum
+typedef enum
 {
   CGRectMinXEdge = 0,
   CGRectMinYEdge = 1,
   CGRectMaxXEdge = 2,
   CGRectMaxYEdge = 3
-};
+} CGRectEdge;
 
 typedef struct CGAffineTransform CGAffineTransform;
 
