@@ -517,7 +517,7 @@ GS_EXPORT_CLASS
 - (void)setRequestCachePolicy:(NSURLRequestCachePolicy)policy;
 
 - (nullable NSURLCache *)URLCache;
-- (void)setURLCache:(NSURLCache *)cache;
+- (void)setURLCache:(nullable NSURLCache *)cache;
 
 - (nullable NSURLCredentialStorage *)URLCredentialStorage;
 - (void)setURLCredentialStorage:(NSURLCredentialStorage *)storage;
