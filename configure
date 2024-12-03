@@ -14159,16 +14159,10 @@ else $as_nop
 fi
 
 # Check whether --enable-windows-icu was given.
-if test "${enable_windows_icu+set}" = set; then :
+if test ${enable_windows_icu+y}
+then :
   enableval=$enable_windows_icu;
-else
-  enable_windows_icu=yes
-fi
-
-# Check whether --enable-windows-icu was given.
-if test "${enable_windows_icu+set}" = set; then :
-  enableval=$enable_windows_icu;
-else
+else $as_nop
   enable_windows_icu=yes
 fi
 
@@ -14182,7 +14176,7 @@ then :
         # check for ICU bundled with Windows 10
         old_LIBS="$LIBS"
         LIBS="-licu $LIBS"
-        for ac_header in icu.h
+               for ac_header in icu.h
 do :
   ac_fn_c_check_header_compile "$LINENO" "icu.h" "ac_cv_header_icu_h" "$ac_includes_default"
 if test "x$ac_cv_header_icu_h" = xyes
@@ -14214,12 +14208,11 @@ fi
 fi
 
 done
-
         LIBS="$old_LIBS"
         if test $HAVE_ICU = 1; then
           ICU_LIBS=-licu
-          { $as_echo "$as_me:${as_lineno-$LINENO}: Using system-provided ICU DLL (requires Windows 10 version 1903 or later)" >&5
-$as_echo "$as_me: Using system-provided ICU DLL (requires Windows 10 version 1903 or later)" >&6;}
+          { printf "%s\n" "$as_me:${as_lineno-$LINENO}: Using system-provided ICU DLL (requires Windows 10 version 1903 or later)" >&5
+printf "%s\n" "$as_me: Using system-provided ICU DLL (requires Windows 10 version 1903 or later)" >&6;}
         fi
       ;;
     esac
