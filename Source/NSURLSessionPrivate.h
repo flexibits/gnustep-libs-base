@@ -84,7 +84,7 @@ typedef NS_ENUM(NSInteger, GSURLSessionProperties)
 -(void)_removeSocket: (struct SourceInfo *)sources;
 -(int)_addSocket: (curl_socket_t)socket easyHandle: (CURL *)easy what: (int)what;
 -(int)_setSocket: (curl_socket_t)socket
- sources: (struct SourceInfo *)sources
- what: (int)what;
+         sources: (struct SourceInfo *)sources
+            what: (int)what;
 
 @end
