@@ -509,6 +509,21 @@ socket_callback(CURL * easy,           /* easy handle */
   return 0;
 } /* _addSocket */
 
+- (void) _performAction: (int)action
+              forSocket: (curl_socket_t)sockfd
+{
+  curl_multi_socket_action(_multiHandle, sockfd, action, &_stillRunning);
+
+  /* Check if the transfer is complete */
+  [self _checkForCompletion];
+
+  /* When _stillRunning reaches zero, all transfers are complete/done */
+  if (_stillRunning <= 0)
+    {
+      [self _suspendTimer];
+    }
+}
+
 - (int) _setSocket: (curl_socket_t)socket
            sources: (struct SourceInfo *)sources
               what: (int)what
@@ -548,18 +563,7 @@ socket_callback(CURL * easy,           /* easy handle */
       dispatch_source_set_event_handler(
         sources->readSocket,
         ^{
-          int action;
-
-          action = CURL_CSELECT_IN;
-          curl_multi_socket_action(_multiHandle, socket, action, &_stillRunning);
-
-          /* Check if the transfer is complete */
-          [self _checkForCompletion];
-          /* When _stillRunning reaches zero, all transfers are complete/done */
-          if (_stillRunning <= 0)
-          {
-            [self _suspendTimer];
-          }
+          [self _performAction:CURL_CSELECT_IN forSocket:socket];
         });
 
       dispatch_resume(sources->readSocket);
@@ -601,19 +605,7 @@ socket_callback(CURL * easy,           /* easy handle */
       dispatch_source_set_event_handler(
         sources->writeSocket,
         ^{
-          int action;
-
-          action = CURL_CSELECT_OUT;
-          curl_multi_socket_action(_multiHandle, socket, action, &_stillRunning);
-
-          /* Check if the tranfer is complete */
-          [self _checkForCompletion];
-
-          /* When _stillRunning reaches zero, all transfers are complete/done */
-          if (_stillRunning <= 0)
-          {
-            [self _suspendTimer];
-          }
+          [self _performAction:CURL_CSELECT_OUT forSocket:socket];
         });
 
       dispatch_resume(sources->writeSocket);
