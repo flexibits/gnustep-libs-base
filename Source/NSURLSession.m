@@ -299,7 +299,7 @@ socket_callback(CURL * easy,           /* easy handle */
       /* Use the provided delegateQueue if available */
       if (queue)
         {
-          _delegateQueue = queue;
+          ASSIGN(_delegateQueue, queue);
         }
       else
         {
