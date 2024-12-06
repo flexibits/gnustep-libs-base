@@ -36,19 +36,6 @@
 
 extern NSString * GS_NSURLSESSION_DEBUG_KEY;
 
-/* libcurl may request a full-duplex socket configuration with
- * CURL_POLL_INOUT, but libdispatch distinguishes between a read and write
- * socket source.
- *
- * We thus need to keep track of two dispatch sources. One may be set to NULL
- * if not used.
- */
-struct SourceInfo
-{
-  dispatch_source_t readSocket;
-  dispatch_source_t writeSocket;
-};
-
 typedef NS_ENUM(NSInteger, GSURLSessionProperties)
 {
   GSURLSessionStoresDataInMemory = (1 << 0),
@@ -58,33 +45,29 @@ typedef NS_ENUM(NSInteger, GSURLSessionProperties)
   GSURLSessionHasInputStream = (1 << 4)
 };
 
-@interface
-  NSURLSession(Private)
+@interface NSURLSession(Private)
 
-- (dispatch_queue_t)_workQueue;
+- (dispatch_queue_t) _workQueue;
 
--(NSData *)_certificateBlob;
--(NSString *)_certificatePath;
+- (NSData *) _certificateBlob;
+- (NSString *) _certificatePath;
 
 /* Adds the internal easy handle to the multi handle.
  * Modifications are performed on the workQueue.
  */
--(void)_resumeTask: (NSURLSessionTask *)task;
-
-/* The following methods must only be called from within callbacks dispatched on
- * the workQueue.*/
--(void)_setTimer: (NSInteger)timeout;
--(void)_suspendTimer;
+- (void) _resumeTask: (NSURLSessionTask *)task;
 
 /* Required for manual redirects.
  */
--(void)_addHandle: (CURL *)easy;
--(void)_removeHandle: (CURL *)easy;
+- (void) _addHandle: (CURL *)easy;
+- (void) _removeHandle: (CURL *)easy;
 
--(void)_removeSocket: (struct SourceInfo *)sources;
--(int)_addSocket: (curl_socket_t)socket easyHandle: (CURL *)easy what: (int)what;
--(int)_setSocket: (curl_socket_t)socket
-         sources: (struct SourceInfo *)sources
-            what: (int)what;
+- (int) _socketCallback: (CURL *)easy
+                socket: (curl_socket_t)socket
+                  what: (int)what
+               socketp: (void *)socketp;
+
+- (int) _timerCallback: (CURLM *)multi
+            timeout_ms: (long)timeoutMs;
 
 @end

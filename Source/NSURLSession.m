@@ -31,8 +31,10 @@
 #import "NSURLSessionTaskPrivate.h"
 #import "Foundation/NSString.h"
 #import "Foundation/NSArray.h"
+#import "Foundation/NSException.h"
 #import "Foundation/NSStream.h"
 #import "Foundation/NSUserDefaults.h"
+#import "Foundation/NSValue.h"
 #import "Foundation/NSBundle.h"
 #import "Foundation/NSData.h"
 
@@ -42,6 +44,27 @@
 #import "GSDispatch.h"                       /* For dispatch compatibility */
 
 NSString * GS_NSURLSESSION_DEBUG_KEY = @"NSURLSession";
+
+/*
+ * Read and write libdispatch sources for a specific socket.
+ *
+ * A simple helper that combines two sources -- both being optional.
+ *
+ * This info is stored into the socket using `curl_multi_assign()`.
+ *
+ */
+
+@interface _SocketSources : NSObject
+
+- (instancetype) initWithSocket: (curl_socket_t) socket
+                 readReadyBlock: (dispatch_block_t) readReadyBlock
+                writeReadyBlock: (dispatch_block_t) writeReadyBlock
+                          queue: (dispatch_queue_t) queue;
+
+- (void) setReadable: (BOOL)readable
+         andWritable: (BOOL)writable;
+
+@end
 
 /* We need a globably unique label for the NSURLSession workQueues.
  */
@@ -59,75 +82,42 @@ static NSUInteger nextSessionIdentifier()
 
 #pragma mark - libcurl callbacks
 
-/* CURLMOPT_TIMERFUNCTION: Callback to receive timer requests from libcurl */
-static int
-timer_callback(CURLM * multi,      /* multi handle */
-               long timeout_ms,   /* timeout in number of ms */
-               void * clientp)     /* private callback pointer */
+/* CURLMOPT_SOCKETFUNCTION: Callback to receive socket monitoring requests */
+static int curl_socket_function(CURL *easy, curl_socket_t socket, int what, void *clientp, void *socketp) 
 {
-  NSURLSession * session = (NSURLSession *)clientp;
+  NSURLSession *session = (NSURLSession *)clientp;
 
-  NSDebugLLog(
-    GS_NSURLSESSION_DEBUG_KEY,
-    @"Timer Callback for Session %@: multi=%p timeout_ms=%ld",
-    session,
-    multi,
-    timeout_ms);
+    NSDebugLLog(
+      GS_NSURLSESSION_DEBUG_KEY,
+      @"Socket Callback for Session %@: easy=%p socket=%llu what=%d socketp=%p",
+      session,
+      easy,
+      socket,
+      what,
+      socketp);
 
-  /*
-   * if timeout_ms is -1, just delete the timer
-   *
-   * For all other values of timeout_ms, this should set or *update* the timer
-   * to the new value
-   */
-  if (timeout_ms == -1)
-    {
-      [session _suspendTimer];
-    }
-  else
-    {
-      [session _setTimer: timeout_ms];
-    }
-
-  return 0;
+  return [session _socketCallback: easy
+                           socket: socket
+                             what: what
+                          socketp: socketp];
 }
 
-/* CURLMOPT_SOCKETFUNCTION: libcurl requests socket monitoring using this
- * callback */
-static int
-socket_callback(CURL * easy,           /* easy handle */
-                curl_socket_t s,       /* socket */
-                int what,              /* describes the socket */
-                void * clientp,        /* private callback pointer */
-                void * socketp)                /* private socket pointer */
+/* CURLMOPT_TIMERFUNCTION: Callback to receive timer requests */
+static int curl_timer_function(CURLM *multi, long timeout_ms, void *clientp)
 {
-  NSURLSession * session = clientp;
-  const char * whatstr[] = { "none", "IN", "OUT", "INOUT", "REMOVE" };
+    NSURLSession *session = (NSURLSession *)clientp;
 
-  NSDebugLLog(
-    GS_NSURLSESSION_DEBUG_KEY,
-    @"Socket Callback for Session %@: socket=%lld easy:%p what=%s",
-    session,
-    s,
-    easy,
-    whatstr[what]);
+    NSDebugLLog(
+      GS_NSURLSESSION_DEBUG_KEY,
+      @"Timer Callback for Session %@: multi=%p timeout_ms=%ld",
+      session,
+      multi,
+      timeout_ms);
 
-  if (NULL == socketp)
-    {
-      return [session _addSocket: s easyHandle: easy what: what];
-    }
-  else if (CURL_POLL_REMOVE == what)
-    {
-      [session _removeSocket: (struct SourceInfo *)socketp];
-      return 0;
-    }
-  else
-    {
-      return [session _setSocket: s
-                         sources: (struct SourceInfo *)socketp
-                            what: what];
-    }
-} /* socket_callback */
+    return [session _timerCallback:multi
+                        timeout_ms:timeout_ms];
+}
+
 
 #pragma mark - NSURLSession Implementation
 
@@ -323,9 +313,9 @@ socket_callback(CURL * easy,           /* easy handle */
       _multiHandle = curl_multi_init();
 
       // Set up CURL multi callbacks
-      curl_multi_setopt(_multiHandle, CURLMOPT_SOCKETFUNCTION, socket_callback);
+      curl_multi_setopt(_multiHandle, CURLMOPT_SOCKETFUNCTION, curl_socket_function);
       curl_multi_setopt(_multiHandle, CURLMOPT_SOCKETDATA, self);
-      curl_multi_setopt(_multiHandle, CURLMOPT_TIMERFUNCTION, timer_callback);
+      curl_multi_setopt(_multiHandle, CURLMOPT_TIMERFUNCTION, curl_timer_function);
       curl_multi_setopt(_multiHandle, CURLMOPT_TIMERDATA, self);
 
       // Configure Multi Handle
@@ -420,133 +410,103 @@ socket_callback(CURL * easy,           /* easy handle */
   curl_multi_remove_handle(_multiHandle, easy);
 }
 
-- (void) _setTimer: (NSInteger)timeoutMs
+- (int) _timerCallback: (CURLM *)multi
+            timeout_ms: (long)timeout_ms
 {
-  dispatch_source_set_timer(
-    _timer,
-    dispatch_time(
-      DISPATCH_TIME_NOW,
-      timeoutMs * NSEC_PER_MSEC),
-    DISPATCH_TIME_FOREVER,                         // don't repeat
-    timeoutMs * 0.05);                             // 5% leeway
-
-  if (_isTimerSuspended)
+  /* if timeout_ms is -1, just delete the timer
+   *
+   * For all other values of timeout_ms, set or *update* the timer
+   */
+  if (timeout_ms == -1)
     {
-      _isTimerSuspended = NO;
-      dispatch_resume(_timer);
+      if (!_isTimerSuspended)
+        {
+          _isTimerSuspended = YES;
+          dispatch_suspend(_timer);
+        }
     }
+  else
+    {
+        dispatch_source_set_timer(
+          _timer,
+          dispatch_time(
+            DISPATCH_TIME_NOW,
+            timeout_ms * NSEC_PER_MSEC),
+          DISPATCH_TIME_FOREVER,              // don't repeat
+          timeout_ms * 0.05 * NSEC_PER_MSEC); // 5% leeway
+
+        if (_isTimerSuspended)
+          {
+            _isTimerSuspended = NO;
+            dispatch_resume(_timer);
+          }
+    }
+
+  return 0;
 }
 
-- (void) _suspendTimer
+- (int) _socketCallback: (CURL *)easy
+                 socket: (curl_socket_t)socket
+                   what: (int)what
+                socketp: (void *)socketp
 {
-  if (!_isTimerSuspended)
+  _SocketSources *socketSources = (_SocketSources *)socketp;
+
+  switch (what)
     {
-      _isTimerSuspended = YES;
-      dispatch_suspend(_timer);
+      case CURL_POLL_IN:
+      case CURL_POLL_OUT:
+      case CURL_POLL_INOUT:
+        if (!socketSources)
+          {
+            NSDebugMLLog(GS_NSURLSESSION_DEBUG_KEY, @"Add Socket: %llu easy: %p what: %d", socket, easy, what);
+
+            socketSources = [[_SocketSources alloc] initWithSocket: socket
+                                                    readReadyBlock: ^{
+                                                        [self _performAction: CURL_CSELECT_IN forSocket: socket];
+                                                    }
+                                                    writeReadyBlock: ^{
+                                                        [self _performAction: CURL_CSELECT_OUT forSocket: socket];
+                                                    }
+                                                              queue: _sourcesQueue];
+            if (!socketSources)
+              {
+                NSDebugMLLog(GS_NSURLSESSION_DEBUG_KEY, @"Failed to initialize SocketSources!");
+
+                return -1;
+              }
+
+            curl_multi_assign(_multiHandle, socket, (void *)socketSources);
+          }
+
+        [socketSources setReadable: (what != CURL_POLL_OUT)
+                       andWritable: (what != CURL_POLL_IN)];
+
+        break;
+      case CURL_POLL_REMOVE:
+        curl_multi_assign(_multiHandle, socket, NULL);
+        DESTROY(socketSources);
+        break;
+      default:
+        {
+          NSDictionary *userInfo = @{ @"NSURLSession.CURL_POLL": @(what) };
+          NSException *exception = [NSException exceptionWithName: @"NSURLSession.libcurl"
+                                                           reason: @"Invalid CURL_POLL value"
+                                                         userInfo: userInfo];
+
+          [exception raise];
+
+          return -1;
+        }
     }
+
+  return 0;
 }
 
 - (dispatch_queue_t) _workQueue
 {
   return _workQueue;
 }
-
-/* This method is called when receiving CURL_POLL_REMOVE in socket_callback.
- * We cancel all active dispatch sources and release the SourceInfo structure
- * previously allocated in _addSocket: easyHandle: what:
- */
-- (void) _removeSocket: (struct SourceInfo *)sources
-{
-  dispatch_group_t group;
-
-  NSDebugMLLog(
-    GS_NSURLSESSION_DEBUG_KEY,
-    @"Remove socket with SourceInfo: %p",
-    sources);
-
-  group = dispatch_group_create();
-
-  if (sources->readSocket)
-    {
-      dispatch_group_enter(group);
-      dispatch_source_set_cancel_handler(
-        sources->readSocket,
-        ^{
-            dispatch_group_leave(group);
-        });
-      dispatch_source_cancel(sources->readSocket);
-    }
-
-  if (sources->writeSocket)
-    {
-      dispatch_group_enter(group);
-      dispatch_source_set_cancel_handler(
-        sources->writeSocket,
-        ^{
-            dispatch_group_leave(group);
-        });
-      dispatch_source_cancel(sources->writeSocket);
-    }
-
-  dispatch_group_wait(group, DISPATCH_TIME_FOREVER);
-  dispatch_release(group);
-  group = NULL;
-
-  if (sources->readSocket)
-    {
-      dispatch_release(sources->readSocket);
-      sources->readSocket = NULL;
-    }
-
-  if (sources->writeSocket)
-    {
-      dispatch_release(sources->writeSocket);
-      sources->writeSocket = NULL;
-    }
-
-  free(sources);
-  sources = NULL;
-}
-
-/* A socket needs to be configured and the private socket pointer
- * (socketp) in socket_callback is NULL, meaning we first need to
- * allocate our SourceInfo structure.
- */
-- (int) _addSocket: (curl_socket_t)socket
-        easyHandle: (CURL *)easy
-              what: (int)what
-{
-  struct SourceInfo * info;
-
-  NSDebugMLLog(
-    GS_NSURLSESSION_DEBUG_KEY,
-    @"Add Socket: %llu easy: %p",
-    socket,
-    easy);
-
-  /* Allocate a new SourceInfo structure on the heap */
-  if (!(info = calloc(1, sizeof(struct SourceInfo))))
-    {
-      NSDebugMLLog(
-        GS_NSURLSESSION_DEBUG_KEY,
-        @"Failed to allocate SourceInfo structure!");
-
-      return -1;
-    }
-
-  /* We can now configure the dispatch sources */
-  if (-1 == [self _setSocket: socket sources: info what: what])
-    {
-      NSDebugMLLog(GS_NSURLSESSION_DEBUG_KEY, @"Failed to setup sockets!");
-
-      return -1;
-    }
-
-  /* Assign the SourceInfo for access in subsequent socket_callback calls */
-  curl_multi_assign(_multiHandle, socket, info);
-
-  return 0;
-} /* _addSocket */
 
 - (void) _performAction: (int)action
               forSocket: (curl_socket_t)sockfd
@@ -556,112 +516,10 @@ socket_callback(CURL * easy,           /* easy handle */
     ^{
       curl_multi_socket_action(_multiHandle, sockfd, action, &_stillRunning);
 
-      /* Check if the transfer is complete */
       [self _checkForCompletion];
-
-      /* When _stillRunning reaches zero, all transfers are complete/done */
-      if (_stillRunning <= 0)
-        {
-          [self _suspendTimer];
-        }
     });
 }
 
-- (int) _setSocket: (curl_socket_t)socket
-           sources: (struct SourceInfo *)sources
-              what: (int)what
-{
-  /* Create a Reading Dispatch Source that listens on socket */
-  if (CURL_POLL_IN == what || CURL_POLL_INOUT == what)
-    {
-      /* Reset Dispatch Source if previously initialised */
-      if (sources->readSocket)
-        {
-          dispatch_source_cancel(sources->readSocket);
-          dispatch_release(sources->readSocket);
-          sources->readSocket = NULL;
-        }
-
-      NSDebugMLLog(
-        GS_NSURLSESSION_DEBUG_KEY,
-        @"Creating a reading dispatch source: socket=%llu sources=%p what=%d",
-        socket,
-        sources,
-        what);
-
-      sources->readSocket = dispatch_source_create(
-        DISPATCH_SOURCE_TYPE_READ,
-        socket,
-        0,
-        _sourcesQueue);
-
-      if (!sources->readSocket)
-        {
-          NSDebugMLLog(
-            GS_NSURLSESSION_DEBUG_KEY,
-            @"Unable to create dispatch source for read socket!");
-
-          return -1;
-        }
-
-      dispatch_source_set_event_handler(
-        sources->readSocket,
-        ^{
-          [self _performAction:CURL_CSELECT_IN forSocket:socket];
-        });
-
-      dispatch_resume(sources->readSocket);
-    }
-
-  /* Create a Writing Dispatch Source that listens on socket */
-  if (CURL_POLL_OUT == what || CURL_POLL_INOUT == what)
-    {
-      /* Reset Dispatch Source if previously initialised */
-      if (sources->writeSocket)
-        {
-          dispatch_source_cancel(sources->writeSocket);
-          dispatch_release(sources->writeSocket);
-          sources->writeSocket = NULL;
-        }
-
-      NSDebugMLLog(
-        GS_NSURLSESSION_DEBUG_KEY,
-        @"Creating a writing dispatch source: socket=%llu sources=%p what=%d",
-        socket,
-        sources,
-        what);
-
-      sources->writeSocket = dispatch_source_create(
-        DISPATCH_SOURCE_TYPE_WRITE,
-        socket,
-        0,
-        _sourcesQueue);
-
-      if (!sources->writeSocket)
-        {
-          NSDebugMLLog(
-            GS_NSURLSESSION_DEBUG_KEY,
-            @"Unable to create dispatch source for write socket!");
-
-          return -1;
-        }
-
-      dispatch_source_set_event_handler(
-        sources->writeSocket,
-        ^{
-          [self _performAction:CURL_CSELECT_OUT forSocket:socket];
-        });
-
-      dispatch_resume(sources->writeSocket);
-    }
-
-  return 0;
-} /* _setSocket */
-
-/* Called by a socket event handler or by a firing timer set by timer_callback.
- *
- * The socket event handler is executed on the _workQueue.
- */
 - (void) _checkForCompletion
 {
   CURLMsg * msg;
@@ -1152,6 +1010,117 @@ NSURLSession (NSURLSessionAsynchronousConvenience)
                                         completionHandler: (GSNSURLSessionDownloadCompletionHandler)completionHandler
 {
   return [self notImplemented: _cmd];
+}
+
+@end
+
+@implementation _SocketSources
+{
+    curl_socket_t _socket;
+    dispatch_block_t _readReadyBlock;
+    dispatch_block_t _writeReadyBlock;
+    dispatch_queue_t _queue;
+    dispatch_source_t _readSource;
+    dispatch_source_t _writeSource;
+}
+
+- (instancetype) initWithSocket: (curl_socket_t) socket
+                 readReadyBlock: (dispatch_block_t) readReadyBlock
+                writeReadyBlock: (dispatch_block_t) writeReadyBlock
+                          queue: (dispatch_queue_t) queue
+{
+    if ((self = [super init])) {
+        _socket = socket;
+        _readReadyBlock = [readReadyBlock copy];
+        _writeReadyBlock = [writeReadyBlock copy];
+        _queue = queue;
+    }
+
+    return self;
+}
+
+- (void) setReadable: (BOOL)readable
+         andWritable: (BOOL)writable
+{
+    /* Reset Dispatch Source if previously initialized */
+    if (_readSource) {
+        dispatch_source_cancel(_readSource);
+        dispatch_release(_readSource);
+        _readSource = NULL;
+    }
+
+    if (readable) {
+        _readSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_READ, _socket, 0, _queue);
+        dispatch_source_set_event_handler(_readSource, _readReadyBlock);
+        dispatch_resume(_readSource);
+    }
+
+    /* Reset Dispatch Source if previously initialized */
+    if (_writeSource) {
+        dispatch_source_cancel(_writeSource);
+        dispatch_release(_writeSource);
+        _writeSource = NULL;
+    }
+
+    if (writable) {
+        _writeSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_WRITE, _socket, 0, _queue);
+        dispatch_source_set_event_handler(_writeSource, _writeReadyBlock);
+        dispatch_resume(_writeSource);
+    }
+}
+
+- (void) dealloc
+{
+  dispatch_group_t group;
+
+  NSDebugMLLog(GS_NSURLSESSION_DEBUG_KEY, @"Remove socket with _Sources: %@", self);
+
+  group = dispatch_group_create();
+
+  if (_readSource)
+    {
+      dispatch_group_enter(group);
+      dispatch_source_set_cancel_handler(
+        _readSource,
+        ^{
+            dispatch_group_leave(group);
+        });
+      dispatch_source_cancel(_readSource);
+    }
+
+  if (_writeSource)
+    {
+      dispatch_group_enter(group);
+      dispatch_source_set_cancel_handler(
+        _writeSource,
+        ^{
+            dispatch_group_leave(group);
+        });
+      dispatch_source_cancel(_writeSource);
+    }
+
+  dispatch_group_wait(group, DISPATCH_TIME_FOREVER);
+  dispatch_release(group);
+  group = nil;
+
+  if (_readSource)
+    {
+      dispatch_release(_readSource);
+      _readSource = nil;
+    }
+
+  if (_writeSource)
+    {
+      dispatch_release(_writeSource);
+      _writeSource = nil;
+    }
+
+  _socket = 0;
+  DESTROY(_readReadyBlock);
+  DESTROY(_writeReadyBlock);
+  _queue = nil;
+
+  [super dealloc];
 }
 
 @end
