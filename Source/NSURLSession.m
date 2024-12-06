@@ -106,7 +106,7 @@ socket_callback(CURL * easy,           /* easy handle */
 
   NSDebugLLog(
     GS_NSURLSESSION_DEBUG_KEY,
-    @"Socket Callback for Session %@: socket=%d easy:%p what=%s",
+    @"Socket Callback for Session %@: socket=%lld easy:%p what=%s",
     session,
     s,
     easy,
@@ -481,7 +481,7 @@ socket_callback(CURL * easy,           /* easy handle */
 
   NSDebugMLLog(
     GS_NSURLSESSION_DEBUG_KEY,
-    @"Add Socket: %d easy: %p",
+    @"Add Socket: %llu easy: %p",
     socket,
     easy);
 
@@ -526,7 +526,7 @@ socket_callback(CURL * easy,           /* easy handle */
 
       NSDebugMLLog(
         GS_NSURLSESSION_DEBUG_KEY,
-        @"Creating a reading dispatch source: socket=%d sources=%p what=%d",
+        @"Creating a reading dispatch source: socket=%llu sources=%p what=%d",
         socket,
         sources,
         what);
@@ -578,7 +578,7 @@ socket_callback(CURL * easy,           /* easy handle */
 
       NSDebugMLLog(
         GS_NSURLSESSION_DEBUG_KEY,
-        @"Creating a writing dispatch source: socket=%d sources=%p what=%d",
+        @"Creating a writing dispatch source: socket=%llu sources=%p what=%d",
         socket,
         sources,
         what);
