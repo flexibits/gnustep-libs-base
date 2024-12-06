@@ -448,7 +448,7 @@ header_callback(char * ptr, size_t size, size_t nitems, void * userdata)
 
       NSDebugLLog(
         GS_NSURLSESSION_DEBUG_KEY,
-        @"task=%@ version=%@ status=%ld found %ld headers",
+        @"task=%@ version=%@ status=%lld found %lld headers",
         task,
         version,
         statusCode,
@@ -498,7 +498,7 @@ header_callback(char * ptr, size_t size, size_t nitems, void * userdata)
 
               NSDebugLLog(
                 GS_NSURLSESSION_DEBUG_KEY,
-                @"task=%@ status=%ld has Location header. Prepare "
+                @"task=%@ status=%lld has Location header. Prepare "
                 @"for redirection with url=%@",
                 task,
                 statusCode,
@@ -583,7 +583,7 @@ header_callback(char * ptr, size_t size, size_t nitems, void * userdata)
                 {
                   NSDebugLLog(
                     GS_NSURLSESSION_DEBUG_KEY,
-                    @"task=%@ status=%ld has Location header but "
+                    @"task=%@ status=%lld has Location header but "
                     @"delegate does not respond to "
                     @"willPerformHTTPRedirection:. Redirecting to Location %@",
                     task,
