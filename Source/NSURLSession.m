@@ -138,6 +138,7 @@ static int curl_timer_function(CURLM *multi, long timeout_ms, void *clientp)
 
   /* A queue specifically to process socket sources
    * See further discussion in https://github.com/swiftlang/swift-corelibs-libdispatch/issues/609
+   * Solution ported from https://github.com/readdle/swift-corelibs-foundation/commit/819eab9cff28aca764ec66f38531543a9e1718c0
    */
   dispatch_queue_t _sourcesQueue;
 
@@ -308,7 +309,7 @@ static int curl_timer_function(CURLM *multi, long timeout_ms, void *clientp)
         }
 
       /* libcurl Configuration */
-      curl_global_init(CURL_GLOBAL_SSL);
+      curl_global_init(CURL_GLOBAL_DEFAULT);
 
       _multiHandle = curl_multi_init();
 
@@ -398,6 +399,17 @@ static int curl_timer_function(CURLM *multi, long timeout_ms, void *clientp)
         [task _easyHandle],
         multiHandle,
         code);
+
+      // If this is the first handle being added, we need to `kick` the
+      // underlying multi handle by calling `timeoutTimerFired` as
+      // described in
+      // <https://curl.haxx.se/libcurl/c/curl_multi_socket_action.html>.
+      // That will initiate the registration for timeout timer and socket
+      // readiness.
+      // if (_stillRunning == 0)
+        {
+          curl_multi_socket_action(_multiHandle, CURL_SOCKET_TIMEOUT, 0, &_stillRunning);
+        }
     });
 }
 
@@ -433,7 +445,7 @@ static int curl_timer_function(CURLM *multi, long timeout_ms, void *clientp)
             DISPATCH_TIME_NOW,
             timeout_ms * NSEC_PER_MSEC),
           DISPATCH_TIME_FOREVER,              // don't repeat
-          timeout_ms * 0.05 * NSEC_PER_MSEC); // 5% leeway
+          timeout_ms * 0.05); // 5% leeway
 
         if (_isTimerSuspended)
           {
@@ -463,10 +475,10 @@ static int curl_timer_function(CURLM *multi, long timeout_ms, void *clientp)
 
             socketSources = [[_SocketSources alloc] initWithSocket: socket
                                                     readReadyBlock: ^{
-                                                        [self _performAction: CURL_CSELECT_IN forSocket: socket];
+                                                        [self _performAction: 0 forSocket: socket];
                                                     }
                                                     writeReadyBlock: ^{
-                                                        [self _performAction: CURL_CSELECT_OUT forSocket: socket];
+                                                        [self _performAction: 0 forSocket: socket];
                                                     }
                                                               queue: _sourcesQueue];
             if (!socketSources)
@@ -608,6 +620,8 @@ static int curl_timer_function(CURLM *multi, long timeout_ms, void *clientp)
     _workQueue,
     ^{
       [_tasks addObject: task];
+
+      curl_multi_socket_action(_multiHandle, CURL_SOCKET_TIMEOUT, 0, &_stillRunning);
     });
 
   if ([_delegate respondsToSelector: @selector(URLSession:didCreateTask:)])

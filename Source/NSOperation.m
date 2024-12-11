@@ -471,6 +471,8 @@ static void     *queuePriorityCtxt = (void*)"queuePriority";
     }
   NS_HANDLER
     {
+      NSString *description = [localException description];
+      const char *utf8 = [description UTF8String];
       [NSThread setThreadPriority:  prio];
       [localException raise];
     }

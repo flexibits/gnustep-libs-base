@@ -324,6 +324,7 @@ header_callback(char * ptr, size_t size, size_t nitems, void * userdata)
         GS_NSURLSESSION_DEBUG_KEY,
         @"task=%@ Could not find 'headers' key in taskData",
         task);
+
       return 0;
     }
 
@@ -337,6 +338,7 @@ header_callback(char * ptr, size_t size, size_t nitems, void * userdata)
       [taskData setObject: headerLine forKey: @"version"];
 
       [headerLine release];
+
       return size * nitems;
     }
 
@@ -406,6 +408,7 @@ header_callback(char * ptr, size_t size, size_t nitems, void * userdata)
       [taskData setObject: key forKey: @"lastHeaderKey"];
 
       [headerLine release];
+
       return size * nitems;
     }
 
@@ -514,7 +517,7 @@ header_callback(char * ptr, size_t size, size_t nitems, void * userdata)
 
                   curl_easy_pause(handle, CURLPAUSE_ALL);
 
-                  [[session delegateQueue] addOperationWithBlock:^{
+                  [[session delegateQueue] addOperationWithBlock: ^{
                      void (^completionHandler)(NSURLRequest *) = ^(
                        NSURLRequest * userRequest) {
                        /* Changes are dispatched onto workqueue */
@@ -577,6 +580,7 @@ header_callback(char * ptr, size_t size, size_t nitems, void * userdata)
                    }];
 
                   [headerFields removeAllObjects];
+
                   return size * nitems;
                 }
               else
@@ -611,6 +615,7 @@ header_callback(char * ptr, size_t size, size_t nitems, void * userdata)
                 }
 
               [headerFields removeAllObjects];
+
               return size * nitems;
             }
           else
@@ -651,24 +656,25 @@ header_callback(char * ptr, size_t size, size_t nitems, void * userdata)
           /* Pause until the completion handler is called */
           curl_easy_pause(handle, CURLPAUSE_ALL);
 
-          [[session delegateQueue] addOperationWithBlock:^{
+          [[session delegateQueue] addOperationWithBlock: ^{
              [delegate URLSession: session
                          dataTask: (NSURLSessionDataTask *)task
                didReceiveResponse: response
-                completionHandler:^(
-                NSURLSessionResponseDisposition disposition) {
-                /* FIXME: Implement NSURLSessionResponseBecomeDownload */
-                if (disposition == NSURLSessionResponseCancel)
-                {
-                  [task _setShouldStopTransfer: YES];
-                }
+                completionHandler: ^(
+                  NSURLSessionResponseDisposition disposition) {
+                  /* FIXME: Implement NSURLSessionResponseBecomeDownload */
 
-                /* Unpause easy handle */
-                dispatch_async(
-                  queue,
-                  ^{
-                    curl_easy_pause(handle, CURLPAUSE_CONT);
-                  });
+                  if (disposition == NSURLSessionResponseCancel)
+                    {
+                      [task _setShouldStopTransfer: YES];
+                    }
+
+                  /* Unpause easy handle */
+                  dispatch_async(
+                    queue,
+                    ^{
+                      curl_easy_pause(handle, CURLPAUSE_CONT);
+                    });
               }];
            }];
         }
@@ -706,14 +712,14 @@ read_callback(char * buffer, size_t size, size_t nitems, void * userdata)
 
       if ([delegate respondsToSelector: needNewBodyStreamSel])
         {
-          [[[task _session] delegateQueue] addOperationWithBlock:^{
+          [[[task _session] delegateQueue] addOperationWithBlock: ^{
              [delegate URLSession: session
                              task: task
-                needNewBodyStream:^(NSInputStream * bodyStream) {
-                /* Add input stream to task data */
-                [taskData setObject: bodyStream forKey: taskInputStreamKey];
-                /* Continue with the transfer */
-                curl_easy_pause([task _easyHandle], CURLPAUSE_CONT);
+                needNewBodyStream: ^(NSInputStream * bodyStream) {
+                  /* Add input stream to task data */
+                  [taskData setObject: bodyStream forKey: taskInputStreamKey];
+                  /* Continue with the transfer */
+                  curl_easy_pause([task _easyHandle], CURLPAUSE_CONT);
               }];
            }];
 
@@ -752,7 +758,7 @@ read_callback(char * buffer, size_t size, size_t nitems, void * userdata)
 } /* read_callback */
 
 /* CURLOPT_WRITEFUNCTION: callback for writing received data from easy handle */
-static size_t write_callback(char * ptr, size_t size, size_t nmemb, void * userdata)
+static size_t write_callback(char *ptr, size_t size, size_t nmemb, void *userdata)
 {
   NSURLSessionTask * task;
   NSURLSession * session;
@@ -771,6 +777,7 @@ static size_t write_callback(char * ptr, size_t size, size_t nmemb, void * userd
       NSMutableData * data;
 
       data = [taskData objectForKey: taskTransferDataKey];
+
       if (!data)
         {
           data = [[NSMutableData alloc] init];
@@ -796,6 +803,7 @@ static size_t write_callback(char * ptr, size_t size, size_t nmemb, void * userd
             {
               [taskData setObject: error forKey: NSUnderlyingErrorKey];
               [dataFragment release];
+
               return 0;
             }
         }
@@ -811,7 +819,7 @@ static size_t write_callback(char * ptr, size_t size, size_t nmemb, void * userd
       if ([task isKindOfClass: dataTaskClass] &&
           [delegate respondsToSelector: didReceiveDataSel])
         {
-          [[session delegateQueue] addOperationWithBlock:^{
+          [[session delegateQueue] addOperationWithBlock: ^{
              [delegate URLSession: session
                          dataTask: (NSURLSessionDataTask *)task
                    didReceiveData: dataFragment];
@@ -836,7 +844,7 @@ static size_t write_callback(char * ptr, size_t size, size_t nmemb, void * userd
           totalBytesExpectedToReceive =
             [downloadTask countOfBytesExpectedToReceive];
 
-          [[session delegateQueue] addOperationWithBlock:^{
+          [[session delegateQueue] addOperationWithBlock: ^{
              [delegate URLSession: session
                            downloadTask: downloadTask
                            didWriteData: bytesWritten
@@ -847,6 +855,7 @@ static size_t write_callback(char * ptr, size_t size, size_t nmemb, void * userd
     }
 
   [dataFragment release];
+
   return size * nmemb;
 } /* write_callback */
 
@@ -1019,7 +1028,7 @@ static size_t write_callback(char * ptr, size_t size, size_t nmemb, void * userd
        * for redirect notification. We have implemented our own redirection
        * system in header_callback.
        */
-      curl_easy_setopt(_easyHandle, CURLOPT_FOLLOWLOCATION, 0L);
+      curl_easy_setopt(_easyHandle, CURLOPT_FOLLOWLOCATION, 1L);
 
       /* Set timeout in connect phase */
       curl_easy_setopt(
@@ -1066,6 +1075,7 @@ static size_t write_callback(char * ptr, size_t size, size_t nmemb, void * userd
 
       /* Process config headers */
       immConfigHeaders = [configuration HTTPAdditionalHeaders];
+
       if (nil != immConfigHeaders)
         {
           configHeaders = [[_GSMutableInsensitiveDictionary alloc]
@@ -1110,7 +1120,7 @@ static size_t write_callback(char * ptr, size_t size, size_t nmemb, void * userd
 
       /* Append Headers to the libcurl header list
        */
-      [requestHeaders enumerateKeysAndObjectsUsingBlock:^(id<NSCopying> key, id object, BOOL * stop) {
+      [requestHeaders enumerateKeysAndObjectsUsingBlock: ^(id<NSCopying> key, id object, BOOL * stop) {
          NSString * headerLine;
 
          headerLine = [NSString stringWithFormat: @"%@: %@", key, object];
@@ -1118,7 +1128,20 @@ static size_t write_callback(char * ptr, size_t size, size_t nmemb, void * userd
          /* We have removed all reserved headers in NSURLRequest */
          _headerList = curl_slist_append(_headerList, [headerLine UTF8String]);
        }];
+
       curl_easy_setopt(_easyHandle, CURLOPT_HTTPHEADER, _headerList);
+      curl_easy_setopt(_easyHandle, CURLOPT_SSL_OPTIONS, CURLSSLOPT_REVOKE_BEST_EFFORT);
+  
+      // Allow a higher level to adjust the curl handle.
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wundeclared-selector"
+      id delegate = [_session delegate];
+
+      if ([delegate respondsToSelector:@selector(configureCurlHandle:forRequest:)])
+        {
+          [delegate configureCurlHandle:_easyHandle forRequest:request];
+        }
+#pragma clang diagnostic pop
     }
 
   return self;
@@ -1330,9 +1353,9 @@ static size_t write_callback(char * ptr, size_t size, size_t nmemb, void * userd
         {
           NSURL * url = [_taskData objectForKey: taskTemporaryFileLocationKey];
 
-          [[_session delegateQueue] addOperationWithBlock:^{
+          [[_session delegateQueue] addOperationWithBlock: ^{
              [(id<NSURLSessionDownloadDelegate>) _delegate
-              URLSession: _session
+                             URLSession: _session
                            downloadTask: (NSURLSessionDownloadTask *)self
               didFinishDownloadingToURL: url];
            }];
@@ -1340,7 +1363,7 @@ static size_t write_callback(char * ptr, size_t size, size_t nmemb, void * userd
 
       if ([_delegate respondsToSelector: didCompleteWithErrorSel])
         {
-          [[_session delegateQueue] addOperationWithBlock:^{
+          [[_session delegateQueue] addOperationWithBlock: ^{
              [_delegate URLSession: _session
                               task: self
               didCompleteWithError: error];
@@ -1361,7 +1384,7 @@ static size_t write_callback(char * ptr, size_t size, size_t nmemb, void * userd
       dataTask = (NSURLSessionDataTask *)self;
       data = [_taskData objectForKey: taskTransferDataKey];
 
-      [[_session delegateQueue] addOperationWithBlock:^{
+      [[_session delegateQueue] addOperationWithBlock: ^{
          [dataTask _completionHandler](data, _response, error);
        }];
     }
@@ -1375,7 +1398,7 @@ static size_t write_callback(char * ptr, size_t size, size_t nmemb, void * userd
       downloadTask = (NSURLSessionDownloadTask *)self;
       tempFile = [_taskData objectForKey: taskTemporaryFileLocationKey];
 
-      [[_session delegateQueue] addOperationWithBlock:^{
+      [[_session delegateQueue] addOperationWithBlock: ^{
          [downloadTask _completionHandler](tempFile, _response, error);
        }];
     }
@@ -1440,8 +1463,10 @@ static size_t write_callback(char * ptr, size_t size, size_t nmemb, void * userd
 
       _state = NSURLSessionTaskStateRunning;
       [_session _resumeTask: self];
+
       return;
     }
+
   _suspendCount -= 1;
 }
 
@@ -1456,11 +1481,11 @@ static size_t write_callback(char * ptr, size_t size, size_t nmemb, void * userd
   dispatch_async(
     [_session _workQueue],
     ^{
-    /* Unpause the easy handle if previously paused */
-    curl_easy_pause(_easyHandle, CURLPAUSE_CONT);
+      /* Unpause the easy handle if previously paused */
+      curl_easy_pause(_easyHandle, CURLPAUSE_CONT);
 
-    _shouldStopTransfer = YES;
-    _state = NSURLSessionTaskStateCanceling;
+      _shouldStopTransfer = YES;
+      _state = NSURLSessionTaskStateCanceling;
   });
 }
 
