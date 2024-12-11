@@ -1042,31 +1042,31 @@ NSURLSession (NSURLSessionAsynchronousConvenience)
 - (void) setReadable: (BOOL)readable
          andWritable: (BOOL)writable
 {
-    /* Reset Dispatch Source if previously initialized */
-    if (_readSource) {
+    if (_readSource && !readable)
+      {
         dispatch_source_cancel(_readSource);
         dispatch_release(_readSource);
         _readSource = NULL;
-    }
-
-    if (readable) {
+      }
+    else if (readable && !_readSource)
+      {
         _readSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_READ, _socket, 0, _queue);
         dispatch_source_set_event_handler(_readSource, _readReadyBlock);
         dispatch_resume(_readSource);
-    }
+      }
 
-    /* Reset Dispatch Source if previously initialized */
-    if (_writeSource) {
+    if (_writeSource && !writable)
+      {
         dispatch_source_cancel(_writeSource);
         dispatch_release(_writeSource);
         _writeSource = NULL;
-    }
-
-    if (writable) {
+      }
+    else if (writable && !_writeSource)
+      {
         _writeSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_WRITE, _socket, 0, _queue);
         dispatch_source_set_event_handler(_writeSource, _writeReadyBlock);
         dispatch_resume(_writeSource);
-    }
+      }
 }
 
 - (void) dealloc
