@@ -72,6 +72,7 @@ static int curl_timer_function(CURL *easyHandle, int timeout, void *userdata) {
 @implementation GSMultiHandle
 {
   NSMutableArray    *_easyHandles;
+  dispatch_queue_t _sourcesQueue;
   dispatch_queue_t  _queue;
   GSTimeoutSource   *_timeoutSource;
 }
@@ -88,6 +89,7 @@ static int curl_timer_function(CURL *easyHandle, int timeout, void *userdata) {
     {
       _rawHandle = curl_multi_init();
       _easyHandles = [[NSMutableArray alloc] init];
+      _sourcesQueue = dispatch_queue_create("GSMultiHandle.sourcesqueue", DISPATCH_QUEUE_SERIAL);
 #if HAVE_DISPATCH_QUEUE_CREATE_WITH_TARGET
       _queue = dispatch_queue_create_with_target("GSMultiHandle.isolation",
 	DISPATCH_QUEUE_SERIAL, aQueue);
@@ -111,6 +113,7 @@ static int curl_timer_function(CURL *easyHandle, int timeout, void *userdata) {
   [_timeoutSource cancel];
   DESTROY(_timeoutSource);
 
+  dispatch_release(_sourcesQueue);
   dispatch_release(_queue);
 
   e = [_easyHandles objectEnumerator];
@@ -346,9 +349,12 @@ static int curl_timer_function(CURL *easyHandle, int timeout, void *userdata) {
     {
       [socketSources createSourcesWithAction: action
                                       socket: socket
-                                       queue: _queue
+                                       queue: _sourcesQueue
                                      handler: ^{
-	        [self readAndWriteAvailableDataOnSocket: socket];
+          dispatch_async(_queue,
+            ^{
+              [self readAndWriteAvailableDataOnSocket: socket];
+            });
         }];
     }
 
@@ -429,17 +435,46 @@ static int curl_timer_function(CURL *easyHandle, int timeout, void *userdata) {
 
 - (void) dealloc
 {
+  dispatch_group_t group;
+
+  group = dispatch_group_create();
+
   if (_readSource) 
     {
+      dispatch_group_enter(group);
+      dispatch_source_set_cancel_handler(_readSource,
+      ^{
+        dispatch_group_leave(group);
+      });
       dispatch_source_cancel(_readSource);
     }
-  _readSource = NULL;
+  
 
   if (_writeSource) 
     {
+      dispatch_group_enter(group);
+      dispatch_source_set_cancel_handler(_writeSource,
+      ^{
+        dispatch_group_leave(group);
+      });
       dispatch_source_cancel(_writeSource);
     }
-  _writeSource = NULL;
+
+  dispatch_group_wait(group, DISPATCH_TIME_FOREVER);
+  dispatch_release(group);
+  group = NULL;
+
+  if (_readSource)
+    {
+      dispatch_release(_readSource);
+      _readSource = NULL;
+    }
+
+  if (_writeSource)
+    {
+      dispatch_release(_writeSource);
+      _writeSource = NULL;
+    }
 
   [super dealloc];
 }
@@ -475,9 +510,6 @@ static int curl_timer_function(CURL *easyHandle, int timeout, void *userdata) {
 
   source = dispatch_source_create(type, socket, 0, queue);
   dispatch_source_set_event_handler(source, handler);
-  dispatch_source_set_cancel_handler(source, ^{
-    dispatch_release(source);
-  });
   dispatch_resume(source);
 
   return source;
