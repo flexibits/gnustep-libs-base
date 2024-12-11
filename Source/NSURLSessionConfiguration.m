@@ -264,7 +264,7 @@ static NSURLSessionConfiguration * def = nil;
   if (copy)
     {
       copy->_identifier = [_identifier copy];
-      copy->_URLCache = [_URLCache copy];
+      copy->_URLCache = [_URLCache retain];
       copy->_URLCredentialStorage = [_URLCredentialStorage copy];
       copy->_protocolClasses = [_protocolClasses copyWithZone: zone];
       copy->_HTTPMaximumConnectionsPerHost = _HTTPMaximumConnectionsPerHost;
