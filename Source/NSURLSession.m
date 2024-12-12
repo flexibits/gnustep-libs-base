@@ -270,9 +270,11 @@ static unsigned nextSessionIdentifier()
 {
   dispatch_async(_workQueue,
     ^{
+      void (^invalidateSessionCallback)(void);
+
       _invalidated = YES;
       
-      void (^invalidateSessionCallback)(void) = 
+      invalidateSessionCallback = 
         ^{
           if (nil == _delegate) return;
 

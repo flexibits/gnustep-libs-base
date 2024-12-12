@@ -11,13 +11,46 @@
 #import "Foundation/NSValue.h"
 
 @interface GSMultiHandle ()
+
 - (void) readAndWriteAvailableDataOnSocket: (curl_socket_t)socket;
+
 - (void) readMessages;
-- (void) completedTransferForEasyHandle: (CURL*)rawEasyHandle 
-                               easyCode: (int)easyCode;
-- (int32_t) registerWithSocket: (curl_socket_t)socket 
-                          what: (int)what 
-               socketSourcePtr: (void *)socketSourcePtr;
+
+- (void) completedTransferForEasyHandle: (CURL*)rawEasyHandle  
+                               easyCode: (CURLcode)easyCode;
+
+- (void) performAction: (int) action
+             forSocket: (curl_socket_t) socket;
+
+- (int) socketCallback: (CURL *) easy
+                socket: (curl_socket_t) socket
+                  what: (int) what
+               socketp: (void *)socketp;
+ 
+- (int) timerCallback: (CURLM *)multi 
+           timeout_ms: (long)timeout_ms; 
+
+@end
+
+/*
+ * Read and write libdispatch sources for a specific socket.
+ *
+ * A simple helper that combines two sources -- both being optional.
+ *
+ * This info is stored into the socket using `curl_multi_assign()`.
+ *
+ * - SeeAlso: GSSocketRegisterAction
+ */
+@interface GSSocketSources : NSObject
+
+- (instancetype) initWithSocket: (curl_socket_t)socket
+                 readReadyBlock: (dispatch_block_t)readReadyBlock
+                writeReadyBlock: (dispatch_block_t)writeReadyBlock
+                          queue: (dispatch_queue_t)queue;
+
+- (void) setReadable: (BOOL)readable
+         andWritable: (BOOL)writable;
+
 @end
 
 static void handleEasyCode(int code)
@@ -43,8 +76,7 @@ static void handleMultiCode(int code)
       NSString    *reason;
       NSException *e;
 
-      reason = [NSString stringWithFormat: @"An error occurred, CURLcode is %d", 
-        code];
+      reason = [NSString stringWithFormat: @"An error occurred, CURLcode is %d", code];
       e = [NSException exceptionWithName: @"libcurl.multi" 
                                   reason: reason 
                                 userInfo: nil];
@@ -52,21 +84,22 @@ static void handleMultiCode(int code)
     }
 }
 
-static int curl_socket_function(CURL *easyHandle, curl_socket_t socket, int what, void *userdata, void *socketptr) 
+static int curl_socket_function(CURL *easy, curl_socket_t socket, int what, void *clientp, void *socketp)
 {
-  GSMultiHandle  *handle = (GSMultiHandle*)userdata;
-  
-  return [handle registerWithSocket: socket 
-                               what: what 
-                    socketSourcePtr: socketptr];
+  GSMultiHandle *handle = (GSMultiHandle *)clientp;
+
+  return [handle socketCallback: easy
+                         socket: socket
+                           what: what
+                        socketp: socketp];
 }
 
-static int curl_timer_function(CURL *easyHandle, int timeout, void *userdata) {
-    GSMultiHandle  *handle = (GSMultiHandle*)userdata;
-   
-    [handle updateTimeoutTimerToValue: timeout];
+static int curl_timer_function(CURLM *multi, long timeout_ms, void *clientp)
+{
+    GSMultiHandle *handle = (GSMultiHandle *)clientp; 
 
-    return 0;
+    return [handle timerCallback: multi
+                      timeout_ms: timeout_ms];
 }
 
 @implementation GSMultiHandle
@@ -75,7 +108,8 @@ static int curl_timer_function(CURL *easyHandle, int timeout, void *userdata) {
   dispatch_queue_t _sourcesQueue;
   dispatch_queue_t  _queue;
   GSTimeoutSource   *_timeoutSource;
-}
+  int _runningHandlesCount;
+} 
 
 - (CURLM*) rawHandle
 {
@@ -153,7 +187,7 @@ static int curl_timer_function(CURL *easyHandle, int timeout, void *userdata) {
   // readiness.
   BOOL needsTimeout = false;
   
-  if ([_easyHandles count] == 0) 
+  if ([_easyHandles count] == 0)
     {
       needsTimeout = YES;
     }
@@ -192,52 +226,25 @@ static int curl_timer_function(CURL *easyHandle, int timeout, void *userdata) {
   [_easyHandles removeObjectAtIndex: idx];
 }
 
-- (void) updateTimeoutTimerToValue: (NSInteger)value
-{
-  // A timeout_ms value of -1 passed to this callback means you should delete 
-  // the timer. All other values are valid expire times in number 
-  // of milliseconds.
-  if (-1 == value)
-    {
-      [_timeoutSource suspend];
-    }
-  else 
-    {
-      if (!_timeoutSource)
-        {
-          _timeoutSource = [[GSTimeoutSource alloc] initWithQueue: _queue
-                                                          handler: ^{
-                                                            [self timeoutTimerFired];
-                                                          }];
-        }
-      [_timeoutSource setTimeout: value];
-    }
-}
-
 - (void) timeoutTimerFired 
 {
   [self readAndWriteAvailableDataOnSocket: CURL_SOCKET_TIMEOUT];
 }
 
 - (void) readAndWriteAvailableDataOnSocket: (curl_socket_t)socket
-{
-  int runningHandlesCount = 0;
-  
+{  
   do
     {
-      CURLMcode mc = curl_multi_perform(_rawHandle, &runningHandlesCount);
+      handleMultiCode(curl_multi_perform(_rawHandle, &_runningHandlesCount));
 
-      if (mc == CURLM_OK && runningHandlesCount)
-	{
-	  mc = curl_multi_poll(_rawHandle, NULL, 0, 10000, NULL);
-	}
-      else
-	{
-	  break;
-	}
-  } while (runningHandlesCount);
+      if (_runningHandlesCount)
+        {
+          handleMultiCode(curl_multi_poll(_rawHandle, NULL, 0, 10000, NULL));
+        }
+    }
+    while (_runningHandlesCount);
 
-  handleMultiCode(curl_multi_socket_action(_rawHandle, socket, 0, &runningHandlesCount));
+  handleMultiCode(curl_multi_socket_action(_rawHandle, socket, 0, &_runningHandlesCount));
   
   [self readMessages];
 }
@@ -266,7 +273,7 @@ static int curl_timer_function(CURL *easyHandle, int timeout, void *userdata) {
 }
 
 - (void) completedTransferForEasyHandle: (CURL*)rawEasyHandle 
-                               easyCode: (int)easyCode 
+                               easyCode: (CURLcode)easyCode 
 {
   NSEnumerator  *e;
   GSEasyHandle  *h;
@@ -288,11 +295,11 @@ static int curl_timer_function(CURL *easyHandle, int timeout, void *userdata) {
     @", but it is not in the list of added handles.");
 
   errCode = [handle urlErrorCodeWithEasyCode: easyCode];
-  if (0 != errCode) 
+  if (0 != errCode)
     {
       NSString *d = nil;
 
-      if ([handle errorBuffer][0] == 0) 
+      if ([handle errorBuffer][0] == 0)
         {
           const char *description = curl_easy_strerror(errCode);
           d = [[NSString alloc] initWithCString: description 
@@ -312,126 +319,148 @@ static int curl_timer_function(CURL *easyHandle, int timeout, void *userdata) {
   [handle transferCompletedWithError: err];
 }
 
-- (int32_t) registerWithSocket: (curl_socket_t)socket
-                          what: (int)what 
-               socketSourcePtr: (void *)socketSourcePtr
+- (void) performAction: (int)action
+             forSocket: (curl_socket_t)socket
 {
-  // We get this callback whenever we need to register or unregister a
-  // given socket with libdispatch.
-  // The `action` / `what` defines if we should register or unregister
-  // that we're interested in read and/or write readiness. We will do so
-  // through libdispatch (DispatchSource) and store the source(s) inside
-  // a `SocketSources` which we in turn store inside libcurl's multi handle
-  // by means of curl_multi_assign() -- we retain the object first.
+  dispatch_async(_queue,
+    ^{
+      curl_multi_socket_action(_rawHandle, socket, action, &_runningHandlesCount);
 
-  GSSocketRegisterAction  *action;
-  GSSocketSources         *socketSources;
+      [self readMessages];
+    });
+}
 
-  action = [[GSSocketRegisterAction alloc] initWithRawValue: what];
-  socketSources = [GSSocketSources from: socketSourcePtr];
-
-  if (nil == socketSources && [action needsSource]) 
+- (int) socketCallback: (CURL *)easy 
+                socket: (curl_socket_t)socket 
+                  what: (int)what 
+               socketp: (void *)socketp 
+{ 
+  GSSocketSources *sources = (GSSocketSources *)socketp; 
+ 
+  switch(what)
     {
-      GSSocketSources *s;
+      case CURL_POLL_IN:
+      case CURL_POLL_OUT:
+      case CURL_POLL_INOUT:
+        if (!sources)
+          {
+            sources = [[GSSocketSources alloc] initWithSocket: socket 
+                                                          readReadyBlock: ^{
+                                                            [self performAction: CURL_CSELECT_IN forSocket: socket];
+                                                          }
+                                                          writeReadyBlock: ^{
+                                                            [self performAction: CURL_CSELECT_OUT forSocket: socket];
+                                                          }
+                                                          queue: _sourcesQueue];
 
-      s = [[GSSocketSources alloc] init];
-      curl_multi_assign(_rawHandle, socket, (void*)s);
-      socketSources = s;
-    } 
-  else if (nil != socketSources
-    && GSSocketRegisterActionTypeUnregister == [action type]) 
-    {
-      DESTROY(socketSources);
-      curl_multi_assign(_rawHandle, socket, NULL);
+            curl_multi_assign(_rawHandle, socket, (void *)sources);
+          }
+
+        [sources setReadable: (what != CURL_POLL_OUT)
+                 andWritable: (what != CURL_POLL_IN)];
+
+        break;
+      case CURL_POLL_REMOVE:
+        curl_multi_assign(_rawHandle, socket, NULL);
+        DESTROY(sources);
+        break;
+      default:
+        {
+          NSDictionary *userInfo = @{ @"NSURLSession.CURL_POLL": @(what) };
+          NSException *exception = [NSException exceptionWithName: @"NSURLSession.libcurl"
+                                                           reason: @"Invalid CURL_POLL value"
+                                                         userInfo: userInfo];
+
+          [exception raise];
+
+          return -1;
+        }
     }
-
-  if (nil != socketSources) 
-    {
-      [socketSources createSourcesWithAction: action
-                                      socket: socket
-                                       queue: _sourcesQueue
-                                     handler: ^{
-          dispatch_async(_queue,
-            ^{
-              [self readAndWriteAvailableDataOnSocket: socket];
-            });
-        }];
-    }
-
-  RELEASE(action);
 
   return 0;
 }
 
-@end
-
-@implementation GSSocketRegisterAction
-
-- (instancetype) initWithRawValue: (int)rawValue 
+- (int) timerCallback: (CURLM *)multi 
+           timeout_ms: (long)timeout_ms 
 {
-  if (nil != (self = [super init]))
+  // A timeout_ms value of -1 passed to this callback means you should delete 
+  // the timer. All other values are valid expire times in number 
+  // of milliseconds.
+  if (-1 == timeout_ms)
     {
-      switch (rawValue) {
-          case CURL_POLL_NONE:
-            _type = GSSocketRegisterActionTypeNone;
-            break;
-          case CURL_POLL_IN:
-            _type = GSSocketRegisterActionTypeRegisterRead;
-            break;
-          case CURL_POLL_OUT:
-            _type = GSSocketRegisterActionTypeRegisterWrite;
-            break;
-          case CURL_POLL_INOUT:
-            _type = GSSocketRegisterActionTypeRegisterReadAndWrite;
-            break;
-          case CURL_POLL_REMOVE:
-            _type = GSSocketRegisterActionTypeUnregister;
-            break;
-          default:
-            NSAssert(NO, @"Invalid CURL_POLL value"); 
-      }
+      [_timeoutSource suspend];
     }
-
-  return self;
-}
-
-- (GSSocketRegisterActionType) type
-{
-  return _type;
-} 
-
-- (BOOL) needsReadSource 
-{
-  switch (self.type) 
+  else 
     {
-      case GSSocketRegisterActionTypeRegisterRead:
-      case GSSocketRegisterActionTypeRegisterReadAndWrite:
-        return YES;
-      default:
-        return NO;
-    }
-}
+      if (!_timeoutSource)
+        {
+          _timeoutSource = [[GSTimeoutSource alloc] initWithQueue: _queue
+                                                          handler: ^{
+                                                            [self timeoutTimerFired];
+                                                          }];
+        }
 
-- (BOOL) needsWriteSource 
-{
-  switch (self.type) 
-    {
-      case GSSocketRegisterActionTypeRegisterWrite:
-      case GSSocketRegisterActionTypeRegisterReadAndWrite:
-        return YES;
-      default:
-        return NO;
+      [_timeoutSource setTimeout: timeout_ms];
     }
-}
-
-- (BOOL)needsSource 
-{
-  return [self needsReadSource] || [self needsWriteSource];
 }
 
 @end
 
 @implementation GSSocketSources
+{
+    curl_socket_t _socket;
+    dispatch_block_t _readReadyBlock;
+    dispatch_block_t _writeReadyBlock;
+    dispatch_queue_t _queue;
+    dispatch_source_t _readSource;
+    dispatch_source_t _writeSource;
+}
+
+- (instancetype) initWithSocket: (curl_socket_t)socket
+                 readReadyBlock: (dispatch_block_t)readReadyBlock
+                writeReadyBlock: (dispatch_block_t)writeReadyBlock
+                          queue: (dispatch_queue_t)queue
+{
+    if ((self = [super init]))
+      {
+        _socket = socket;
+        _readReadyBlock = [readReadyBlock copy];
+        _writeReadyBlock = [writeReadyBlock copy];
+        _queue = queue;
+      }
+
+    return self;
+}
+
+- (void) setReadable: (BOOL)readable
+         andWritable: (BOOL)writable
+{
+    if (_readSource && !readable)
+      {
+        dispatch_source_cancel(_readSource);
+        dispatch_release(_readSource);
+        _readSource = NULL;
+      }
+    else if (readable && !_readSource)
+      {
+        _readSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_READ, _socket, 0, _queue);
+        dispatch_source_set_event_handler(_readSource, _readReadyBlock);
+        dispatch_resume(_readSource);
+      }
+
+    if (_writeSource && !writable)
+      {
+        dispatch_source_cancel(_writeSource);
+        dispatch_release(_writeSource);
+        _writeSource = NULL;
+      }
+    else if (writable && !_writeSource)
+      {
+        _writeSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_WRITE, _socket, 0, _queue);
+        dispatch_source_set_event_handler(_writeSource, _writeReadyBlock);
+        dispatch_resume(_writeSource);
+      }
+}
 
 - (void) dealloc
 {
@@ -439,30 +468,31 @@ static int curl_timer_function(CURL *easyHandle, int timeout, void *userdata) {
 
   group = dispatch_group_create();
 
-  if (_readSource) 
+  if (_readSource)
     {
       dispatch_group_enter(group);
-      dispatch_source_set_cancel_handler(_readSource,
-      ^{
-        dispatch_group_leave(group);
-      });
+      dispatch_source_set_cancel_handler(
+        _readSource,
+        ^{
+          dispatch_group_leave(group);
+        });
       dispatch_source_cancel(_readSource);
     }
-  
 
-  if (_writeSource) 
+  if (_writeSource)
     {
       dispatch_group_enter(group);
-      dispatch_source_set_cancel_handler(_writeSource,
-      ^{
-        dispatch_group_leave(group);
-      });
+      dispatch_source_set_cancel_handler(
+        _writeSource,
+        ^{
+          dispatch_group_leave(group);
+        });
       dispatch_source_cancel(_writeSource);
     }
 
   dispatch_group_wait(group, DISPATCH_TIME_FOREVER);
   dispatch_release(group);
-  group = NULL;
+  group = nil;
 
   if (_readSource)
     {
@@ -476,56 +506,12 @@ static int curl_timer_function(CURL *easyHandle, int timeout, void *userdata) {
       _writeSource = NULL;
     }
 
+  _socket = 0;
+  DESTROY(_readReadyBlock);
+  DESTROY(_writeReadyBlock);
+  _queue = nil;
+
   [super dealloc];
-}
-
-- (void) createSourcesWithAction: (GSSocketRegisterAction*)action
-                          socket: (curl_socket_t)socket
-                           queue: (dispatch_queue_t)queue
-                         handler: (dispatch_block_t)handler 
-{
-  if (!_readSource && [action needsReadSource]) 
-    {
-      _readSource = [self createSourceWithType: DISPATCH_SOURCE_TYPE_READ
-                                        socket: socket
-                                         queue: queue
-                                       handler: handler];
-    }
-
-  if (!_writeSource && [action needsWriteSource]) 
-    {
-      _writeSource = [self createSourceWithType: DISPATCH_SOURCE_TYPE_WRITE
-                                         socket: socket
-                                          queue: queue
-                                        handler: handler];
-    }
-}
-
-- (dispatch_source_t) createSourceWithType: (dispatch_source_type_t)type
-                                    socket: (curl_socket_t)socket
-                                     queue: (dispatch_queue_t)queue
-                                   handler: (dispatch_block_t)handler
-{
-  dispatch_source_t source;
-
-  source = dispatch_source_create(type, socket, 0, queue);
-  dispatch_source_set_event_handler(source, handler);
-  dispatch_resume(source);
-
-  return source;
-}
-
-
-+ (instancetype) from: (void*)socketSourcePtr 
-{
-  if (!socketSourcePtr)
-    {
-      return nil;
-    }
-  else
-    {
-      return (GSSocketSources*)socketSourcePtr;
-    }
 }
 
 @end
