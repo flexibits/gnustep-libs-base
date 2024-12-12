@@ -40,7 +40,7 @@
       dispatch_source_set_timer(_timer,
         dispatch_time(DISPATCH_TIME_NOW, timeoutMs * NSEC_PER_MSEC),
         DISPATCH_TIME_FOREVER,  // don't repeat
-        timeoutMs * 0.05);      // 5% leeway
+        timeoutMs * 0.05 * NSEC_PER_MSEC);      // 5% leeway
 
       if (_isSuspended)
         {
