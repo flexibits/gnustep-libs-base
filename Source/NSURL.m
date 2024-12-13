@@ -1015,11 +1015,11 @@ static NSUInteger	urlAlign;
 		  if (legal(buf->user, ";:&=+$,") == NO)
 		    {
 		      [NSException raise: NSInvalidArgumentException
-                        format: @"[%@ %@](%@, %@) "
+                        format: @"[%@ %@](%@, %@, %s) "
 			@"illegal character in user/password part",
                         NSStringFromClass([self class]),
                         NSStringFromSelector(_cmd),
-                        aUrlString, aBaseUrl];
+                        aUrlString, aBaseUrl, buf->user];
 		    }
 		  ptr = strchr(buf->user, ':');
 		  if (ptr != 0)
@@ -1145,11 +1145,11 @@ static NSUInteger	urlAlign;
 	      if (*buf->host != '[' && legal(buf->host, "-") == NO)
 		{
 		  [NSException raise: NSInvalidArgumentException
-                    format: @"[%@ %@](%@, %@) "
+                    format: @"[%@ %@](%@, %@, %s) "
 		    @"illegal character in host part",
                     NSStringFromClass([self class]),
                     NSStringFromSelector(_cmd),
-                    aUrlString, aBaseUrl];
+                    aUrlString, aBaseUrl, buf->host];
 		}
 
 	      /*
@@ -1193,11 +1193,11 @@ static NSUInteger	urlAlign;
 	      if (legal(buf->fragment, filepath) == NO)
 		{
 		  [NSException raise: NSInvalidArgumentException
-		    format: @"[%@ %@](%@, %@) "
+		    format: @"[%@ %@](%@, %@, %s) "
 		    @"illegal character in fragment part",
 		    NSStringFromClass([self class]),
 		    NSStringFromSelector(_cmd),
-		    aUrlString, aBaseUrl];
+		    aUrlString, aBaseUrl, buf->fragment];
 		}
 	    }
 
@@ -1222,11 +1222,11 @@ static NSUInteger	urlAlign;
 	      if (legal(buf->query, filepath) == NO)
 		{
 		  [NSException raise: NSInvalidArgumentException
-		    format: @"[%@ %@](%@, %@) "
+		    format: @"[%@ %@](%@, %@, %s) "
 		    @"illegal character in query part",
 		    NSStringFromClass([self class]),
 		    NSStringFromSelector(_cmd),
-		    aUrlString, aBaseUrl];
+		    aUrlString, aBaseUrl, buf->query];
 		}
 	    }
 
@@ -1251,11 +1251,11 @@ static NSUInteger	urlAlign;
 	      if (legal(buf->parameters, filepath) == NO)
 		{
 		  [NSException raise: NSInvalidArgumentException
-		    format: @"[%@ %@](%@, %@) "
+		    format: @"[%@ %@](%@, %@, %s) "
 		    @"illegal character in parameters part",
 		    NSStringFromClass([self class]),
 		    NSStringFromSelector(_cmd),
-		    aUrlString, aBaseUrl];
+		    aUrlString, aBaseUrl, buf->parameters];
 		}
 	    }
 
@@ -1295,11 +1295,11 @@ static NSUInteger	urlAlign;
       if (legal(buf->path, filepath) == NO)
 	{
 	  [NSException raise: NSInvalidArgumentException
-            format: @"[%@ %@](%@, %@) "
+            format: @"[%@ %@](%@, %@, %s) "
 	    @"illegal character in path part",
             NSStringFromClass([self class]),
             NSStringFromSelector(_cmd),
-            aUrlString, aBaseUrl];
+            aUrlString, aBaseUrl, buf->path];
 	}
     }
   NS_HANDLER
