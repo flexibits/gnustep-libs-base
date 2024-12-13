@@ -270,9 +270,11 @@ static unsigned nextSessionIdentifier()
 {
   dispatch_async(_workQueue,
     ^{
+      void (^invalidateSessionCallback)(void);
+
       _invalidated = YES;
       
-      void (^invalidateSessionCallback)(void) = 
+      invalidateSessionCallback = 
         ^{
           if (nil == _delegate) return;
 
@@ -1710,7 +1712,7 @@ static NSURLSessionConfiguration	*def = nil;
   if (copy) 
     {
       copy->_identifier = [_identifier copy];
-      copy->_URLCache = [_URLCache copy];
+      ASSIGN(copy->_URLCache, _URLCache);
       copy->_URLCredentialStorage = [_URLCredentialStorage copy];
       copy->_protocolClasses = [_protocolClasses copyWithZone: zone];
       copy->_HTTPMaximumConnectionsPerHost = _HTTPMaximumConnectionsPerHost;
