@@ -627,52 +627,42 @@ static SEL	appSel;
  * <p>Initialises the dictionary with the contents of the specified file,
  * which must contain a dictionary in property-list format.
  * </p>
- * <p>In GNUstep, the property-list format may be either the OpenStep
- * format (ASCII data), or the MacOS-X format (UTF-8 XML data) ... this
- * method will recognise which it is.
- * </p>
  * <p>If there is a failure to load the file for any reason, the receiver
  * will be released and the method will return nil.
- * </p>
- * <p>Works by invoking [NSString-initWithContentsOfFile:] and
- * [NSString-propertyList] then checking that the result is a dictionary.
  * </p>
  */
 - (id) initWithContentsOfFile: (NSString*)path
 {
-  NSString 	*myString;
+  NSData  *data;
 
-  myString = [[NSString allocWithZone: NSDefaultMallocZone()]
-    initWithContentsOfFile: path];
-  if (myString == nil)
+  data = [[NSData alloc] initWithContentsOfFile: path];
+
+  if (data == nil)
     {
+      NSWarnMLog(@"Contents of file '%@' produced no data", path);
       DESTROY(self);
     }
   else
     {
+      NSError *error;
+      NSPropertyListFormat format;
       id result;
+      
+      result = [NSPropertyListSerialization propertyListWithData: data options: NSPropertyListImmutable format: &format error: &error];
 
-      NS_DURING
-	{
-	  result = [myString propertyList];
-	}
-      NS_HANDLER
-	{
-          result = nil;
-	}
-      NS_ENDHANDLER
-      RELEASE(myString);
+      DESTROY(data);
+
       if ([result isKindOfClass: NSDictionaryClass])
-	{
-	  self = [self initWithDictionary: result];
-	}
+        {
+          self = [self initWithDictionary: result];
+        }
       else
-	{
-	  NSWarnMLog(@"Contents of file '%@' does not contain a dictionary",
-	    path);
-	  DESTROY(self);
-	}
+        {
+          NSWarnMLog(@"Contents of file '%@' does not contain a dictionary with error %@", path, error);
+          DESTROY(self);
+        }
     }
+
   return self;
 }
 
@@ -680,52 +670,42 @@ static SEL	appSel;
  * <p>Initialises the dictionary with the contents of the specified URL,
  * which must contain a dictionary in property-list format.
  * </p>
- * <p>In GNUstep, the property-list format may be either the OpenStep
- * format (ASCII data), or the MacOS-X format (UTF-8 XML data) ... this
- * method will recognise which it is.
- * </p>
  * <p>If there is a failure to load the URL for any reason, the receiver
  * will be released and the method will return nil.
- * </p>
- * <p>Works by invoking [NSString-initWithContentsOfURL:] and
- * [NSString-propertyList] then checking that the result is a dictionary.
  * </p>
  */
 - (id) initWithContentsOfURL: (NSURL*)aURL
 {
-  NSString 	*myString;
+  NSData  *data;
 
-  myString = [[NSString allocWithZone: NSDefaultMallocZone()]
-    initWithContentsOfURL: aURL];
-  if (myString == nil)
+  data = [[NSData alloc] initWithContentsOfURL: aURL];
+
+  if (data == nil)
     {
+      NSWarnMLog(@"Contents of URL '%@' produced no data", aURL);
       DESTROY(self);
     }
   else
     {
+      NSError *error;
+      NSPropertyListFormat format;
       id result;
+      
+      result = [NSPropertyListSerialization propertyListWithData: data options: NSPropertyListImmutable format: &format error: &error];
 
-      NS_DURING
-	{
-	  result = [myString propertyList];
-	}
-      NS_HANDLER
-	{
-          result = nil;
-	}
-      NS_ENDHANDLER
-      RELEASE(myString);
+      DESTROY(data);
+
       if ([result isKindOfClass: NSDictionaryClass])
-	{
-	  self = [self initWithDictionary: result];
-	}
+        {
+          self = [self initWithDictionary: result];
+        }
       else
-	{
-	  NSWarnMLog(@"Contents of URL '%@' does not contain a dictionary",
-	    aURL);
-	  DESTROY(self);
-	}
+        {
+          NSWarnMLog(@"Contents of URL '%@' does not contain a dictionary with error %@", aURL, error);
+          DESTROY(self);
+        }
     }
+
   return self;
 }
 
