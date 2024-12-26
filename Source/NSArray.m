@@ -768,56 +768,47 @@ static SEL	rlSel;
  * <p>Initialises the array with the contents of the specified file,
  * which must contain an array in property-list format.
  * </p>
- * <p>In GNUstep, the property-list format may be either the OpenStep
- * format (ASCII data), or the MacOS-X format (UTF-8 XML data) ... this
- * method will recognise which it is.
- * </p>
  * <p>If there is a failure to load the file for any reason, the receiver
  * will be released, the method will return nil, and a warning may be logged.
  * </p>
- * <p>Works by invoking [NSString-initWithContentsOfFile:] and
- * [NSString-propertyList] then checking that the result is an array.
- * </p>
  */
-- (id) initWithContentsOfFile: (NSString*)file
+- (id) initWithContentsOfFile: (NSString*)path
 {
-  NSString 	*myString;
+  NSData  *data;
 
-  myString = [[NSString allocWithZone: NSDefaultMallocZone()]
-    initWithContentsOfFile: file];
-  if (myString == nil)
+  data = [[NSData alloc] initWithContentsOfFile: path];
+
+  if (data == nil)
     {
+      NSWarnMLog(@"Contents of file '%@' produced no data", path);
       DESTROY(self);
     }
   else
     {
+      NSError *error;
+      NSPropertyListFormat format;
       id result;
+      
+      result = [NSPropertyListSerialization propertyListWithData: data options: NSPropertyListImmutable format: &format error: &error];
 
-      NS_DURING
-	{
-	  result = [myString propertyList];
-	}
-      NS_HANDLER
-	{
-          result = nil;
-	}
-      NS_ENDHANDLER
-      RELEASE(myString);
+      DESTROY(data);
+
       if ([result isKindOfClass: NSArrayClass])
-	{
-	  //self = [self initWithArray: result];
-	  /* OSX appears to always return a mutable array rather than
-	   * the class of the receiver.
-	   */
-	  RELEASE(self);
-	  self = RETAIN(result);
-	}
+        {
+          //self = [self initWithArray: result];
+          /* OSX appears to always return a mutable array rather than
+           * the class of the receiver.
+           */
+          RELEASE(self);
+          self = RETAIN(result);
+        }
       else
-	{
-	  NSWarnMLog(@"Contents of file '%@' does not contain an array", file);
-	  DESTROY(self);
-	}
+        {
+          NSWarnMLog(@"Contents of file '%@' does not contain an array with error %@", path, error);
+          DESTROY(self);
+        }
     }
+
   return self;
 }
 
@@ -825,51 +816,42 @@ static SEL	rlSel;
  * <p>Initialises the array with the contents of the specified URL,
  * which must contain an array in property-list format.
  * </p>
- * <p>In GNUstep, the property-list format may be either the OpenStep
- * format (ASCII data), or the MacOS-X format (UTF8 XML data) ... this
- * method will recognise which it is.
- * </p>
  * <p>If there is a failure to load the URL for any reason, the receiver
  * will be released, the method will return nil, and a warning may be logged.
- * </p>
- * <p>Works by invoking [NSString-initWithContentsOfURL:] and
- * [NSString-propertyList] then checking that the result is an array.
  * </p>
  */
 - (id) initWithContentsOfURL: (NSURL*)aURL
 {
-  NSString 	*myString;
+  NSData  *data;
 
-  myString = [[NSString allocWithZone: NSDefaultMallocZone()]
-    initWithContentsOfURL: aURL];
-  if (myString == nil)
+  data = [[NSData alloc] initWithContentsOfURL: aURL];
+
+  if (data == nil)
     {
+      NSWarnMLog(@"Contents of URL '%@' produced no data", aURL);
       DESTROY(self);
     }
   else
     {
+      NSError *error;
+      NSPropertyListFormat format;
       id result;
+      
+      result = [NSPropertyListSerialization propertyListWithData: data options: NSPropertyListImmutable format: &format error: &error];
 
-      NS_DURING
-	{
-	  result = [myString propertyList];
-	}
-      NS_HANDLER
-	{
-          result = nil;
-	}
-      NS_ENDHANDLER
-      RELEASE(myString);
+      DESTROY(data);
+
       if ([result isKindOfClass: NSArrayClass])
-	{
-	  self = [self initWithArray: result];
-	}
+        {
+          self = [self initWithArray: result];
+        }
       else
-	{
-	  NSWarnMLog(@"Contents of URL '%@' does not contain an array", aURL);
-	  DESTROY(self);
-	}
+        {
+          NSWarnMLog(@"Contents of URL '%@' does not contain an array with error %@", aURL, error);
+          DESTROY(self);
+        }
     }
+
   return self;
 }
 
