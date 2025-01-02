@@ -156,7 +156,7 @@ static char *unescape(const char *from, char * to);
  */
 static char *buildURL(parsedURL *base, parsedURL *rel, BOOL standardize)
 {
-  const char *rpath;
+  NSString *rpath;
   char *buf;
   char *ptr;
   char *tmp;
@@ -199,14 +199,22 @@ static char *buildURL(parsedURL *base, parsedURL *rel, BOOL standardize)
 
   if (rel->path != 0)
     {
-      rpath = rel->path;
+      rpath = [[NSString stringWithUTF8String:rel->path] stringByAddingPercentEncodingWithAllowedCharacters: [NSCharacterSet URLPathAllowedCharacterSet]];
+
+      if (!rpath)
+        {
+          [NSException raise: NSInvalidArgumentException
+                      format: @"[buildURL](%\"%s\") "
+                      @"illegal character in path part",
+            rel->path];
+        }
     }
   else
     {
-      rpath = "";
+      rpath = nil;
     }
 
-  len += strlen(rpath) + 1; // path
+  len += [rpath lengthOfBytesUsingEncoding: NSUTF8StringEncoding] + 1; // path
 
   if (base != 0 && base->path != 0)
     {
@@ -295,17 +303,17 @@ static char *buildURL(parsedURL *base, parsedURL *rel, BOOL standardize)
           *tmp++ = '/';
         }
 
-      l = strlen(rpath);
-      memcpy(tmp, rpath, l);
+      l = [rpath lengthOfBytesUsingEncoding: NSUTF8StringEncoding];
+      memcpy(tmp, [rpath UTF8String], l);
       tmp += l;
     }
   else if (base == 0)
     {
-      l = strlen(rpath);
-      memcpy(tmp, rpath, l);
+      l = [rpath lengthOfBytesUsingEncoding: NSUTF8StringEncoding];
+      memcpy(tmp, [rpath UTF8String], l);
       tmp += l;
     }
-  else if (rpath[0] == 0)
+  else if ([rpath length] == 0)
     {
       if (base->hasNoPath == NO)
         {
@@ -336,8 +344,8 @@ static char *buildURL(parsedURL *base, parsedURL *rel, BOOL standardize)
         }
 
       *tmp++ = '/';
-      l = strlen(rpath);
-      memcpy(tmp, rpath, l);
+      l = [rpath lengthOfBytesUsingEncoding: NSUTF8StringEncoding];
+      memcpy(tmp, [rpath UTF8String], l);
       tmp += l;
     }
 
@@ -1402,6 +1410,8 @@ static NSUInteger urlAlign;
             }
         }
 
+      ptr = start;
+
       /*
        * Store the path.
        */
@@ -1410,16 +1420,6 @@ static NSUInteger urlAlign;
       if (0 == base && '\0' == *buf->path && NO == buf->pathIsAbsolute)
         {
           buf->hasNoPath = YES;
-        }
-
-      if (legal(buf->path, filepath) == NO)
-        {
-          [NSException raise: NSInvalidArgumentException
-                      format: @"[%@ %@](%@, %@, %s) "
-                      @"illegal character in path part",
-            NSStringFromClass([self class]),
-            NSStringFromSelector(_cmd),
-            aUrlString, aBaseUrl, buf->path];
         }
     }
     NS_HANDLER
