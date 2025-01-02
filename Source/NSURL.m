@@ -129,7 +129,7 @@ typedef struct {
   char *port;
   char *path;    // May never be NULL
   char *parameters;
-  char *query;
+  id query;
   char *fragment;
   BOOL pathIsAbsolute;
   BOOL emptyPath;
@@ -220,7 +220,7 @@ static char *buildURL(parsedURL *base, parsedURL *rel, BOOL standardize)
 
   if (rel->query != 0)
     {
-      len += strlen(rel->query) + 1; // ?query
+      len += [rel->query lengthOfBytesUsingEncoding:NSUTF8StringEncoding] + 1;		// ?query
     }
 
   if (rel->fragment != 0)
@@ -311,7 +311,7 @@ static char *buildURL(parsedURL *base, parsedURL *rel, BOOL standardize)
         {
           *tmp++ = '/';
         }
-
+ 
       if (base->path)
         {
           l = strlen(base->path);
@@ -448,8 +448,8 @@ static char *buildURL(parsedURL *base, parsedURL *rel, BOOL standardize)
   if (rel->query != 0)
     {
       *ptr++ = '?';
-      l = strlen(rel->query);
-      memcpy(ptr, rel->query, l);
+      l = [rel->query lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
+      memcpy(ptr, [rel->query UTF8String], l);
       ptr += l;
     }
 
@@ -1055,8 +1055,27 @@ static NSUInteger urlAlign;
               // If a query string is before the path, then there is no path
               if (q != 0 && (end == 0 || q < end))
                 {
+                  NSString *query;
+                  NSString *escapedQuery;
+
                   *q = '\0';
-                  buf->query = q + 1;
+
+                  query = [[NSString alloc] initWithUTF8String: (q + 1)];
+                  escapedQuery = [query stringByAddingPercentEncodingWithAllowedCharacters: [NSCharacterSet URLQueryAllowedCharacterSet]];
+
+                  if (!escapedQuery)
+                    {
+                      [NSException raise: NSInvalidArgumentException
+                                  format: @"[%@ %@](%@, %@, %@) "
+                                  @"illegal character in query part",
+                        NSStringFromClass([self class]),
+                        NSStringFromSelector(_cmd),
+                        aUrlString, aBaseUrl, AUTORELEASE(query)];
+                    }
+                  
+                  DESTROY(query);
+                  buf->query = RETAIN(escapedQuery);
+
                   end = 0;
                 }
 
@@ -1298,23 +1317,27 @@ static NSUInteger urlAlign;
 
                   if (*ptr != 0)
                     {
-                      buf->query = ptr;
+                      NSString *query = [[NSString alloc] initWithUTF8String: ptr];
+                      NSString *escapedQuery = [query stringByAddingPercentEncodingWithAllowedCharacters: [NSCharacterSet URLQueryAllowedCharacterSet]];
+
+                      if (!escapedQuery)
+                        {
+                          [NSException raise: NSInvalidArgumentException
+                                      format: @"[%@ %@](%@, %@, %@) "
+                                      @"illegal character in query part",
+                            NSStringFromClass([self class]),
+                            NSStringFromSelector(_cmd),
+                            aUrlString, aBaseUrl, AUTORELEASE(query)];
+                        }
+                      
+                      DESTROY(query);
+                      buf->query = RETAIN(escapedQuery);
                     }
                 }
 
               if (buf->query == 0 && base != 0)
                 {
                   buf->query = base->query;
-                }
-
-              if (legal(buf->query, filepath) == NO)
-                {
-                  [NSException raise: NSInvalidArgumentException
-                              format: @"[%@ %@](%@, %@, %s) "
-                               @"illegal character in query part",
-                    NSStringFromClass([self class]),
-                    NSStringFromSelector(_cmd),
-                    aUrlString, aBaseUrl, buf->query];
                 }
             }
 
@@ -1927,14 +1950,7 @@ static NSUInteger urlAlign;
 
 - (NSString*) query
 {
-  NSString *query = nil;
-
-  if (myData->query != 0)
-    {
-      query = [NSString stringWithUTF8String: myData->query];
-    }
-
-  return query;
+  return myData->query;
 }
 
 - (NSString*) relativePath
