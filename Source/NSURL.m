@@ -157,6 +157,7 @@ static char *unescape(const char *from, char * to);
 static char *buildURL(parsedURL *base, parsedURL *rel, BOOL standardize)
 {
   NSString *rpath;
+  NSString *bpath;
   char *buf;
   char *ptr;
   char *tmp;
@@ -199,13 +200,13 @@ static char *buildURL(parsedURL *base, parsedURL *rel, BOOL standardize)
 
   if (rel->path != 0)
     {
-      rpath = [[NSString stringWithUTF8String:rel->path] stringByAddingPercentEncodingWithAllowedCharacters: [NSCharacterSet URLPathAllowedCharacterSet]];
+      rpath = [[NSString stringWithUTF8String: rel->path] stringByAddingPercentEncodingWithAllowedCharacters: [NSCharacterSet URLPathAllowedCharacterSet]];
 
       if (!rpath)
         {
           [NSException raise: NSInvalidArgumentException
-                      format: @"[buildURL](%\"%s\") "
-                      @"illegal character in path part",
+                      format: @"[buildURL](\"%s\") "
+                      @"illegal character in rel path part",
             rel->path];
         }
     }
@@ -218,7 +219,21 @@ static char *buildURL(parsedURL *base, parsedURL *rel, BOOL standardize)
 
   if (base != 0 && base->path != 0)
     {
-      len += strlen(base->path) + 1; // path
+      bpath = [[NSString stringWithUTF8String: base->path] stringByAddingPercentEncodingWithAllowedCharacters: [NSCharacterSet URLPathAllowedCharacterSet]];
+
+      if (!bpath)
+        {
+          [NSException raise: NSInvalidArgumentException
+                      format: @"[buildURL](\"%s\") "
+                      @"illegal character in base path part",
+            base->path];
+        }
+
+      len += [bpath lengthOfBytesUsingEncoding: NSUTF8StringEncoding] + 1; // path
+    }
+  else
+    {
+      bpath = nil;
     }
 
   if (rel->parameters != 0)
@@ -307,7 +322,7 @@ static char *buildURL(parsedURL *base, parsedURL *rel, BOOL standardize)
       memcpy(tmp, [rpath UTF8String], l);
       tmp += l;
     }
-  else if (base == 0)
+  else if (!bpath)
     {
       l = [rpath lengthOfBytesUsingEncoding: NSUTF8StringEncoding];
       memcpy(tmp, [rpath UTF8String], l);
@@ -320,16 +335,16 @@ static char *buildURL(parsedURL *base, parsedURL *rel, BOOL standardize)
           *tmp++ = '/';
         }
  
-      if (base->path)
+      if (bpath)
         {
-          l = strlen(base->path);
-          memcpy(tmp, base->path, l);
+          l = [bpath lengthOfBytesUsingEncoding: NSUTF8StringEncoding];
+          memcpy(tmp, [bpath UTF8String], l);
           tmp += l;
         }
     }
   else
     {
-      char *start = base->path;
+      const char *start = [bpath UTF8String];
 
       if (start != 0)
         {
@@ -549,62 +564,85 @@ static BOOL legal(const char *str, const char *extras)
  */
 static char *unescape(const char *from, char * to)
 {
+  static const char *reservedCharacters = "!#$&'()*+,/:;=?@[]";
+  static const char *unreservedSpecialCharacters = "-._~";
+
   while (*from != '\0')
     {
       if (*from == '%')
         {
-          unsigned char c;
+          char firstChar;
 
-          from++;
+          ++from;
+          firstChar = *from;
 
-          if (isxdigit(*from))
+          if (isxdigit(firstChar))
             {
-              if (*from <= '9')
+              unsigned char c;
+              char secondChar;
+
+              if (firstChar <= '9')
                 {
-                  c = *from - '0';
+                  c = firstChar - '0';
                 }
-              else if (*from <= 'F')
+              else if (firstChar <= 'F')
                 {
-                  c = *from - 'A' + 10;
+                  c = firstChar - 'A' + 10;
                 }
               else
                 {
-                  c = *from - 'a' + 10;
+                  c = firstChar - 'a' + 10;
                 }
-              from++;
-            }
-          else
-            {
-              c = 0;        // Avoid compiler warning
-              [NSException raise: NSGenericException
-                          format: @"Bad percent escape sequence in URL string"];
-            }
 
-          c <<= 4;
+              ++from;
+              secondChar = *from;
+              c <<= 4;
 
-          if (isxdigit(*from))
-            {
-              if (*from <= '9')
+              if (isxdigit(secondChar))
                 {
-                  c |= *from - '0';
-                }
-              else if (*from <= 'F')
-                {
-                  c |= *from - 'A' + 10;
+                  if (secondChar <= '9')
+                    {
+                      c |= secondChar - '0';
+                    }
+                  else if (secondChar <= 'F')
+                    {
+                      c |= secondChar - 'A' + 10;
+                    }
+                  else
+                    {
+                      c |= secondChar - 'a' + 10;
+                    }
+
+                  if(strchr(reservedCharacters, c)
+                    || ('A' <= c && c <= 'Z')
+                    || ('a' <= c && c <= 'z')
+                    || ('0' <= c && c <= '9')
+                    || (strchr(unreservedSpecialCharacters, c)))
+                    {
+                      // Valid escape sequence
+                      *to++ = c;
+                    }
+                  else
+                    {
+                      *to++ = '%';
+                      *to++ = firstChar;
+                      *to++ = secondChar;
+                    }
                 }
               else
                 {
-                  c |= *from - 'a' + 10;
+                  *to++ = '%';
+                  *to++ = firstChar;
+                  *to++ = secondChar;
                 }
-
-              from++;
-              *to++ = c;
             }
           else
             {
-              [NSException raise: NSGenericException
-                          format: @"Bad percent escape sequence in URL string"];
+              *to++ = '%';
+              *to++ = firstChar;
             }
+
+          ++from;
         }
       else
         {
@@ -1620,7 +1658,7 @@ static NSUInteger urlAlign;
   return fragment;
 }
 
-- (char*) _path: (char*)buf withEscapes: (BOOL)withEscapes
+- (char *) _path: (char *)buf withEscapes: (BOOL)withEscapes
 {
   char *ptr = buf;
   char *tmp = buf;
