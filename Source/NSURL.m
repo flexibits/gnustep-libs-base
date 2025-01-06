@@ -1937,7 +1937,7 @@ static NSUInteger urlAlign;
 
           path = [NSString stringWithUTF8String: ptr];
         }
-      else if (YES == myData->emptyPath)
+      else
         {
           /* OSX seems to use an empty string for some schemes,
            * though it normally uses nil.
