@@ -1313,7 +1313,7 @@ static NSUInteger urlAlign;
               /* Check for a legal host, unless it's an ipv6 address
                * (which would have been checked earlier).
                */
-              if (*buf->host != '[' && legal(buf->host, "-") == NO)
+              if (*buf->host != '[' && legal(buf->host, "+") == NO)
                 {
                   [NSException raise: NSInvalidArgumentException
                               format: @"[%@ %@](%@, %@, %s) "
