@@ -130,7 +130,7 @@ typedef struct {
   char *path;    // May never be NULL
   char *parameters;
   id query;
-  char *fragment;
+  id fragment;
   BOOL pathIsAbsolute;
   BOOL emptyPath;
   BOOL hasNoPath;
@@ -243,12 +243,12 @@ static char *buildURL(parsedURL *base, parsedURL *rel, BOOL standardize)
 
   if (rel->query != 0)
     {
-      len += [rel->query lengthOfBytesUsingEncoding:NSUTF8StringEncoding] + 1;		// ?query
+      len += [rel->query lengthOfBytesUsingEncoding: NSUTF8StringEncoding] + 1;		// ?query
     }
 
   if (rel->fragment != 0)
     {
-      len += strlen(rel->fragment) + 1; // #fragment
+      len += [rel->fragment lengthOfBytesUsingEncoding: NSUTF8StringEncoding] + 1; // #fragment
     }
 
   ptr = buf = (char*)NSZoneMalloc(NSDefaultMallocZone(), len);
@@ -479,8 +479,8 @@ static char *buildURL(parsedURL *base, parsedURL *rel, BOOL standardize)
   if (rel->fragment != 0)
     {
       *ptr++ = '#';
-      l = strlen(rel->fragment);
-      memcpy(ptr, rel->fragment, l);
+      l = [rel->fragment lengthOfBytesUsingEncoding: NSUTF8StringEncoding];
+      memcpy(ptr, [rel->fragment UTF8String], l);
       ptr += l;
     }
 
@@ -966,9 +966,6 @@ static NSUInteger urlAlign;
       char *end;
       char *start;
       char *ptr;
-      BOOL usesFragments = YES;
-      BOOL usesParameters = YES;
-      BOOL usesQueries = YES;
       BOOL canBeGeneric = YES;
 
       size += sizeof(parsedURL) + urlAlign + 1;
@@ -1068,14 +1065,6 @@ static NSUInteger urlAlign;
             {
               buf->emptyPath = YES;
             }
-          else
-            {
-              // Unknown scheme, don't parse the components (like data:). It's not required for Fantastical's usecase,
-              // and the parser makes some assumptions that may not be valid for all schemes.
-              canBeGeneric = NO;
-              DESTROY(_baseURL);
-              base = 0;
-            }
         }
 
       if (canBeGeneric == YES)
@@ -1086,6 +1075,7 @@ static NSUInteger urlAlign;
            */
           if (start[0] == '/' && start[1] == '/')
             {
+              char *f;
               char *q;
 
               buf->isGeneric = YES;
@@ -1096,7 +1086,43 @@ static NSUInteger urlAlign;
                * the 'authority' if there is no path.
                */
               end = strchr(start, '/');
+              f = strchr(start, '#');
               q = strchr(start, '?');
+
+              // If a fragment or query string is before the path, there is no path
+              // Note that fragments are allowed to contain both / and ?
+              if (f != 0 && (end == 0 || ((q != 0 && q < end && q < f) || f < end)))
+                {
+                  NSString *fragment;
+                  NSString *escapedFragment;
+                  
+                  *f = '\0';
+
+                  // If a fragment is before the ? then there is no query
+                  // Fragments are allowed to contain ?
+                  if (q != 0 && f < q)
+                    {
+                      q = 0;
+                    }
+
+                  fragment = [[NSString alloc] initWithUTF8String: (f + 1)];
+                  escapedFragment = [fragment stringByAddingPercentEncodingWithAllowedCharacters: [NSCharacterSet URLFragmentAllowedCharacterSet]];
+
+                  if (!escapedFragment)
+                    {
+                      [NSException raise: NSInvalidArgumentException
+                                  format: @"[%@ %@](%@, %@, %@) "
+                                  @"illegal character in fragment part",
+                        NSStringFromClass([self class]),
+                        NSStringFromSelector(_cmd),
+                        aUrlString, aBaseUrl, AUTORELEASE(fragment)];
+                    }
+
+                  DESTROY(fragment);
+                  buf->fragment = RETAIN(escapedFragment);
+
+                  end = 0;
+                }
 
               // If a query string is before the path, then there is no path
               if (q != 0 && (end == 0 || q < end))
@@ -1318,106 +1344,102 @@ static NSUInteger urlAlign;
                 }
             }
 
-          if (usesFragments == YES)
+          /*
+           * Strip fragment string from end of url.
+           */
+          ptr = strchr(start, '#');
+
+          if (ptr != 0)
             {
-              /*
-               * Strip fragment string from end of url.
-               */
-              ptr = strchr(start, '#');
-
-              if (ptr != 0)
+              *ptr++ = '\0';
+              
+              if (*ptr != 0)
                 {
-                  *ptr++ = '\0';
+                  NSString *fragment = [[NSString alloc] initWithUTF8String: ptr];
+                  NSString *escapedFragment = [fragment stringByAddingPercentEncodingWithAllowedCharacters: [NSCharacterSet URLFragmentAllowedCharacterSet]];
 
-                  if (*ptr != 0)
+                  if (!escapedFragment)
                     {
-                      buf->fragment = ptr;
+                      [NSException raise: NSInvalidArgumentException
+                                  format: @"[%@ %@](%@, %@, %@) "
+                                  @"illegal character in fragment part",
+                        NSStringFromClass([self class]),
+                        NSStringFromSelector(_cmd),
+                        aUrlString, aBaseUrl, AUTORELEASE(fragment)];
                     }
-                }
 
-              if (buf->fragment == 0 && base != 0)
-                {
-                  buf->fragment = base->fragment;
-                }
-
-              if (legal(buf->fragment, filepath) == NO)
-                {
-                  [NSException raise: NSInvalidArgumentException
-                              format: @"[%@ %@](%@, %@, %s) "
-                              @"illegal character in fragment part",
-                    NSStringFromClass([self class]),
-                    NSStringFromSelector(_cmd), aUrlString, aBaseUrl, buf->fragment];
+                    DESTROY(fragment);
+                    buf->fragment = RETAIN(escapedFragment);
                 }
             }
 
-          if (usesQueries == YES)
+          if (buf->fragment == 0 && base != 0)
             {
-              /*
-               * Strip query string from end of url.
-               */
-              ptr = strchr(start, '?');
+              buf->fragment = RETAIN(base->fragment);
+            }
 
-              if (ptr != 0)
+          /*
+           * Strip query string from end of url.
+           */
+          ptr = strchr(start, '?');
+
+          if (ptr != 0)
+            {
+              *ptr++ = '\0';
+
+              if (*ptr != 0)
                 {
-                  *ptr++ = '\0';
+                  NSString *query = [[NSString alloc] initWithUTF8String: ptr];
+                  NSString *escapedQuery = [query stringByAddingPercentEncodingWithAllowedCharacters: [NSCharacterSet URLQueryAllowedCharacterSet]];
 
-                  if (*ptr != 0)
+                  if (!escapedQuery)
                     {
-                      NSString *query = [[NSString alloc] initWithUTF8String: ptr];
-                      NSString *escapedQuery = [query stringByAddingPercentEncodingWithAllowedCharacters: [NSCharacterSet URLQueryAllowedCharacterSet]];
-
-                      if (!escapedQuery)
-                        {
-                          [NSException raise: NSInvalidArgumentException
-                                      format: @"[%@ %@](%@, %@, %@) "
-                                      @"illegal character in query part",
-                            NSStringFromClass([self class]),
-                            NSStringFromSelector(_cmd),
-                            aUrlString, aBaseUrl, AUTORELEASE(query)];
-                        }
-                      
-                      DESTROY(query);
-                      buf->query = RETAIN(escapedQuery);
+                      [NSException raise: NSInvalidArgumentException
+                                  format: @"[%@ %@](%@, %@, %@) "
+                                  @"illegal character in query part",
+                        NSStringFromClass([self class]),
+                        NSStringFromSelector(_cmd),
+                        aUrlString, aBaseUrl, AUTORELEASE(query)];
                     }
-                }
-
-              if (buf->query == 0 && base != 0)
-                {
-                  buf->query = base->query;
+                  
+                  DESTROY(query);
+                  buf->query = RETAIN(escapedQuery);
                 }
             }
 
-          if (usesParameters == YES)
+          if (buf->query == 0 && base != 0)
             {
-              /*
-               * Strip parameters string from end of url.
-               */
-              ptr = strchr(start, ';');
+              buf->query = RETAIN(base->query);
+            }
+          
+          /*
+           * Strip parameters string from end of url.
+           */
+          ptr = strchr(start, ';');
 
-              if (ptr != 0)
+          if (ptr != 0)
+            {
+              *ptr++ = '\0';
+
+              if (*ptr != 0)
                 {
-                  *ptr++ = '\0';
-
-                  if (*ptr != 0)
-                    {
-                      buf->parameters = ptr;
-                    }
+                  buf->parameters = ptr;
                 }
+            }
 
-              if (buf->parameters == 0 && base != 0)
-                {
-                  buf->parameters = base->parameters;
-                }
+          if (buf->parameters == 0 && base != 0)
+            {
+              buf->parameters = base->parameters;
+            }
 
-              if (legal(buf->parameters, filepath) == NO)
-                {
-                  [NSException raise: NSInvalidArgumentException
-                              format: @"[%@ %@](%@, %@, %s) "
-                              @"illegal character in parameters part",
-                    NSStringFromClass([self class]),
-                    NSStringFromSelector(_cmd),
-                    aUrlString, aBaseUrl, buf->parameters];
-                }
+          if (legal(buf->parameters, filepath) == NO)
+            {
+              [NSException raise: NSInvalidArgumentException
+                          format: @"[%@ %@](%@, %@, %s) "
+                          @"illegal character in parameters part",
+                NSStringFromClass([self class]),
+                NSStringFromSelector(_cmd),
+                aUrlString, aBaseUrl, buf->parameters];
             }
 
           if (buf->isFile == YES)
@@ -1482,6 +1504,7 @@ static NSUInteger urlAlign;
     {
       DESTROY(myData->absolute);
       DESTROY(myData->query);
+      DESTROY(myData->fragment);
       NSZoneFree([self zone], _data);
       _data = 0;
     }
@@ -1648,14 +1671,7 @@ static NSUInteger urlAlign;
 
 - (NSString*) fragment
 {
-  NSString *fragment = nil;
-
-  if (myData->fragment != 0)
-    {
-      fragment = [NSString stringWithUTF8String: myData->fragment];
-    }
-
-  return fragment;
+  return myData->fragment;
 }
 
 - (char *) _path: (char *)buf withEscapes: (BOOL)withEscapes
