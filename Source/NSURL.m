@@ -769,7 +769,8 @@ static NSString *initPercentEncodedStringFromUTF8String(const char *utf8String)
             || c == ':'
             || c == '@'
             || c == '/'
-            || c == '?')
+            || c == '?'
+            || c == '&')
           {
             [data appendBytes: p length: 1];
           }
