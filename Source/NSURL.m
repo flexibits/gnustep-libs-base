@@ -666,7 +666,7 @@ static NSString *initPercentEncodedStringFromUTF8String(const char *utf8String)
     // RFC 3986 sub-delims
     static const char *subdelims = "!$^'()*+,;=";
     // Empirically derived from Apple's NSURL
-    static const char *preservePercentEncoding = "{}\"";
+    static const char *preservePercentEncoding = "{}\"%&";
     char percentBuffer[3] = { '%' };
     int len = strlen(utf8String);
     NSMutableData *data = [[NSMutableData alloc] initWithCapacity: len];
