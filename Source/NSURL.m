@@ -150,6 +150,7 @@ static char *buildURL(parsedURL *base, parsedURL *rel, BOOL standardize);
 static id clientForHandle(void *data, NSURLHandle *hdl);
 static char *findUp(char *str);
 static char *unescape(const char *from, char * to);
+static NSString *initPercentEncodedStringFromUTF8String(const char *utf8String);
 
 /**
  * Build an absolute URL as a C string
@@ -200,15 +201,7 @@ static char *buildURL(parsedURL *base, parsedURL *rel, BOOL standardize)
 
   if (rel->path != 0)
     {
-      rpath = [[NSString stringWithUTF8String: rel->path] stringByAddingPercentEncodingWithAllowedCharacters: [NSCharacterSet URLPathAllowedCharacterSet]];
-
-      if (!rpath)
-        {
-          [NSException raise: NSInvalidArgumentException
-                      format: @"[buildURL](\"%s\") "
-                      @"illegal character in rel path part",
-            rel->path];
-        }
+      rpath = AUTORELEASE(initPercentEncodedStringFromUTF8String(rel->path));
     }
   else
     {
@@ -219,15 +212,7 @@ static char *buildURL(parsedURL *base, parsedURL *rel, BOOL standardize)
 
   if (base != 0 && base->path != 0)
     {
-      bpath = [[NSString stringWithUTF8String: base->path] stringByAddingPercentEncodingWithAllowedCharacters: [NSCharacterSet URLPathAllowedCharacterSet]];
-
-      if (!bpath)
-        {
-          [NSException raise: NSInvalidArgumentException
-                      format: @"[buildURL](\"%s\") "
-                      @"illegal character in base path part",
-            base->path];
-        }
+      bpath = AUTORELEASE(initPercentEncodedStringFromUTF8String(base->path));
 
       len += [bpath lengthOfBytesUsingEncoding: NSUTF8StringEncoding] + 1; // path
     }
@@ -559,13 +544,32 @@ static BOOL legal(const char *str, const char *extras)
   return YES;
 }
 
-/*
- * Convert percent escape sequences to individual characters.
- */
-static char *unescape(const char *from, char * to)
+static BOOL isValidCharToPercentEscape(char c)
 {
   static const char *reservedCharacters = "!#$&'()*+,/:;=?@[]";
   static const char *unreservedSpecialCharacters = "-._~";
+
+  if(strchr(reservedCharacters, c)
+    || ('A' <= c && c <= 'Z')
+    || ('a' <= c && c <= 'z')
+    || ('0' <= c && c <= '9')
+    || (strchr(unreservedSpecialCharacters, c)))
+    {
+      // Valid escape sequence
+      return YES;
+    }
+  else
+    {
+      return NO;
+    }
+}
+
+/*
+ * Convert percent escape sequences to individual characters.
+ */
+static char *unescape(const char *from, char *to)
+{
+  char *originalTo = to;
 
   while (*from != '\0')
     {
@@ -613,13 +617,8 @@ static char *unescape(const char *from, char * to)
                       c |= secondChar - 'a' + 10;
                     }
 
-                  if(strchr(reservedCharacters, c)
-                    || ('A' <= c && c <= 'Z')
-                    || ('a' <= c && c <= 'z')
-                    || ('0' <= c && c <= '9')
-                    || (strchr(unreservedSpecialCharacters, c)))
+                  if(isValidCharToPercentEscape(c))
                     {
-                      // Valid escape sequence
                       *to++ = c;
                     }
                   else
@@ -653,6 +652,160 @@ static char *unescape(const char *from, char * to)
   *to = '\0';
 
   return to;
+}
+
+// Apply % encodings where necessary to utf8String
+// Selectively applies % encoding to %'s themselves for certain sequences:
+// - /j/%94334744584% -> /j/%94334744584%'
+static NSString *initPercentEncodedStringFromUTF8String(const char *utf8String)
+{
+    // RFC 3986 unreserved
+    static const char *unreserved = "-._~";
+    // RFC 3986 gen-delims
+    static const char *gendelims = ":/?#[]@";
+    // RFC 3986 sub-delims
+    static const char *subdelims = "!$^'()*+,;=";
+    // Empirically derived from Apple's NSURL
+    static const char *preservePercentEncoding = "{}\"";
+    char percentBuffer[3] = { '%' };
+    int len = strlen(utf8String);
+    NSMutableData *data = [[NSMutableData alloc] initWithCapacity: len];
+    const char *p;
+    NSString *string;
+
+    for (p = utf8String; *p != '\0'; ++p)
+      {
+        unsigned char c = *p;
+
+        if (c == '%')
+          {
+            if (*(p + 1) == '\0'
+                || *(p + 2) == '\0')
+              {
+                // Trailing % at the end, replace with %25
+                percentBuffer[1] = '2';
+                percentBuffer[2] = '5';
+
+                [data appendBytes: percentBuffer length: 3];
+              }
+            else
+              {
+                char e1 = *(p + 1);
+                char e2 = *(p + 2);
+                
+                if (!isxdigit(e1) || !isxdigit(e2))
+                  {
+                    // Invalid escape sequence, so encode the %
+                    percentBuffer[1] = '2';
+                    percentBuffer[2] = '5';
+
+                    [data appendBytes: percentBuffer length: 3];
+                  }
+                else
+                  {
+                    unsigned char decodedValue;
+                    unsigned char hi;
+                    unsigned char lo;
+
+                    if ('0' <= e1 && e1 <= '9')
+                      {
+                        hi = e1 - '0';
+                      }
+                    else if ('a' <= e1 && e1 <= 'f')
+                      {
+                        hi = e1 - 'a' + 10;
+                      }
+                    else
+                      {
+                        hi = e1 - 'A' + 10;
+                      }
+
+                    if ('0' <= e2 && e2 <= '9')
+                      {
+                        lo = e2 - '0';
+                      }
+                    else if ('a' <= e2 && e2 <= 'f')
+                      {
+                        lo = e2 - 'a' + 10;
+                      }
+                    else
+                      {
+                        lo = e2 - 'A' + 10;
+                      }
+                    
+                    decodedValue = (hi << 4) | (lo << 0);
+
+                    // Check if we should produce the encoded %XX value,
+                    // or if we should encode the % itself as %25
+                    if (strchr(unreserved, decodedValue)
+                        || strchr(gendelims, decodedValue)
+                        || strchr(subdelims, decodedValue)
+                        || strchr(preservePercentEncoding, decodedValue))
+                      {
+                        // It needs to be encoded, so preserve it as-is
+                        percentBuffer[1] = e1;
+                        percentBuffer[2] = e2;
+
+                        [data appendBytes: percentBuffer length: 3];
+                      }
+                    else
+                      {
+                        percentBuffer[1] = '2';
+                        percentBuffer[2] = '5';
+
+                        [data appendBytes: percentBuffer length: 3];
+                        [data appendBytes: &e1 length: 1];
+                        [data appendBytes: &e2 length: 1];
+                      }
+
+                    p += 2;
+                  }
+              }
+          }
+        else if (isalpha(c)
+            || isdigit(c)
+            || strchr(unreserved, c)
+            || strchr(subdelims, c)
+            || c == ':'
+            || c == '@'
+            || c == '/'
+            || c == '?')
+          {
+            [data appendBytes: p length: 1];
+          }
+        else
+          {
+            // Outside of the allowed set, so we must percent-encode
+            unsigned char hi = ((c >> 4) & 0xF);
+            unsigned char lo = ((c >> 0) & 0xF);
+
+            if (hi >= 10)
+              {
+                percentBuffer[1] = 'A' + hi - 10;
+              }
+            else
+              {
+                percentBuffer[1] = '0' + hi;
+              }
+
+            if (lo >= 10)
+              {
+                percentBuffer[2] = 'A' + lo - 10;
+              }
+            else
+              {
+                percentBuffer[2] = '0' + lo;
+              }
+
+            [data appendBytes: percentBuffer length: 3];
+          }
+      }
+    
+    string = [[NSString alloc] initWithData: data encoding: NSUTF8StringEncoding];
+
+    DESTROY(data);
+
+    return string;
 }
 
 @implementation NSURL
@@ -1092,10 +1245,7 @@ static NSUInteger urlAlign;
               // If a fragment or query string is before the path, there is no path
               // Note that fragments are allowed to contain both / and ?
               if (f != 0 && (end == 0 || ((q != 0 && q < end && q < f) || f < end)))
-                {
-                  NSString *fragment;
-                  NSString *escapedFragment;
-                  
+                {                  
                   *f = '\0';
 
                   // If a fragment is before the ? then there is no query
@@ -1105,21 +1255,7 @@ static NSUInteger urlAlign;
                       q = 0;
                     }
 
-                  fragment = [[NSString alloc] initWithUTF8String: (f + 1)];
-                  escapedFragment = [fragment stringByAddingPercentEncodingWithAllowedCharacters: [NSCharacterSet URLFragmentAllowedCharacterSet]];
-
-                  if (!escapedFragment)
-                    {
-                      [NSException raise: NSInvalidArgumentException
-                                  format: @"[%@ %@](%@, %@, %@) "
-                                  @"illegal character in fragment part",
-                        NSStringFromClass([self class]),
-                        NSStringFromSelector(_cmd),
-                        aUrlString, aBaseUrl, AUTORELEASE(fragment)];
-                    }
-
-                  DESTROY(fragment);
-                  buf->fragment = RETAIN(escapedFragment);
+                  buf->fragment = initPercentEncodedStringFromUTF8String(f + 1);
 
                   end = 0;
                 }
@@ -1127,26 +1263,9 @@ static NSUInteger urlAlign;
               // If a query string is before the path, then there is no path
               if (q != 0 && (end == 0 || q < end))
                 {
-                  NSString *query;
-                  NSString *escapedQuery;
-
                   *q = '\0';
 
-                  query = [[NSString alloc] initWithUTF8String: (q + 1)];
-                  escapedQuery = [query stringByAddingPercentEncodingWithAllowedCharacters: [NSCharacterSet URLQueryAllowedCharacterSet]];
-
-                  if (!escapedQuery)
-                    {
-                      [NSException raise: NSInvalidArgumentException
-                                  format: @"[%@ %@](%@, %@, %@) "
-                                  @"illegal character in query part",
-                        NSStringFromClass([self class]),
-                        NSStringFromSelector(_cmd),
-                        aUrlString, aBaseUrl, AUTORELEASE(query)];
-                    }
-                  
-                  DESTROY(query);
-                  buf->query = RETAIN(escapedQuery);
+                  buf->query = initPercentEncodedStringFromUTF8String(q + 1);
 
                   end = 0;
                 }
@@ -1355,21 +1474,7 @@ static NSUInteger urlAlign;
               
               if (*ptr != 0)
                 {
-                  NSString *fragment = [[NSString alloc] initWithUTF8String: ptr];
-                  NSString *escapedFragment = [fragment stringByAddingPercentEncodingWithAllowedCharacters: [NSCharacterSet URLFragmentAllowedCharacterSet]];
-
-                  if (!escapedFragment)
-                    {
-                      [NSException raise: NSInvalidArgumentException
-                                  format: @"[%@ %@](%@, %@, %@) "
-                                  @"illegal character in fragment part",
-                        NSStringFromClass([self class]),
-                        NSStringFromSelector(_cmd),
-                        aUrlString, aBaseUrl, AUTORELEASE(fragment)];
-                    }
-
-                    DESTROY(fragment);
-                    buf->fragment = RETAIN(escapedFragment);
+                  buf->fragment = initPercentEncodedStringFromUTF8String(ptr);
                 }
             }
 
@@ -1389,21 +1494,7 @@ static NSUInteger urlAlign;
 
               if (*ptr != 0)
                 {
-                  NSString *query = [[NSString alloc] initWithUTF8String: ptr];
-                  NSString *escapedQuery = [query stringByAddingPercentEncodingWithAllowedCharacters: [NSCharacterSet URLQueryAllowedCharacterSet]];
-
-                  if (!escapedQuery)
-                    {
-                      [NSException raise: NSInvalidArgumentException
-                                  format: @"[%@ %@](%@, %@, %@) "
-                                  @"illegal character in query part",
-                        NSStringFromClass([self class]),
-                        NSStringFromSelector(_cmd),
-                        aUrlString, aBaseUrl, AUTORELEASE(query)];
-                    }
-                  
-                  DESTROY(query);
-                  buf->query = RETAIN(escapedQuery);
+                  buf->query = initPercentEncodedStringFromUTF8String(ptr);
                 }
             }
 
