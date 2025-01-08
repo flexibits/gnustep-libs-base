@@ -2691,6 +2691,12 @@ GSPropertyListMake(id obj, NSDictionary *loc, BOOL xml,
         {
           unsigned int index = 0;
 
+          // Skip a UTF-8 BOM if there is one
+          if (length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF)
+            {
+              index = 3;
+            }
+
           // Skip any leading white space.
           while (index < length && GS_IS_WHITESPACE(bytes[index]) == YES)
             {
