@@ -546,7 +546,7 @@ static BOOL legal(const char *str, const char *extras)
 
 static BOOL isValidCharToPercentEscape(char c)
 {
-  static const char *reservedCharacters = "!#$&'()*+,/:;=?@[]";
+  static const char *reservedCharacters = "!#$&'()*+,/:;=?@[]\\";
   static const char *unreservedSpecialCharacters = "-._~";
 
   if(strchr(reservedCharacters, c)
@@ -666,7 +666,7 @@ static NSString *initPercentEncodedStringFromUTF8String(const char *utf8String)
     // RFC 3986 sub-delims
     static const char *subdelims = "!$^'()*+,;=";
     // Empirically derived from Apple's NSURL
-    static const char *preservePercentEncoding = "{}\"%&";
+    static const char *preservePercentEncoding = "{}\"%&\\";
     char percentBuffer[3] = { '%' };
     int len = strlen(utf8String);
     NSMutableData *data = [[NSMutableData alloc] initWithCapacity: len];
