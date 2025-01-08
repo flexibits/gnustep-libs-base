@@ -1,4 +1,5 @@
 #import "GSTransferState.h"
+#import "GSPrivate.h"
 #import "GSURLSessionTaskBodySource.h"
 #import "Foundation/NSArray.h"
 #import "Foundation/NSCharacterSet.h"
@@ -175,7 +176,7 @@
             {
               if (nil == headerFields) 
                 {
-                  headerFields = [NSMutableDictionary dictionary];
+                  headerFields = [_GSMutableInsensitiveDictionary new];
                 }
               if (nil != [headerFields objectForKey: key]) 
                 {
