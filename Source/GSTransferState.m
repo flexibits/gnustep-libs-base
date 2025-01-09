@@ -1,4 +1,5 @@
 #import "GSTransferState.h"
+#import "GSPrivate.h"
 #import "GSURLSessionTaskBodySource.h"
 #import "Foundation/NSArray.h"
 #import "Foundation/NSCharacterSet.h"
@@ -151,6 +152,7 @@
   NSMutableDictionary *headerFields = nil;
   NSEnumerator        *e;
   NSString            *line;
+  NSDictionary        *ret;
 
   e = [_lines objectEnumerator];
   while (nil != (line = [e nextObject]))
@@ -175,7 +177,7 @@
             {
               if (nil == headerFields) 
                 {
-                  headerFields = [NSMutableDictionary dictionary];
+                  headerFields = [_GSMutableInsensitiveDictionary new];
                 }
               if (nil != [headerFields objectForKey: key]) 
                 {
@@ -195,7 +197,10 @@
         }
     }
   
-  return AUTORELEASE([headerFields copy]);
+  ret = AUTORELEASE([headerFields copy]);
+  DESTROY(headerFields);
+  
+  return ret;
 }
 
 - (instancetype) _byAppendingHeaderLine: (NSString*)line 
