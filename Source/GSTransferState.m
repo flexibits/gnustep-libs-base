@@ -152,6 +152,7 @@
   NSMutableDictionary *headerFields = nil;
   NSEnumerator        *e;
   NSString            *line;
+  NSDictionary        *ret;
 
   e = [_lines objectEnumerator];
   while (nil != (line = [e nextObject]))
@@ -196,7 +197,10 @@
         }
     }
   
-  return AUTORELEASE([headerFields copy]);
+  ret = AUTORELEASE([headerFields copy]);
+  DESTROY(headerFields);
+  
+  return ret;
 }
 
 - (instancetype) _byAppendingHeaderLine: (NSString*)line 
