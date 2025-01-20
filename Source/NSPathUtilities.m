@@ -73,8 +73,8 @@
 
 #import "GSPrivate.h"
 
-#ifdef	HAVE_PWD_H
-#include <pwd.h>		// for getpwnam_r() and getpwuid_r()
+#ifdef HAVE_PWD_H
+#include <pwd.h> // for getpwnam_r() and getpwuid_r()
 #endif
 #include <sys/types.h>
 #include <stdio.h>
@@ -88,51 +88,51 @@ void GNUstepUserConfig(NSMutableDictionary *config, NSString *userName);
 # define   GNUSTEP_TARGET_CONFIG_FILE  "/etc/GNUstep/GNUstep.conf"
 #endif
 
-static NSString	*gnustep_target_cpu =
+static NSString *gnustep_target_cpu =
 #ifdef GNUSTEP_TARGET_CPU
   @GNUSTEP_TARGET_CPU;
 #else
   nil;
 #endif
-static NSString	*gnustep_target_os =
+static NSString *gnustep_target_os =
 #ifdef GNUSTEP_TARGET_OS
   @GNUSTEP_TARGET_OS;
 #else
   nil;
 #endif
-static NSString	*library_combo =
+static NSString *library_combo =
 #ifdef LIBRARY_COMBO
   @LIBRARY_COMBO;
 #else
   nil;
 #endif
-static NSString	*gnustep_is_flattened =
+static NSString *gnustep_is_flattened =
 #ifdef GNUSTEP_IS_FLATTENED
   @GNUSTEP_IS_FLATTENED;
 #else
   nil;
 #endif
 
-#if	defined(_WIN32)
+#if defined(_WIN32)
 
-#include	<sddl.h>
-#include	<lmaccess.h>
+#include <sddl.h>
+#include <lmaccess.h>
 
 /*
  * FIXME ... should check access properly if the file is on an NTFS volume.
  */
-#define	ATTRMASK	0700
+#define ATTRMASK 0700
 #else
-#define	ATTRMASK	0777
+#define ATTRMASK 0777
 #endif
 
-#define	MGR()	[NSFileManager defaultManager]
+#define MGR() [NSFileManager defaultManager]
 
 /* ------------------ */
 /* Internal variables */
 /* ------------------ */
 
-static NSString	*gnustepConfigPath = nil;
+static NSString *gnustepConfigPath = nil;
 
 static NSString *gnustepUserHome = nil;
 static NSString *gnustepUserID = nil;
@@ -198,7 +198,7 @@ static NSString *gnustepUserDocumentation = nil;
 static NSString *gnustepUserDocumentationInfo = nil;
 static NSString *gnustepUserDocumentationMan = nil;
 
-static NSString	*gnustepDeveloperDir = nil;
+static NSString *gnustepDeveloperDir = nil;
 
 /* These are the same as the corresponding User variables, but
  * they hold the path before GNUSTEP_HOME is prepended.  It's what
@@ -216,7 +216,7 @@ static NSString *gnustepUserDirDocumentation = nil;
 static NSString *gnustepUserDirDocumentationInfo = nil;
 static NSString *gnustepUserDirDocumentationMan = nil;
 
-static NSString	*uninstalled = nil;
+static NSString *uninstalled = nil;
 
 static BOOL ParseConfigurationFile(NSString *name, NSMutableDictionary *dict,
   NSString *userName);
@@ -312,54 +312,59 @@ substUser(NSString *str)
 {
   if (str != nil && [str rangeOfString: @"%"].length > 0)
     {
-      NSMutableString	*m = [[str mutableCopy] autorelease];
-      int		l = [m length];
-      int		i = 0;
-      BOOL		percent = NO;
+      NSMutableString *m = [[str mutableCopy] autorelease];
+      int l = [m length];
+      int i = 0;
+      BOOL percent = NO;
 
       while (i < l)
-	{
-          unichar	c = [m characterAtIndex: i];
+        {
+          unichar c = [m characterAtIndex: i];
 
-	  if (YES == percent)
-	    {
-	      NSString	*s;
+          if (YES == percent)
+            {
+              NSString *s;
 
-	      if (c == '%')
-		{
-		  s = @"%";		// Escaped percent
-		}
-	      else if (c == 'i')
-		{
-		  s = gnustepUserID;	// User ID
-		}
-	      else if (c == 'u')
-		{
-		  s = gnustepUserName;	// User name
-		}
-	      else
-		{
-		  s = nil;		// No substitution
-		}
-	      if (s != nil)
-		{
-		  int	diff = [s length] - 2;
+              if (c == '%')
+                {
+                  s = @"%"; // Escaped percent
+                }
+              else if (c == 'i')
+                {
+                  s = gnustepUserID; // User ID
+                }
+              else if (c == 'u')
+                {
+                  s = gnustepUserName; // User name
+                }
+              else
+                {
+                  s = nil; // No substitution
+                }
 
-		  [m replaceCharactersInRange: NSMakeRange(i-1, 2)
-				   withString: s];
-		  l += diff;
-		  i += diff;
-		}
-	      percent = NO;
-	    }
-	  else if (c == '%')
-	    {
-	      percent = YES;
-	    }
-	  i++;
-	}
+              if (s != nil)
+                {
+                  int diff = [s length] - 2;
+
+                  [m replaceCharactersInRange: NSMakeRange(i-1, 2)
+                                   withString: s];
+                  l += diff;
+                  i += diff;
+                }
+
+              percent = NO;
+            }
+          else if (c == '%')
+            {
+              percent = YES;
+            }
+
+          i++;
+        }
+
       str = m;
     }
+
   return str;
 }
 
@@ -369,8 +374,7 @@ getPath(NSString *path)
 {
   if ([path hasPrefix: @"./"] == YES)
     {
-      path = [gnustepConfigPath stringByAppendingPathComponent:
-	[path substringFromIndex: 2]];
+      path = [gnustepConfigPath stringByAppendingPathComponent: [path substringFromIndex: 2]];
       path = [path stringByStandardizingPath];
     }
   else if ([path hasPrefix: @"../"] == YES)
@@ -378,6 +382,7 @@ getPath(NSString *path)
       path = [gnustepConfigPath stringByAppendingPathComponent: path];
       path = [path stringByStandardizingPath];
     }
+
   return path;
 }
 
@@ -385,210 +390,156 @@ getPath(NSString *path)
 static inline NSString *
 getPathConfig(NSDictionary *dict, NSString *key)
 {
-  NSString	*path;
+  NSString *path;
 
   path = [dict objectForKey: key];
+
   if (path != nil)
     {
       path = getPath(path);
-      if ([path isAbsolutePath] == NO)
-	{
-	  fprintf(stderr, "GNUstep configuration file entry '%s' ('%s') is not "
-	    "an absolute path.\nPlease fix your configuration file.\n",
-	    [key UTF8String],
-            [[[dict objectForKey: key] description] UTF8String]);
-#if	defined(_WIN32)
-	  if ([path length] > 2)
-	    {
-	      unichar	buf[3];
 
-	      [path getCharacters: buf range: NSMakeRange(0, 3)];
-	      if ((buf[0] == '/' || buf[0] == '\\') && isalpha(buf[1])
-		&& (buf[2] == '/' || buf[2] == '\\'))
-		{
-		  path = [NSString stringWithFormat: @"%c:%@", (char)buf[1],
-		    [path substringFromIndex: 2]];
-		  path = [path stringByReplacingString: @"/"
-					    withString: @"\\"];
-		  fprintf(stderr, "I am guessing that you meant '%s'\n",
+      if ([path isAbsolutePath] == NO)
+        {
+          fprintf(stderr, "GNUstep configuration file entry '%s' ('%s') is not "
+            "an absolute path.\nPlease fix your configuration file.\n",
+            [key UTF8String],
+            [[[dict objectForKey: key] description] UTF8String]);
+#if        defined(_WIN32)
+
+          if ([path length] > 2)
+            {
+              unichar buf[3];
+
+              [path getCharacters: buf range: NSMakeRange(0, 3)];
+              if ((buf[0] == '/' || buf[0] == '\\') && isalpha(buf[1])
+                && (buf[2] == '/' || buf[2] == '\\'))
+                {
+                  path = [NSString stringWithFormat: @"%c:%@", (char)buf[1],
+                    [path substringFromIndex: 2]];
+
+                  path = [path stringByReplacingString: @"/"
+                                            withString: @"\\"];
+                  fprintf(stderr, "I am guessing that you meant '%s'\n",
                     [path UTF8String]);
-		}
-	    }
+                }
+            }
 #endif
-	}
+        }
     }
   return path;
 }
 
 static void ExtractValuesFromConfig(NSDictionary *config)
 {
-  NSMutableDictionary	*c = [config mutableCopy];
-  BOOL			createLibraryPath;
-  id		        extra;
+  NSMutableDictionary *c = [config mutableCopy];
+  BOOL createLibraryPath;
+  id extra;
 
   /*
    * Move values out of the dictionary and into variables for rapid reference.
    */
-  ASSIGN_IF_SET(gnustepUserDefaultsDir, c,
-    @"GNUSTEP_USER_DEFAULTS_DIR");
+  ASSIGN_IF_SET(gnustepUserDefaultsDir, c, @"GNUSTEP_USER_DEFAULTS_DIR");
 
-  ASSIGN_PATH(gnustepMakefiles, c,
-    @"GNUSTEP_MAKEFILES");
+  ASSIGN_PATH(gnustepMakefiles, c, @"GNUSTEP_MAKEFILES");
 
-  ASSIGN_PATH(gnustepDeveloperDir, c,
-    @"GNUSTEP_DEVELOPER_DIR");
+  ASSIGN_PATH(gnustepDeveloperDir, c, @"GNUSTEP_DEVELOPER_DIR");
 
-  ASSIGN_PATH(gnustepSystemUsersDir, c,
-    @"GNUSTEP_SYSTEM_USERS_DIR");
-  ASSIGN_PATH(gnustepNetworkUsersDir, c,
-    @"GNUSTEP_NETWORK_USERS_DIR");
-  ASSIGN_PATH(gnustepLocalUsersDir, c,
-    @"GNUSTEP_LOCAL_USERS_DIR");
+  ASSIGN_PATH(gnustepSystemUsersDir, c, @"GNUSTEP_SYSTEM_USERS_DIR");
+  ASSIGN_PATH(gnustepNetworkUsersDir, c, @"GNUSTEP_NETWORK_USERS_DIR");
+  ASSIGN_PATH(gnustepLocalUsersDir, c, @"GNUSTEP_LOCAL_USERS_DIR");
 
-  ASSIGN_PATH(gnustepSystemApps, c,
-    @"GNUSTEP_SYSTEM_APPS");
-  ASSIGN_PATH(gnustepSystemAdminApps, c,
-    @"GNUSTEP_SYSTEM_ADMIN_APPS");
-  ASSIGN_PATH(gnustepSystemWebApps, c,
-    @"GNUSTEP_SYSTEM_WEB_APPS");
-  ASSIGN_PATH(gnustepSystemTools, c,
-    @"GNUSTEP_SYSTEM_TOOLS");
-  ASSIGN_PATH(gnustepSystemAdminTools, c,
-    @"GNUSTEP_SYSTEM_ADMIN_TOOLS");
-  ASSIGN_PATH(gnustepSystemLibrary, c,
-    @"GNUSTEP_SYSTEM_LIBRARY");
-  ASSIGN_PATH(gnustepSystemLibraries, c,
-    @"GNUSTEP_SYSTEM_LIBRARIES");
-  ASSIGN_PATH(gnustepSystemHeaders, c,
-    @"GNUSTEP_SYSTEM_HEADERS");
-  ASSIGN_PATH(gnustepSystemDocumentation, c,
-    @"GNUSTEP_SYSTEM_DOC");
-  ASSIGN_PATH(gnustepSystemDocumentationMan, c,
-    @"GNUSTEP_SYSTEM_DOC_MAN");
-  ASSIGN_PATH(gnustepSystemDocumentationInfo, c,
-    @"GNUSTEP_SYSTEM_DOC_INFO");
+  ASSIGN_PATH(gnustepSystemApps, c, @"GNUSTEP_SYSTEM_APPS");
+  ASSIGN_PATH(gnustepSystemAdminApps, c, @"GNUSTEP_SYSTEM_ADMIN_APPS");
+  ASSIGN_PATH(gnustepSystemWebApps, c, @"GNUSTEP_SYSTEM_WEB_APPS");
+  ASSIGN_PATH(gnustepSystemTools, c, @"GNUSTEP_SYSTEM_TOOLS");
+  ASSIGN_PATH(gnustepSystemAdminTools, c, @"GNUSTEP_SYSTEM_ADMIN_TOOLS");
+  ASSIGN_PATH(gnustepSystemLibrary, c, @"GNUSTEP_SYSTEM_LIBRARY");
+  ASSIGN_PATH(gnustepSystemLibraries, c, @"GNUSTEP_SYSTEM_LIBRARIES");
+  ASSIGN_PATH(gnustepSystemHeaders, c, @"GNUSTEP_SYSTEM_HEADERS");
+  ASSIGN_PATH(gnustepSystemDocumentation, c, @"GNUSTEP_SYSTEM_DOC");
+  ASSIGN_PATH(gnustepSystemDocumentationMan, c, @"GNUSTEP_SYSTEM_DOC_MAN");
+  ASSIGN_PATH(gnustepSystemDocumentationInfo, c, @"GNUSTEP_SYSTEM_DOC_INFO");
 
-  ASSIGN_PATH(gnustepNetworkApps, c,
-    @"GNUSTEP_NETWORK_APPS");
-  ASSIGN_PATH(gnustepNetworkAdminApps, c,
-    @"GNUSTEP_NETWORK_ADMIN_APPS");
-  ASSIGN_PATH(gnustepNetworkWebApps, c,
-    @"GNUSTEP_NETWORK_WEB_APPS");
-  ASSIGN_PATH(gnustepNetworkTools, c,
-    @"GNUSTEP_NETWORK_TOOLS");
-  ASSIGN_PATH(gnustepNetworkAdminTools, c,
-    @"GNUSTEP_NETWORK_ADMIN_TOOLS");
-  ASSIGN_PATH(gnustepNetworkLibrary, c,
-    @"GNUSTEP_NETWORK_LIBRARY");
-  ASSIGN_PATH(gnustepNetworkLibraries, c,
-    @"GNUSTEP_NETWORK_LIBRARIES");
-  ASSIGN_PATH(gnustepNetworkHeaders, c,
-    @"GNUSTEP_NETWORK_HEADERS");
-  ASSIGN_PATH(gnustepNetworkDocumentation, c,
-    @"GNUSTEP_NETWORK_DOC");
-  ASSIGN_PATH(gnustepNetworkDocumentationMan, c,
-    @"GNUSTEP_NETWORK_DOC_MAN");
-  ASSIGN_PATH(gnustepNetworkDocumentationInfo, c,
-    @"GNUSTEP_NETWORK_DOC_INFO");
+  ASSIGN_PATH(gnustepNetworkApps, c, @"GNUSTEP_NETWORK_APPS");
+  ASSIGN_PATH(gnustepNetworkAdminApps, c, @"GNUSTEP_NETWORK_ADMIN_APPS");
+  ASSIGN_PATH(gnustepNetworkWebApps, c, @"GNUSTEP_NETWORK_WEB_APPS");
+  ASSIGN_PATH(gnustepNetworkTools, c, @"GNUSTEP_NETWORK_TOOLS");
+  ASSIGN_PATH(gnustepNetworkAdminTools, c, @"GNUSTEP_NETWORK_ADMIN_TOOLS");
+  ASSIGN_PATH(gnustepNetworkLibrary, c, @"GNUSTEP_NETWORK_LIBRARY");
+  ASSIGN_PATH(gnustepNetworkLibraries, c, @"GNUSTEP_NETWORK_LIBRARIES");
+  ASSIGN_PATH(gnustepNetworkHeaders, c, @"GNUSTEP_NETWORK_HEADERS");
+  ASSIGN_PATH(gnustepNetworkDocumentation, c, @"GNUSTEP_NETWORK_DOC");
+  ASSIGN_PATH(gnustepNetworkDocumentationMan, c, @"GNUSTEP_NETWORK_DOC_MAN");
+  ASSIGN_PATH(gnustepNetworkDocumentationInfo, c, @"GNUSTEP_NETWORK_DOC_INFO");
 
-  ASSIGN_PATH(gnustepLocalApps, c,
-    @"GNUSTEP_LOCAL_APPS");
-  ASSIGN_PATH(gnustepLocalAdminApps, c,
-    @"GNUSTEP_LOCAL_ADMIN_APPS");
-  ASSIGN_PATH(gnustepLocalWebApps, c,
-    @"GNUSTEP_LOCAL_WEB_APPS");
-  ASSIGN_PATH(gnustepLocalTools, c,
-    @"GNUSTEP_LOCAL_TOOLS");
-  ASSIGN_PATH(gnustepLocalAdminTools, c,
-    @"GNUSTEP_LOCAL_ADMIN_TOOLS");
-  ASSIGN_PATH(gnustepLocalLibrary, c,
-    @"GNUSTEP_LOCAL_LIBRARY");
-  ASSIGN_PATH(gnustepLocalLibraries, c,
-    @"GNUSTEP_LOCAL_LIBRARIES");
-  ASSIGN_PATH(gnustepLocalHeaders, c,
-    @"GNUSTEP_LOCAL_HEADERS");
-  ASSIGN_PATH(gnustepLocalDocumentation, c,
-    @"GNUSTEP_LOCAL_DOC");
-  ASSIGN_PATH(gnustepLocalDocumentationMan, c,
-    @"GNUSTEP_LOCAL_DOC_MAN");
-  ASSIGN_PATH(gnustepLocalDocumentationInfo, c,
-    @"GNUSTEP_LOCAL_DOC_INFO");
+  ASSIGN_PATH(gnustepLocalApps, c, @"GNUSTEP_LOCAL_APPS");
+  ASSIGN_PATH(gnustepLocalAdminApps, c, @"GNUSTEP_LOCAL_ADMIN_APPS");
+  ASSIGN_PATH(gnustepLocalWebApps, c, @"GNUSTEP_LOCAL_WEB_APPS");
+  ASSIGN_PATH(gnustepLocalTools, c, @"GNUSTEP_LOCAL_TOOLS");
+  ASSIGN_PATH(gnustepLocalAdminTools, c, @"GNUSTEP_LOCAL_ADMIN_TOOLS");
+  ASSIGN_PATH(gnustepLocalLibrary, c, @"GNUSTEP_LOCAL_LIBRARY");
+  ASSIGN_PATH(gnustepLocalLibraries, c, @"GNUSTEP_LOCAL_LIBRARIES");
+  ASSIGN_PATH(gnustepLocalHeaders, c, @"GNUSTEP_LOCAL_HEADERS");
+  ASSIGN_PATH(gnustepLocalDocumentation, c, @"GNUSTEP_LOCAL_DOC");
+  ASSIGN_PATH(gnustepLocalDocumentationMan, c, @"GNUSTEP_LOCAL_DOC_MAN");
+  ASSIGN_PATH(gnustepLocalDocumentationInfo, c, @"GNUSTEP_LOCAL_DOC_INFO");
 
-  ASSIGN_USER(gnustepUserDirApps, c,
-    @"GNUSTEP_USER_DIR_APPS");
-  TEST_ASSIGN(gnustepUserDirApps,
-    @GNUSTEP_TARGET_USER_DIR_APPS);
-  ASSIGN_USER(gnustepUserDirAdminApps, c,
-    @"GNUSTEP_USER_DIR_ADMIN_APPS");
-  TEST_ASSIGN(gnustepUserDirAdminApps,
-    @GNUSTEP_TARGET_USER_DIR_ADMIN_APPS);
-  ASSIGN_USER(gnustepUserDirWebApps, c,
-    @"GNUSTEP_USER_DIR_WEB_APPS");
-  TEST_ASSIGN(gnustepUserDirWebApps,
-    @GNUSTEP_TARGET_USER_DIR_WEB_APPS);
-  ASSIGN_USER(gnustepUserDirTools, c,
-    @"GNUSTEP_USER_DIR_TOOLS");
-  TEST_ASSIGN(gnustepUserDirTools,
-    @GNUSTEP_TARGET_USER_DIR_TOOLS);
-  ASSIGN_USER(gnustepUserDirAdminTools, c,
-    @"GNUSTEP_USER_DIR_ADMIN_TOOLS");
-  TEST_ASSIGN(gnustepUserDirAdminTools,
-    @GNUSTEP_TARGET_USER_DIR_ADMIN_TOOLS);
-  ASSIGN_USER(gnustepUserDirLibrary, c,
-    @"GNUSTEP_USER_DIR_LIBRARY");
-  TEST_ASSIGN(gnustepUserDirLibrary,
-    @GNUSTEP_TARGET_USER_DIR_LIBRARY);
-  ASSIGN_USER(gnustepUserDirLibraries, c,
-    @"GNUSTEP_USER_DIR_LIBRARIES");
-  TEST_ASSIGN(gnustepUserDirLibraries,
-    @GNUSTEP_TARGET_USER_DIR_LIBRARIES);
-  ASSIGN_USER(gnustepUserDirHeaders, c,
-    @"GNUSTEP_USER_DIR_HEADERS");
-  TEST_ASSIGN(gnustepUserDirHeaders,
-    @GNUSTEP_TARGET_USER_DIR_HEADERS);
-  ASSIGN_USER(gnustepUserDirDocumentation, c,
-    @"GNUSTEP_USER_DIR_DOC");
-  TEST_ASSIGN(gnustepUserDirDocumentation,
-    @GNUSTEP_TARGET_USER_DIR_DOC);
-  ASSIGN_USER(gnustepUserDirDocumentationMan, c,
-    @"GNUSTEP_USER_DIR_DOC_MAN");
-  TEST_ASSIGN(gnustepUserDirDocumentationMan,
-    @GNUSTEP_TARGET_USER_DIR_DOC_MAN);
-  ASSIGN_USER(gnustepUserDirDocumentationInfo, c,
-    @"GNUSTEP_USER_DIR_DOC_INFO");
-  TEST_ASSIGN(gnustepUserDirDocumentationInfo,
-    @GNUSTEP_TARGET_USER_DIR_DOC_INFO);
+  ASSIGN_USER(gnustepUserDirApps, c, @"GNUSTEP_USER_DIR_APPS");
+  TEST_ASSIGN(gnustepUserDirApps, @GNUSTEP_TARGET_USER_DIR_APPS);
+  ASSIGN_USER(gnustepUserDirAdminApps, c, @"GNUSTEP_USER_DIR_ADMIN_APPS");
+  TEST_ASSIGN(gnustepUserDirAdminApps, @GNUSTEP_TARGET_USER_DIR_ADMIN_APPS);
+  ASSIGN_USER(gnustepUserDirWebApps, c, @"GNUSTEP_USER_DIR_WEB_APPS");
+  TEST_ASSIGN(gnustepUserDirWebApps, @GNUSTEP_TARGET_USER_DIR_WEB_APPS);
+  ASSIGN_USER(gnustepUserDirTools, c, @"GNUSTEP_USER_DIR_TOOLS");
+  TEST_ASSIGN(gnustepUserDirTools, @GNUSTEP_TARGET_USER_DIR_TOOLS);
+  ASSIGN_USER(gnustepUserDirAdminTools, c, @"GNUSTEP_USER_DIR_ADMIN_TOOLS");
+  TEST_ASSIGN(gnustepUserDirAdminTools, @GNUSTEP_TARGET_USER_DIR_ADMIN_TOOLS);
+  ASSIGN_USER(gnustepUserDirLibrary, c, @"GNUSTEP_USER_DIR_LIBRARY");
+  TEST_ASSIGN(gnustepUserDirLibrary, @GNUSTEP_TARGET_USER_DIR_LIBRARY);
+  ASSIGN_USER(gnustepUserDirLibraries, c, @"GNUSTEP_USER_DIR_LIBRARIES");
+  TEST_ASSIGN(gnustepUserDirLibraries, @GNUSTEP_TARGET_USER_DIR_LIBRARIES);
+  ASSIGN_USER(gnustepUserDirHeaders, c, @"GNUSTEP_USER_DIR_HEADERS");
+  TEST_ASSIGN(gnustepUserDirHeaders, @GNUSTEP_TARGET_USER_DIR_HEADERS);
+  ASSIGN_USER(gnustepUserDirDocumentation, c, @"GNUSTEP_USER_DIR_DOC");
+  TEST_ASSIGN(gnustepUserDirDocumentation, @GNUSTEP_TARGET_USER_DIR_DOC);
+  ASSIGN_USER(gnustepUserDirDocumentationMan, c, @"GNUSTEP_USER_DIR_DOC_MAN");
+  TEST_ASSIGN(gnustepUserDirDocumentationMan, @GNUSTEP_TARGET_USER_DIR_DOC_MAN);
+  ASSIGN_USER(gnustepUserDirDocumentationInfo, c, @"GNUSTEP_USER_DIR_DOC_INFO");
+  TEST_ASSIGN(gnustepUserDirDocumentationInfo, @GNUSTEP_TARGET_USER_DIR_DOC_INFO);
 
   /*
    * The GNUSTEP_EXTRA field may contain a list of extra keys which
    * we permit in the dictionary without generating a warning.
    */
   extra = [c objectForKey: @"GNUSTEP_EXTRA"];
+
   if (extra != nil)
     {
-      NSEnumerator	*enumerator;
-      NSString		*key;
+      NSEnumerator *enumerator;
+      NSString *key;
 
       if ([extra isKindOfClass: [NSString class]] == YES)
         {
           extra = [extra componentsSeparatedByString: @","];
         }
+
       enumerator = [extra objectEnumerator];
       [c removeObjectForKey: @"GNUSTEP_EXTRA"];
+
       while ((key = [enumerator nextObject]) != nil)
         {
-	  key = [key stringByTrimmingSpaces];
-	  [c removeObjectForKey: key];
-	}
+          key = [key stringByTrimmingSpaces];
+          [c removeObjectForKey: key];
+        }
     }
+
   [c removeObjectForKey: @"GNUSTEP_SYSTEM_DEFAULTS_FILE"];
 
   /* If GNUSTEP_CREATE_LIBRARY_PATH is YES then we should ensure that the
    * per-user directory and the Library subdirectory exist so resources
    * can safely be stored in them.
    */
-  createLibraryPath
-    = [[c objectForKey: @"GNUSTEP_CREATE_LIBRARY_PATH"] boolValue];
+  createLibraryPath = [[c objectForKey: @"GNUSTEP_CREATE_LIBRARY_PATH"] boolValue];
   [c removeObjectForKey: @"GNUSTEP_CREATE_LIBRARY_PATH"];
 
   /*
@@ -610,8 +561,9 @@ static void ExtractValuesFromConfig(NSDictionary *config)
        */
       fprintf(stderr, "Configuration contains unknown keys - %s\n"
         "Add them in the comma separated list GNUSTEP_EXTRA=... if required.\n",
-	[[[c allKeys] description] UTF8String]);
+        [[[c allKeys] description] UTF8String]);
     }
+
   DESTROY(c);
 
   /*
@@ -621,40 +573,48 @@ static void ExtractValuesFromConfig(NSDictionary *config)
     {
       ASSIGN(gnustepUserDefaultsDir, @GNUSTEP_TARGET_USER_DEFAULTS_DIR);
     }
+
   if (gnustepUserDirApps == nil)
     {
       ASSIGN(gnustepUserDirApps, @GNUSTEP_TARGET_USER_DIR_APPS);
     }
+
   if (gnustepUserDirTools == nil)
     {
       ASSIGN(gnustepUserDirTools, @GNUSTEP_TARGET_USER_DIR_TOOLS);
     }
+
   if (gnustepUserDirLibrary == nil)
     {
       ASSIGN(gnustepUserDirLibrary, @GNUSTEP_TARGET_USER_DIR_LIBRARY);
     }
+
   if (gnustepUserDirLibraries == nil)
     {
       ASSIGN(gnustepUserDirLibraries, @GNUSTEP_TARGET_USER_DIR_LIBRARIES);
     }
+
   if (gnustepUserDirHeaders == nil)
     {
       ASSIGN(gnustepUserDirHeaders, @GNUSTEP_TARGET_USER_DIR_HEADERS);
     }
+
   if (gnustepUserDirDocumentation == nil)
     {
       ASSIGN(gnustepUserDirDocumentation,
-	     @GNUSTEP_TARGET_USER_DIR_DOC);
+             @GNUSTEP_TARGET_USER_DIR_DOC);
     }
+
   if (gnustepUserDirDocumentationMan == nil)
     {
       ASSIGN(gnustepUserDirDocumentationMan,
-	     @GNUSTEP_TARGET_USER_DIR_DOC_MAN);
+             @GNUSTEP_TARGET_USER_DIR_DOC_MAN);
     }
+
   if (gnustepUserDirDocumentationInfo == nil)
     {
       ASSIGN(gnustepUserDirDocumentationInfo,
-	     @GNUSTEP_TARGET_USER_DIR_DOC_INFO);
+             @GNUSTEP_TARGET_USER_DIR_DOC_INFO);
     }
 
   /*
@@ -678,108 +638,72 @@ static void ExtractValuesFromConfig(NSDictionary *config)
    */
   if (YES == createLibraryPath)
     {
-      NSFileManager	*manager;
-      NSString		*path;
-      NSDictionary	*attr;
-      BOOL		flag;
+      NSFileManager *manager;
+      NSString *path;
+      NSDictionary *attr;
+      BOOL flag;
 
       manager = [NSFileManager defaultManager];
       attr = [NSDictionary dictionaryWithObject: [NSNumber numberWithInt: 0750]
-					 forKey: NSFilePosixPermissions];
+                                         forKey: NSFilePosixPermissions];
 
       // Make sure library directory exists (to store resources).
       path = gnustepUserLibrary;
+
       if ([manager fileExistsAtPath: path isDirectory: &flag] == NO
-	|| flag == NO)
-	{
-	  [manager createDirectoryAtPath: path
+        || flag == NO)
+        {
+          [manager createDirectoryAtPath: path
              withIntermediateDirectories: YES
                               attributes: attr
                                    error: NULL];
-	}
+        }
     }
 
   /*
    * Finally set default locations for the essential paths if required.
    */
-  ASSIGN_DEFAULT_PATH(gnustepSystemApps,
-    @GNUSTEP_TARGET_SYSTEM_APPS);
-  ASSIGN_DEFAULT_PATH(gnustepSystemAdminApps,
-    @GNUSTEP_TARGET_SYSTEM_ADMIN_APPS);
-  ASSIGN_DEFAULT_PATH(gnustepSystemWebApps,
-    @GNUSTEP_TARGET_SYSTEM_WEB_APPS);
-  ASSIGN_DEFAULT_PATH(gnustepSystemTools,
-    @GNUSTEP_TARGET_SYSTEM_TOOLS);
-  ASSIGN_DEFAULT_PATH(gnustepSystemAdminTools,
-    @GNUSTEP_TARGET_SYSTEM_ADMIN_TOOLS);
-  ASSIGN_DEFAULT_PATH(gnustepSystemLibrary,
-    @GNUSTEP_TARGET_SYSTEM_LIBRARY);
-  ASSIGN_DEFAULT_PATH(gnustepSystemLibraries,
-    @GNUSTEP_TARGET_SYSTEM_LIBRARIES);
-  ASSIGN_DEFAULT_PATH(gnustepSystemHeaders,
-    @GNUSTEP_TARGET_SYSTEM_HEADERS);
-  ASSIGN_DEFAULT_PATH(gnustepSystemDocumentation,
-    @GNUSTEP_TARGET_SYSTEM_DOC);
-  ASSIGN_DEFAULT_PATH(gnustepSystemDocumentationMan,
-    @GNUSTEP_TARGET_SYSTEM_DOC_MAN);
-  ASSIGN_DEFAULT_PATH(gnustepSystemDocumentationInfo,
-    @GNUSTEP_TARGET_SYSTEM_DOC_INFO);
+  ASSIGN_DEFAULT_PATH(gnustepSystemApps, @GNUSTEP_TARGET_SYSTEM_APPS);
+  ASSIGN_DEFAULT_PATH(gnustepSystemAdminApps, @GNUSTEP_TARGET_SYSTEM_ADMIN_APPS);
+  ASSIGN_DEFAULT_PATH(gnustepSystemWebApps, @GNUSTEP_TARGET_SYSTEM_WEB_APPS);
+  ASSIGN_DEFAULT_PATH(gnustepSystemTools, @GNUSTEP_TARGET_SYSTEM_TOOLS);
+  ASSIGN_DEFAULT_PATH(gnustepSystemAdminTools, @GNUSTEP_TARGET_SYSTEM_ADMIN_TOOLS);
+  ASSIGN_DEFAULT_PATH(gnustepSystemLibrary, @GNUSTEP_TARGET_SYSTEM_LIBRARY);
+  ASSIGN_DEFAULT_PATH(gnustepSystemLibraries, @GNUSTEP_TARGET_SYSTEM_LIBRARIES);
+  ASSIGN_DEFAULT_PATH(gnustepSystemHeaders, @GNUSTEP_TARGET_SYSTEM_HEADERS);
+  ASSIGN_DEFAULT_PATH(gnustepSystemDocumentation, @GNUSTEP_TARGET_SYSTEM_DOC);
+  ASSIGN_DEFAULT_PATH(gnustepSystemDocumentationMan, @GNUSTEP_TARGET_SYSTEM_DOC_MAN);
+  ASSIGN_DEFAULT_PATH(gnustepSystemDocumentationInfo, @GNUSTEP_TARGET_SYSTEM_DOC_INFO);
 
-  ASSIGN_DEFAULT_PATH(gnustepNetworkApps,
-    @GNUSTEP_TARGET_NETWORK_APPS);
-  ASSIGN_DEFAULT_PATH(gnustepNetworkAdminApps,
-    @GNUSTEP_TARGET_NETWORK_ADMIN_APPS);
-  ASSIGN_DEFAULT_PATH(gnustepNetworkWebApps,
-    @GNUSTEP_TARGET_NETWORK_WEB_APPS);
-  ASSIGN_DEFAULT_PATH(gnustepNetworkTools,
-    @GNUSTEP_TARGET_NETWORK_TOOLS);
-  ASSIGN_DEFAULT_PATH(gnustepNetworkAdminTools,
-    @GNUSTEP_TARGET_NETWORK_ADMIN_TOOLS);
-  ASSIGN_DEFAULT_PATH(gnustepNetworkLibrary,
-    @GNUSTEP_TARGET_NETWORK_LIBRARY);
-  ASSIGN_DEFAULT_PATH(gnustepNetworkLibraries,
-    @GNUSTEP_TARGET_NETWORK_LIBRARIES);
-  ASSIGN_DEFAULT_PATH(gnustepNetworkHeaders,
-    @GNUSTEP_TARGET_NETWORK_HEADERS);
-  ASSIGN_DEFAULT_PATH(gnustepNetworkDocumentation,
-    @GNUSTEP_TARGET_NETWORK_DOC);
-  ASSIGN_DEFAULT_PATH(gnustepNetworkDocumentationMan,
-    @GNUSTEP_TARGET_NETWORK_DOC_MAN);
-  ASSIGN_DEFAULT_PATH(gnustepNetworkDocumentationInfo,
-    @GNUSTEP_TARGET_NETWORK_DOC_INFO);
+  ASSIGN_DEFAULT_PATH(gnustepNetworkApps, @GNUSTEP_TARGET_NETWORK_APPS);
+  ASSIGN_DEFAULT_PATH(gnustepNetworkAdminApps, @GNUSTEP_TARGET_NETWORK_ADMIN_APPS);
+  ASSIGN_DEFAULT_PATH(gnustepNetworkWebApps, @GNUSTEP_TARGET_NETWORK_WEB_APPS);
+  ASSIGN_DEFAULT_PATH(gnustepNetworkTools, @GNUSTEP_TARGET_NETWORK_TOOLS);
+  ASSIGN_DEFAULT_PATH(gnustepNetworkAdminTools, @GNUSTEP_TARGET_NETWORK_ADMIN_TOOLS);
+  ASSIGN_DEFAULT_PATH(gnustepNetworkLibrary, @GNUSTEP_TARGET_NETWORK_LIBRARY);
+  ASSIGN_DEFAULT_PATH(gnustepNetworkLibraries, @GNUSTEP_TARGET_NETWORK_LIBRARIES);
+  ASSIGN_DEFAULT_PATH(gnustepNetworkHeaders, @GNUSTEP_TARGET_NETWORK_HEADERS);
+  ASSIGN_DEFAULT_PATH(gnustepNetworkDocumentation, @GNUSTEP_TARGET_NETWORK_DOC);
+  ASSIGN_DEFAULT_PATH(gnustepNetworkDocumentationMan, @GNUSTEP_TARGET_NETWORK_DOC_MAN);
+  ASSIGN_DEFAULT_PATH(gnustepNetworkDocumentationInfo, @GNUSTEP_TARGET_NETWORK_DOC_INFO);
 
-  ASSIGN_DEFAULT_PATH(gnustepLocalApps,
-    @GNUSTEP_TARGET_LOCAL_APPS);
-  ASSIGN_DEFAULT_PATH(gnustepLocalAdminApps,
-    @GNUSTEP_TARGET_LOCAL_ADMIN_APPS);
-  ASSIGN_DEFAULT_PATH(gnustepLocalWebApps,
-    @GNUSTEP_TARGET_LOCAL_WEB_APPS);
-  ASSIGN_DEFAULT_PATH(gnustepLocalTools,
-    @GNUSTEP_TARGET_LOCAL_TOOLS);
-  ASSIGN_DEFAULT_PATH(gnustepLocalAdminTools,
-    @GNUSTEP_TARGET_LOCAL_ADMIN_TOOLS);
-  ASSIGN_DEFAULT_PATH(gnustepLocalLibrary,
-    @GNUSTEP_TARGET_LOCAL_LIBRARY);
-  ASSIGN_DEFAULT_PATH(gnustepLocalLibraries,
-    @GNUSTEP_TARGET_LOCAL_LIBRARIES);
-  ASSIGN_DEFAULT_PATH(gnustepLocalHeaders,
-    @GNUSTEP_TARGET_LOCAL_HEADERS);
-  ASSIGN_DEFAULT_PATH(gnustepLocalDocumentation,
-    @GNUSTEP_TARGET_LOCAL_DOC);
-  ASSIGN_DEFAULT_PATH(gnustepLocalDocumentationMan,
-    @GNUSTEP_TARGET_LOCAL_DOC_MAN);
-  ASSIGN_DEFAULT_PATH(gnustepLocalDocumentationInfo,
-    @GNUSTEP_TARGET_LOCAL_DOC_INFO);
+  ASSIGN_DEFAULT_PATH(gnustepLocalApps, @GNUSTEP_TARGET_LOCAL_APPS);
+  ASSIGN_DEFAULT_PATH(gnustepLocalAdminApps, @GNUSTEP_TARGET_LOCAL_ADMIN_APPS);
+  ASSIGN_DEFAULT_PATH(gnustepLocalWebApps, @GNUSTEP_TARGET_LOCAL_WEB_APPS);
+  ASSIGN_DEFAULT_PATH(gnustepLocalTools, @GNUSTEP_TARGET_LOCAL_TOOLS);
+  ASSIGN_DEFAULT_PATH(gnustepLocalAdminTools, @GNUSTEP_TARGET_LOCAL_ADMIN_TOOLS);
+  ASSIGN_DEFAULT_PATH(gnustepLocalLibrary, @GNUSTEP_TARGET_LOCAL_LIBRARY);
+  ASSIGN_DEFAULT_PATH(gnustepLocalLibraries, @GNUSTEP_TARGET_LOCAL_LIBRARIES);
+  ASSIGN_DEFAULT_PATH(gnustepLocalHeaders, @GNUSTEP_TARGET_LOCAL_HEADERS);
+  ASSIGN_DEFAULT_PATH(gnustepLocalDocumentation, @GNUSTEP_TARGET_LOCAL_DOC);
+  ASSIGN_DEFAULT_PATH(gnustepLocalDocumentationMan, @GNUSTEP_TARGET_LOCAL_DOC_MAN);
+  ASSIGN_DEFAULT_PATH(gnustepLocalDocumentationInfo, @GNUSTEP_TARGET_LOCAL_DOC_INFO);
 
-  ASSIGN_DEFAULT_PATH(gnustepMakefiles,
-    @GNUSTEP_TARGET_MAKEFILES);
+  ASSIGN_DEFAULT_PATH(gnustepMakefiles, @GNUSTEP_TARGET_MAKEFILES);
 
-  ASSIGN_DEFAULT_PATH(gnustepSystemUsersDir,
-    @GNUSTEP_TARGET_SYSTEM_USERS_DIR);
-  ASSIGN_DEFAULT_PATH(gnustepNetworkUsersDir,
-    @GNUSTEP_TARGET_NETWORK_USERS_DIR);
-  ASSIGN_DEFAULT_PATH(gnustepLocalUsersDir,
-    @GNUSTEP_TARGET_LOCAL_USERS_DIR);
+  ASSIGN_DEFAULT_PATH(gnustepSystemUsersDir, @GNUSTEP_TARGET_SYSTEM_USERS_DIR);
+  ASSIGN_DEFAULT_PATH(gnustepNetworkUsersDir, @GNUSTEP_TARGET_NETWORK_USERS_DIR);
+  ASSIGN_DEFAULT_PATH(gnustepLocalUsersDir, @GNUSTEP_TARGET_LOCAL_USERS_DIR);
 }
 
 static void
@@ -787,288 +711,305 @@ addDefaults(NSString *defs, NSMutableDictionary *conf)
 {
   if ([MGR() isReadableFileAtPath: defs] == YES)
     {
-      NSDictionary      *d;
-      NSDictionary      *attributes;
+      NSDictionary *d;
+      NSDictionary *attributes;
 
       attributes = [MGR() fileAttributesAtPath: defs
-				  traverseLink: YES];
+                                  traverseLink: YES];
       if (([attributes filePosixPermissions]
-	& (0022 & ATTRMASK)) != 0)
-	{
+        & (0022 & ATTRMASK)) != 0)
+        {
 #if defined(_WIN32)
-	  fprintf(stderr,
-	    "\nThe file '%S' is writable by someone other than"
-	    " its owner (permissions 0%lo).\nIgnoring it.\n",
-	    [defs fileSystemRepresentation],
-	    (long)[attributes filePosixPermissions]);
+          fprintf(stderr,
+            "\nThe file '%S' is writable by someone other than"
+            " its owner (permissions 0%lo).\nIgnoring it.\n",
+            [defs fileSystemRepresentation],
+            (long)[attributes filePosixPermissions]);
 #else
-	  fprintf(stderr,
-	    "\nThe file '%s' is writable by someone other than"
-	    " its owner (permissions 0%lo).\nIgnoring it.\n",
-	    [defs fileSystemRepresentation],
-	    (long)[attributes filePosixPermissions]);
+          fprintf(stderr,
+            "\nThe file '%s' is writable by someone other than"
+            " its owner (permissions 0%lo).\nIgnoring it.\n",
+            [defs fileSystemRepresentation],
+            (long)[attributes filePosixPermissions]);
 #endif
-	  d = nil;
-	}
+          d = nil;
+        }
       else
-	{
-	  NSString	*s;
+        {
+          NSString *s;
 
-	  /* Here we load the string and convert to a property list
-	   * rather than using higher-level methods likely to raise
-	   * an exception or otherwise use the NSUserDefaults
+          /* Here we load the string and convert to a property list
+           * rather than using higher-level methods likely to raise
+           * an exception or otherwise use the NSUserDefaults
            * system and cause recursion on error.
-	   */
-	  s = [[NSString allocWithZone: NSDefaultMallocZone()]
-	    initWithContentsOfFile: defs];
-	  if (nil == s)
-	    {
-	      d = nil;
-	    }
-	  else
-	    {
-	      NS_DURING
-		{
-		  d = [s propertyList];
-		  if (NO == [d isKindOfClass: [NSDictionary class]])
-		    {
-		      d = nil;
-		    }
-		}
-	      NS_HANDLER
-		{
-		  d = nil;
-		}
-	      NS_ENDHANDLER
-	      RELEASE(s);
-	    }
-	  if (nil == d)
-	    {
+           */
+          s = [[NSString allocWithZone: NSDefaultMallocZone()] initWithContentsOfFile: defs];
+
+          if (nil == s)
+            {
+              d = nil;
+            }
+          else
+            {
+              NS_DURING
+                {
+                  d = [s propertyList];
+
+                  if (NO == [d isKindOfClass: [NSDictionary class]])
+                    {
+                      d = nil;
+                    }
+                }
+              NS_HANDLER
+                {
+                  d = nil;
+                }
+              NS_ENDHANDLER
+              RELEASE(s);
+            }
+
+          if (nil == d)
+            {
 #if defined(_WIN32)
-	  fprintf(stderr,
-	    "\nThe file '%S' is not parseable as a property list"
-	    " containing a dictionary.\nIgnoring it.\n",
-	    [defs fileSystemRepresentation]);
+          fprintf(stderr,
+            "\nThe file '%S' is not parseable as a property list"
+            " containing a dictionary.\nIgnoring it.\n",
+            [defs fileSystemRepresentation]);
 #else
-	  fprintf(stderr,
-	    "\nThe file '%s' is not parseable as a property list"
-	    " containing a dictionary.\nIgnoring it.\n",
-	    [defs fileSystemRepresentation]);
+          fprintf(stderr,
+            "\nThe file '%s' is not parseable as a property list"
+            " containing a dictionary.\nIgnoring it.\n",
+            [defs fileSystemRepresentation]);
 #endif
-	    }
-	}
+            }
+        }
 
       if (d != nil)
-	{
-	  NSEnumerator  *enumerator;
-	  NSString      *key;
-	  id            extra;
+        {
+          NSEnumerator *enumerator;
+          NSString *key;
+          id extra;
 
-	  extra = [conf objectForKey: @"GNUSTEP_EXTRA"];
-	  if ([extra isKindOfClass: [NSString class]])
-	    {
-	      extra = [extra componentsSeparatedByString: @","];
-	    }
-	  extra = [extra mutableCopy];
-	  if (extra == nil)
-	    {
-	      extra = [NSMutableArray new];
-	    }
-	  enumerator = [d keyEnumerator];
-	  while ((key = [enumerator nextObject]) != nil)
-	    {
-	      if ([conf objectForKey: key] == nil)
-		{
-		  [extra addObject: key];
-		}
-	      else
-		{
-		  fprintf(stderr, "Value for key '%s' in '%s' replaces"
-		    " earlier setting.\n", [key UTF8String], [defs UTF8String]);
-		}
-	    }
-	  [conf addEntriesFromDictionary: d];
-	  if ([extra count] > 0)
-	    {
-	      NSArray   *c = [extra copy];
+          extra = [conf objectForKey: @"GNUSTEP_EXTRA"];
 
-	      [conf setObject: c forKey: @"GNUSTEP_EXTRA"];
-	      RELEASE(c);
-	    }
-	  RELEASE(extra);
-	}
+          if ([extra isKindOfClass: [NSString class]])
+            {
+              extra = [extra componentsSeparatedByString: @","];
+            }
+
+          extra = [extra mutableCopy];
+
+          if (extra == nil)
+            {
+              extra = [NSMutableArray new];
+            }
+
+          enumerator = [d keyEnumerator];
+
+          while ((key = [enumerator nextObject]) != nil)
+            {
+              if ([conf objectForKey: key] == nil)
+                {
+                  [extra addObject: key];
+                }
+              else
+                {
+                  fprintf(stderr, "Value for key '%s' in '%s' replaces"
+                    " earlier setting.\n", [key UTF8String], [defs UTF8String]);
+                }
+            }
+
+          [conf addEntriesFromDictionary: d];
+
+          if ([extra count] > 0)
+            {
+              NSArray   *c = [extra copy];
+
+              [conf setObject: c forKey: @"GNUSTEP_EXTRA"];
+              RELEASE(c);
+            }
+
+          RELEASE(extra);
+        }
     }
 }
 
 GS_DECLARE NSMutableDictionary*
 GNUstepConfig(NSDictionary *newConfig)
 {
-  static NSDictionary	*config = nil;
+  static NSDictionary *config = nil;
   static BOOL beenHere = NO;
-  NSMutableDictionary	*conf = nil;
-  BOOL			changedSystemConfig = NO;
+  NSMutableDictionary *conf = nil;
+  BOOL changedSystemConfig = NO;
 
   [GSPrivateGlobalLock() lock];
+
   if (NO == beenHere)
     {
       beenHere = YES;
       [[NSObject leakAt: &config] release];
     }
+
   if (config == nil || (newConfig != nil && [config isEqual: newConfig] == NO))
     {
       NS_DURING
-	{
-	  if (newConfig == nil)
-	    {
-	      NSString		*file = nil;
-	      NSString		*path;
-	      NSEnumerator	*e;
-	      NSString      	*defs;
-	      BOOL		fromEnvironment = YES;
-	      BOOL		bareDirectory = NO;
+        {
+          if (newConfig == nil)
+            {
+              NSString *file = nil;
+              NSString *path;
+              NSEnumerator *e;
+              NSString *defs;
+              BOOL fromEnvironment = YES;
+              BOOL bareDirectory = NO;
 
-	      conf = [[NSMutableDictionary alloc] initWithCapacity: 32];
+              conf = [[NSMutableDictionary alloc] initWithCapacity: 32];
 
-	      /* Now we source the configuration file if it exists */
-#if	!OPTION_NO_ENVIRONMENT
-	      file = [[[NSProcessInfo processInfo] environment]
-		objectForKey: @"GNUSTEP_CONFIG_FILE"];
+              /* Now we source the configuration file if it exists */
+#if !OPTION_NO_ENVIRONMENT
+              file = [[[NSProcessInfo processInfo] environment] objectForKey: @"GNUSTEP_CONFIG_FILE"];
 #endif
-	      if (file == nil)
-		{
-		  fromEnvironment = NO;
-		  file = @GNUSTEP_TARGET_CONFIG_FILE;
-		}
+              if (file == nil)
+                {
+                  fromEnvironment = NO;
+                  file = @GNUSTEP_TARGET_CONFIG_FILE;
+                }
 
-	      /*
-	       * Is the file missing from the path ... if so we won't
-	       * be reading it.
-	       */
-	      if ([file hasSuffix: @"/"] || [file hasSuffix: @"\\"])
-		{
-		  bareDirectory = YES;
-		}
+              /*
+               * Is the file missing from the path ... if so we won't
+               * be reading it.
+               */
+              if ([file hasSuffix: @"/"] || [file hasSuffix: @"\\"])
+                {
+                  bareDirectory = YES;
+                }
 
-	      /*
-	       * Special case ... if the config file location begins './'
-	       * or '../' then we determine it's actual path by working
+              /*
+               * Special case ... if the config file location begins './'
+               * or '../' then we determine it's actual path by working
                * relative to the gnustep-base library.
-	       */
-	      if ([file hasPrefix: @"./"] == YES
-	        || [file hasPrefix: @"../"] == YES)
-		{
-		  Class		c = [NSProcessInfo class];
+               */
+              if ([file hasPrefix: @"./"] == YES
+                || [file hasPrefix: @"../"] == YES)
+                {
+                  Class c = [NSProcessInfo class];
 
-		  path = GSPrivateSymbolPath(c);
-		  // Remove library name from path
-		  path = [path stringByDeletingLastPathComponent];
+                  path = GSPrivateSymbolPath(c);
+                  // Remove library name from path
+                  path = [path stringByDeletingLastPathComponent];
+
                   if ([file hasPrefix: @"./"] == YES)
                     {
                       file = [file substringFromIndex: 2];
                     }
-		  // Join the two together
-		  file = [path stringByAppendingPathComponent: file];
-		}
-	      file = [file stringByStandardizingPath];
 
-	      if ([file isAbsolutePath] == NO)
-		{
-		  if (fromEnvironment ==  YES)
-		    {
-		      fprintf(stderr, "GNUSTEP_CONFIG_FILE value ('%s') is not"
-			" an absolute path.  Please fix the environment"
-			" variable.\n", [file UTF8String]);
-		    }
-		  else
-		    {
-		      fprintf(stderr, "GNUSTEP_CONFIG_FILE value ('%s') is not"
-			" an absolute path.  Please rebuild GNUstep-base"
-			" specifying a valid path to the config file.\n",
+                  // Join the two together
+                  file = [path stringByAppendingPathComponent: file];
+                }
+
+              file = [file stringByStandardizingPath];
+
+              if ([file isAbsolutePath] == NO)
+                {
+                  if (fromEnvironment ==  YES)
+                    {
+                      fprintf(stderr, "GNUSTEP_CONFIG_FILE value ('%s') is not"
+                        " an absolute path.  Please fix the environment"
+                        " variable.\n", [file UTF8String]);
+                    }
+                  else
+                    {
+                      fprintf(stderr, "GNUSTEP_CONFIG_FILE value ('%s') is not"
+                        " an absolute path.  Please rebuild GNUstep-base"
+                        " specifying a valid path to the config file.\n",
                         [file UTF8String]);
-		    }
-#if	defined(_WIN32)
-		  if ([file length] > 2)
-		    {
-		      unichar	buf[3];
+                    }
 
-		      [file getCharacters: buf range: NSMakeRange(0, 3)];
-		      if ((buf[0] == '/' || buf[0] == '\\') && isalpha(buf[1])
-			&& (buf[2] == '/' || buf[2] == '\\'))
-			{
-			  file = [NSString stringWithFormat: @"%c:%@",
-			    (char)buf[1], [file substringFromIndex: 2]];
-			  file = [file stringByReplacingString: @"/"
-						    withString: @"\\"];
-			  fprintf(stderr, "I am guessing that you meant '%s'\n",
-                            [file UTF8String]);
-			}
-		    }
+#if defined(_WIN32)
+                  if ([file length] > 2)
+                    {
+                      unichar buf[3];
+
+                      [file getCharacters: buf range: NSMakeRange(0, 3)];
+                      
+                      if ((buf[0] == '/' || buf[0] == '\\') && isalpha(buf[1])
+                        && (buf[2] == '/' || buf[2] == '\\'))
+                        {
+                          file = [NSString stringWithFormat: @"%c:%@",
+                                   (char)buf[1], [file substringFromIndex: 2]];
+                          file = [file stringByReplacingString: @"/" withString: @"\\"];
+
+                          fprintf(stderr, "I am guessing that you meant '%s'\n", [file UTF8String]);
+                        }
+                    }
 #endif
-		}
+                }
 
-	      if (bareDirectory == YES)
-		{
-		  /* Set the directory name, but don't try to read file.
-		   */
-		  gnustepConfigPath = RETAIN(file);
-		}
-	      else
-		{
-		  gnustepConfigPath
-		    = RETAIN([file stringByDeletingLastPathComponent]);
-		  ParseConfigurationFile(file, conf, nil);
-		}
+              if (bareDirectory == YES)
+                {
+                  /* Set the directory name, but don't try to read file.
+                   */
+                  gnustepConfigPath = RETAIN(file);
+                }
+              else
+                {
+                  gnustepConfigPath = RETAIN([file stringByDeletingLastPathComponent]);
 
-	      /* Merge in any values from property lists in the
-	       * GlobalDefaults directory.
-	       */
-	      path = [gnustepConfigPath stringByAppendingPathComponent:
-		@"GlobalDefaults"];
-	      e = [[MGR() directoryContentsAtPath: path] objectEnumerator];
-	      while ((defs = [e nextObject]) != nil)
-		{
-		  if ([[defs pathExtension] isEqualToString: @"plist"])
-		    {
-		      defs = [path stringByAppendingPathComponent: defs];
-		      addDefaults(defs, conf);
-		    }
-		}
+                  ParseConfigurationFile(file, conf, nil);
+                }
 
-	      /* And merge in value from GlobalDefaults.plist
-	       */
-	      defs = [gnustepConfigPath stringByAppendingPathComponent:
-		@"GlobalDefaults.plist"];
-	      addDefaults(defs, conf);
-	    }
-	  else
-	    {
-	      conf = [newConfig mutableCopy];
-	    }
-	  /* System admins may force the user and defaults paths by
-	   * setting GNUSTEP_USER_CONFIG_FILE to be an empty string.
-	   * If they simply don't define it at all, we assign a default.
-	   */
-	  if ([conf objectForKey: @"GNUSTEP_USER_CONFIG_FILE"] == nil)
-	    {
-	      [conf setObject: @GNUSTEP_TARGET_USER_CONFIG_FILE
-		       forKey: @"GNUSTEP_USER_CONFIG_FILE"];
-	    }
-	  if (config != nil)
-	    {
-	      changedSystemConfig = YES;
-	    }
-	  config = [conf copy];
-	  DESTROY(conf);
-	}
+              /* Merge in any values from property lists in the
+               * GlobalDefaults directory.
+               */
+              path = [gnustepConfigPath stringByAppendingPathComponent: @"GlobalDefaults"];
+              e = [[MGR() directoryContentsAtPath: path] objectEnumerator];
+
+              while ((defs = [e nextObject]) != nil)
+                {
+                  if ([[defs pathExtension] isEqualToString: @"plist"])
+                    {
+                      defs = [path stringByAppendingPathComponent: defs];
+                      addDefaults(defs, conf);
+                    }
+                }
+
+              /* And merge in value from GlobalDefaults.plist */
+              defs = [gnustepConfigPath stringByAppendingPathComponent: @"GlobalDefaults.plist"];
+              addDefaults(defs, conf);
+            }
+          else
+            {
+              conf = [newConfig mutableCopy];
+            }
+
+          /* System admins may force the user and defaults paths by
+           * setting GNUSTEP_USER_CONFIG_FILE to be an empty string.
+           * If they simply don't define it at all, we assign a default.
+           */
+          if ([conf objectForKey: @"GNUSTEP_USER_CONFIG_FILE"] == nil)
+            {
+              [conf setObject: @GNUSTEP_TARGET_USER_CONFIG_FILE
+                       forKey: @"GNUSTEP_USER_CONFIG_FILE"];
+            }
+
+          if (config != nil)
+            {
+              changedSystemConfig = YES;
+            }
+
+          config = [conf copy];
+          DESTROY(conf);
+        }
       NS_HANDLER
-	{
-	  [GSPrivateGlobalLock() unlock];
-	  config = nil;
-	  DESTROY(conf);
-	  [localException raise];
-	}
+        {
+          [GSPrivateGlobalLock() unlock];
+          config = nil;
+          DESTROY(conf);
+          [localException raise];
+        }
       NS_ENDHANDLER
     }
+
   [GSPrivateGlobalLock() unlock];
 
   if (changedSystemConfig == YES)
@@ -1098,25 +1039,27 @@ GNUstepUserConfig(NSMutableDictionary *config, NSString *userName)
        * than a per-user config.
        */
       if (getuid() != geteuid())
-	{
-	  userName = nil;
-	}
+        {
+          userName = nil;
+        }
     }
 #endif
 
   if (userName != nil)
     {
-      NSString		*file;
-      NSString		*home;
-      NSString		*path;
+      NSString *file;
+      NSString *home;
+      NSString *path;
 
       file = RETAIN([config objectForKey: @"GNUSTEP_USER_CONFIG_FILE"]);
+
       if ([file length] > 0)
-	{
-	  home = NSHomeDirectoryForUser(userName);
-	  path = [home stringByAppendingPathComponent: file];
-	  ParseConfigurationFile(path, config, userName);
-	}
+        {
+          home = NSHomeDirectoryForUser(userName);
+          path = [home stringByAppendingPathComponent: file];
+          ParseConfigurationFile(path, config, userName);
+        }
+
       /*
        * We don't let the user config file override the GNUSTEP_USER_CONFIG_FILE
        * variable ... that would be silly/pointless.
@@ -1131,60 +1074,68 @@ static void InitialisePathUtilities(void)
 {
   if (gnustepMakefiles != nil)
     {
-      return;	// Protect from multiple calls
+      return; // Protect from multiple calls
     }
 
   /* Set up our root paths */
   NS_DURING
     {
-      NSMutableDictionary	*config;
-      static BOOL               beenHere = NO;
+      NSMutableDictionary *config;
+      static BOOL beenHere = NO;
 
       [GSPrivateGlobalLock() lock];
+
       if (NO == beenHere)
         {
           beenHere = YES;
+
           if (YES == [NSObject shouldCleanUp])
             {
               // Get path utilities shutdown called at process exit.
               [GSPathUtilities class];
             }
         }
+
       ASSIGNCOPY(uninstalled, [[[NSProcessInfo processInfo] environment]
-	objectForKey: @"GNUSTEP_UNINSTALLED_LIBRARY_DIRECTORY"]);
-      gnustepUserName = [NSUserName() copy];
+        objectForKey: @"GNUSTEP_UNINSTALLED_LIBRARY_DIRECTORY"]);
+        gnustepUserName = [NSUserName() copy];
+
 #if defined(_WIN32)
       {
         union {
-	  SID	sid;
-	  char	dummy[1024];
-	} s;
-	LPTSTR	str;
-	GSNativeChar buf[1024];
-	GSNativeChar dom[1024];
-	SID_NAME_USE use;
-	DWORD bsize = 1024;
-	DWORD ssize = 1024;
+          SID sid;
+          char dummy[1024];
+        } s;
+        LPTSTR str;
+        GSNativeChar buf[1024];
+        GSNativeChar dom[1024];
+        SID_NAME_USE use;
+        DWORD bsize = 1024;
+        DWORD ssize = 1024;
 
-	if (GetUserNameW(buf, &bsize) == 0 || buf[0] == '\0')
-	  {
-	    [NSException raise: NSInternalInconsistencyException
-			format: @"Unable to determine current user name: %@",
-	      [NSError _last]];
-	  }
-	bsize = 1024;
-	if (LookupAccountNameW(0, buf, &s.sid, &ssize, dom, &bsize, &use) == 0)
-	  {
-	    [NSException raise: NSInternalInconsistencyException
-			format: @"Unable to determine current account: %@",
-	      [NSError _last]];
-	  }
-	if (ConvertSidToStringSid(&s.sid, &str) == 0)
-	  {
-	    [NSException raise: NSInternalInconsistencyException
-			format: @"Unable to get current user ID string: %@",
-	      [NSError _last]];
-	  }
+        if (GetUserNameW(buf, &bsize) == 0 || buf[0] == '\0')
+          {
+            [NSException raise: NSInternalInconsistencyException
+              format: @"Unable to determine current user name: %@",
+              [NSError _last]];
+          }
+
+        bsize = 1024;
+
+        if (LookupAccountNameW(0, buf, &s.sid, &ssize, dom, &bsize, &use) == 0)
+          {
+            [NSException raise: NSInternalInconsistencyException
+              format: @"Unable to determine current account: %@",
+              [NSError _last]];
+          }
+
+        if (ConvertSidToStringSid(&s.sid, &str) == 0)
+          {
+            [NSException raise: NSInternalInconsistencyException
+              format: @"Unable to get current user ID string: %@",
+              [NSError _last]];
+          }
+
         gnustepUserID = [[NSString alloc] initWithUTF8String: str];
       }
 #else
@@ -1304,18 +1255,18 @@ static BOOL
 ParseConfigurationFile(NSString *fileName, NSMutableDictionary *dict,
   NSString *userName)
 {
-  NSDictionary	*attributes;
-  NSString      *file;
-  unsigned	l;
-  unichar	*src;
-  unichar	*dst;
-  unichar	*end;
-  unichar	*spos;
-  unichar	*dpos;
-  BOOL		newLine = YES;
-  BOOL		wantKey = YES;
-  BOOL		wantVal = NO;
-  NSString	*key = nil;
+  NSDictionary *attributes;
+  NSString *file;
+  unsigned l;
+  unichar *src;
+  unichar *dst;
+  unichar *end;
+  unichar *spos;
+  unichar *dpos;
+  BOOL newLine = YES;
+  BOOL wantKey = YES;
+  BOOL wantVal = NO;
+  NSString *key = nil;
 
   if ([MGR() isReadableFileAtPath: fileName] == NO)
     {
@@ -1323,37 +1274,39 @@ ParseConfigurationFile(NSString *fileName, NSMutableDictionary *dict,
     }
 
   attributes = [MGR() fileAttributesAtPath: fileName traverseLink: YES];
+
   if (userName != nil)
     {
-      NSString	*fileOwner = [attributes fileOwnerAccountName];
+      NSString *fileOwner = [attributes fileOwnerAccountName];
 
       if ([userName isEqual: fileOwner] == NO)
-	{
+        {
 #if defined(_WIN32)
-	  fprintf(stderr, "The file '%S' is owned by '%s' but we expect it"
-	    " to be the personal config file of '%s'.\nIgnoring it.\n",
-	    [fileName fileSystemRepresentation],
-	    [fileOwner UTF8String], [userName UTF8String]);
+          fprintf(stderr, "The file '%S' is owned by '%s' but we expect it"
+            " to be the personal config file of '%s'.\nIgnoring it.\n",
+            [fileName fileSystemRepresentation],
+            [fileOwner UTF8String], [userName UTF8String]);
 #else
-	  fprintf(stderr, "The file '%s' is owned by '%s' but we expect it"
-	    " to be the personal config file of '%s'.\nIgnoring it.\n",
-	    [fileName fileSystemRepresentation],
-	    [fileOwner UTF8String], [userName UTF8String]);
+          fprintf(stderr, "The file '%s' is owned by '%s' but we expect it"
+            " to be the personal config file of '%s'.\nIgnoring it.\n",
+            [fileName fileSystemRepresentation],
+            [fileOwner UTF8String], [userName UTF8String]);
 #endif
           return NO;
-	}
+        }
     }
+
   if (([attributes filePosixPermissions] & (0022 & ATTRMASK)) != 0)
     {
 #if defined(_WIN32)
       fprintf(stderr, "The file '%S' is writable by someone other than"
-	" its owner (permissions 0%lo).\nIgnoring it.\n",
-	[fileName fileSystemRepresentation],
+        " its owner (permissions 0%lo).\nIgnoring it.\n",
+        [fileName fileSystemRepresentation],
         (long)[attributes filePosixPermissions]);
 #else
       fprintf(stderr, "The file '%s' is writable by someone other than"
-	" its owner (permissions 0%lo).\nIgnoring it.\n",
-	[fileName fileSystemRepresentation],
+        " its owner (permissions 0%lo).\nIgnoring it.\n",
+        [fileName fileSystemRepresentation],
         (long)[attributes filePosixPermissions]);
 #endif
       return NO;
@@ -1361,11 +1314,13 @@ ParseConfigurationFile(NSString *fileName, NSMutableDictionary *dict,
 
   if (dict == nil)
     {
-      [NSException raise: NSInvalidArgumentException
-		  format: @"No destination dictionary supplied"];
+      [NSException raise: NSInvalidArgumentException format: @"No destination dictionary supplied"];
     }
 
-  file = [NSString stringWithContentsOfFile: fileName];
+  file = [NSString stringWithContentsOfFile: fileName
+                                   encoding: NSUTF8StringEncoding
+                                   error: nil];
+
   l = [file length];
   src = (unichar*)NSZoneMalloc(NSDefaultMallocZone(), sizeof(unichar) * l);
   spos = src;
@@ -1380,211 +1335,249 @@ ParseConfigurationFile(NSString *fileName, NSMutableDictionary *dict,
        * Step past any whitespace ... including blank lines
        */
       while (spos < end)
-	{
-	  if (*spos == '\\')
-	    {
-	      spos++;
-	      if (spos >= end)
-		{
-		  break;	// At end of file ... odd but not fatal
-		}
-	    }
-	  if (*spos > ' ')
-	    {
-	      break;		// OK ... found a non space character.
-	    }
-	  if (*spos == '\r' || *spos == '\n')
-	    {
-	      newLine = YES;
-	    }
-	  spos++;
-	}
+        {
+          if (*spos == '\\')
+            {
+              spos++;
+
+              if (spos >= end)
+                {
+                  break; // At end of file ... odd but not fatal
+                }
+            }
+
+          if (*spos > ' ')
+            {
+              break; // OK ... found a non space character.
+            }
+
+          if (*spos == '\r' || *spos == '\n')
+            {
+              newLine = YES;
+            }
+
+          spos++;
+        }
 
       /*
        * Handle any comments .. hash on a new line.
        */
       if (newLine == YES)
-	{
-	  if (wantVal == YES)
-	    {
-	      /*
-	       * On a newline ...so the last key had no value set.
-	       * Put an empty value in the dictionary.
-	       */
-	      [dict setObject: @"" forKey: key];
-	      DESTROY(key);
-	      wantVal = NO;
-	    }
-	  if (spos < end && *spos == '#')
-	    {
-	      // Got a comment ... ignore remainder of line.
-	      while (spos < end && *spos != '\n' && *spos != '\r')
-		{
-		  spos++;
-		}
-	      continue;	// restart loop ... skip space at start of line
-	    }
-	  newLine = NO;
-	  wantKey = YES;
-	}
+        {
+          if (wantVal == YES)
+            {
+              /*
+               * On a newline ...so the last key had no value set.
+               * Put an empty value in the dictionary.
+               */
+              [dict setObject: @"" forKey: key];
+              DESTROY(key);
+              wantVal = NO;
+            }
+
+          if (spos < end && *spos == '#')
+            {
+              // Got a comment ... ignore remainder of line.
+              while (spos < end && *spos != '\n' && *spos != '\r')
+                {
+                  spos++;
+                }
+
+              continue; // restart loop ... skip space at start of line
+            }
+
+          newLine = NO;
+          wantKey = YES;
+        }
 
       if (spos >= end)
-	{
-	  break;	// At end of file ... odd but not fatal
-	}
+        {
+          break; // At end of file ... odd but not fatal
+        }
 
       if (*spos == '=')
-	{
-	  if (wantKey == NO)
-	    {
-	      wantVal = YES;
-	    }
-	  spos++;
-	}
+        {
+          if (wantKey == NO)
+            {
+              wantVal = YES;
+            }
+
+          spos++;
+        }
       else if (*spos == '\'')
-	{
-	  spos++;
-	  while (spos < end)
-	    {
-	      if (*spos == '\'')
-		{
-		  spos++;
-		  break;
-		}
-	      *dpos++ = *spos++;
-	    }
-	  if (wantVal == YES)
-	    {
-	      NSString	*val = [NSString alloc];
+        {
+          spos++;
 
-	      val = [val initWithCharacters: dst length: dpos - dst];
-	      if (val != nil)
-		{
-		  [dict setObject: val forKey: key];
-		  DESTROY(key);
-		  DESTROY(val);
-		  wantVal = NO;
-		}
-	    }
-	  dpos = dst;	// reset output buffer
-	}
+          while (spos < end)
+            {
+              if (*spos == '\'')
+                {
+                  spos++;
+                  break;
+                }
+
+              *dpos++ = *spos++;
+            }
+
+          if (wantVal == YES)
+            {
+              NSString *val = [NSString alloc];
+
+              val = [val initWithCharacters: dst length: dpos - dst];
+
+              if (val != nil)
+                {
+                  [dict setObject: val forKey: key];
+                  DESTROY(key);
+                  DESTROY(val);
+                  wantVal = NO;
+                }
+            }
+
+          dpos = dst; // reset output buffer
+        }
       else if (*spos == '"')
-	{
-	  spos++;
-	  while (spos < end)
-	    {
-	      BOOL	escaped = NO;
+        {
+          spos++;
 
-	      if (*spos == '\\')
-		{
-		  spos++;
-		  if (spos >= end)
-		    {
-		      break;	// Unexpected end of file
-		    }
-		  if (*spos == '\n')
-		    {
-		      spos++;
-		      continue;	// escaped newline is removed.
-		    }
-		  if (*spos == '\r')
-		    {
-		      spos++;
-		      if (spos < end && *spos == '\n')
-			{
-			  spos++;
-			}
-		      continue;	// escaped newline is removed.
-		    }
-		  escaped = YES;
-		}
-	      if (*spos == '"' && escaped == NO)
-		{
-		  spos++;
-		  break;
-		}
-	      *dpos++ = *spos++;
-	    }
-	  if (wantVal == YES)
-	    {
-	      NSString	*val = [NSString alloc];
+          while (spos < end)
+            {
+              BOOL escaped = NO;
 
-	      val = [val initWithCharacters: dst length: dpos - dst];
-	      if (val != nil)
-		{
-		  [dict setObject: val forKey: key];
-		  DESTROY(key);
-		  DESTROY(val);
-		  wantVal = NO;
-		}
-	    }
-	  dpos = dst;	// reset output buffer
-	}
+              if (*spos == '\\')
+                {
+                  spos++;
+
+                  if (spos >= end)
+                    {
+                      break; // Unexpected end of file
+                    }
+
+                  if (*spos == '\n')
+                    {
+                      spos++;
+                      continue; // escaped newline is removed.
+                    }
+
+                  if (*spos == '\r')
+                    {
+                      spos++;
+                      
+                      if (spos < end && *spos == '\n')
+                        {
+                          spos++;
+                        }
+                      
+                      continue; // escaped newline is removed.
+                    }
+
+                  escaped = YES;
+                }
+
+              if (*spos == '"' && escaped == NO)
+                {
+                  spos++;
+                  break;
+                }
+
+              *dpos++ = *spos++;
+            }
+
+          if (wantVal == YES)
+            {
+              NSString *val = [NSString alloc];
+
+              val = [val initWithCharacters: dst length: dpos - dst];
+
+              if (val != nil)
+                {
+                  [dict setObject: val forKey: key];
+                  DESTROY(key);
+                  DESTROY(val);
+                  wantVal = NO;
+                }
+            }
+
+          dpos = dst; // reset output buffer
+        }
       else
-	{
-	  while (spos < end)
-	    {
-	      if (*spos == '\\')
-		{
-		  spos++;
-		  if (spos >= end)
-		    {
-		      break;	// Unexpected end of file
-		    }
-		  if (*spos == '\n')
-		    {
-		      spos++;
-		      continue;	// escaped newline is removed.
-		    }
-		  if (*spos == '\r')
-		    {
-		      spos++;
-		      if (spos < end && *spos == '\n')
-			{
-			  spos++;
-			}
-		      continue;	// escaped newline is removed.
-		    }
-		}
-	      if (isspace(*spos) || *spos == '=')
-		{
-		  break;
-		}
-	      *dpos++ = *spos++;
-	    }
+        {
+          while (spos < end)
+            {
+              if (*spos == '\\')
+                {
+                  spos++;
 
-	  if (wantKey == YES)
-	    {
-	      key = [NSString alloc];
-	      key = [key initWithCharacters: dst length: dpos - dst];
-	      if (key != nil)
-		{
-		  wantKey = NO;
-		}
-	    }
-	  else if (wantVal == YES)
-	    {
-	      NSString	*val = [NSString alloc];
+                  if (spos >= end)
+                    {
+                      break; // Unexpected end of file
+                    }
 
-	      val = [val initWithCharacters: dst length: dpos - dst];
-	      if (val != nil)
-		{
-		  [dict setObject: val forKey: key];
-		  DESTROY(key);
-		  DESTROY(val);
-		  wantVal = NO;
-		}
-	    }
-	  dpos = dst;	// reset output buffer
-	}
+                  if (*spos == '\n')
+                    {
+                      spos++;
+                      continue; // escaped newline is removed.
+                    }
+
+                  if (*spos == '\r')
+                    {
+                      spos++;
+
+                      if (spos < end && *spos == '\n')
+                        {
+                          spos++;
+                        }
+
+                      continue; // escaped newline is removed.
+                    }
+                }
+
+              if (isspace(*spos) || *spos == '=')
+                {
+                  break;
+                }
+
+              *dpos++ = *spos++;
+            }
+
+          if (wantKey == YES)
+            {
+              key = [NSString alloc];
+              key = [key initWithCharacters: dst length: dpos - dst];
+
+              if (key != nil)
+                {
+                  wantKey = NO;
+                }
+            }
+          else if (wantVal == YES)
+            {
+              NSString *val = [NSString alloc];
+
+              val = [val initWithCharacters: dst length: dpos - dst];
+
+              if (val != nil)
+                {
+                  [dict setObject: val forKey: key];
+                  DESTROY(key);
+                  DESTROY(val);
+                  wantVal = NO;
+                }
+            }
+
+          dpos = dst; // reset output buffer
+        }
     }
+
   if (wantVal == YES)
     {
       [dict setObject: @"" forKey: key];
     }
+
   DESTROY(key);
   NSZoneFree(NSDefaultMallocZone(), src);
   NSZoneFree(NSDefaultMallocZone(), dst);
+
   return YES;
 }
 
@@ -1639,35 +1632,33 @@ NSUserName(void)
   if (theUserName == nil)
     {
       /* Use the LOGNAME environment variable if set. */
-      theUserName = [[[NSProcessInfo processInfo] environment]
-	objectForKey: @"LOGNAME"];
-      if ([theUserName length] > 0)
-	{
-	  RETAIN(theUserName);
-	}
-      else
-	{
-	  /* The GetUserNameW function returns the current user name */
-	  GSNativeChar buf[1024];
-	  DWORD n = 1024;
+      theUserName = [[[NSProcessInfo processInfo] environment] objectForKey: @"LOGNAME"];
 
-	  if (GetUserNameW(buf, &n) != 0 && buf[0] != '\0')
-	    {
-	      theUserName = [[NSString alloc] initWithCharacters: buf
-							  length: wcslen(buf)];
-	    }
-	  else
-	    {
-	      theUserName = nil;
-	      [NSException raise: NSInternalInconsistencyException
-			  format: @"Unable to determine current user name"];
-	    }
-	}
+      if ([theUserName length] > 0)
+        {
+          RETAIN(theUserName);
+        }
+      else
+        {
+          /* The GetUserNameW function returns the current user name */
+          GSNativeChar buf[1024];
+          DWORD n = 1024;
+
+          if (GetUserNameW(buf, &n) != 0 && buf[0] != '\0')
+            {
+              theUserName = [[NSString alloc] initWithCharacters: buf length: wcslen(buf)];
+            }
+          else
+            {
+              theUserName = nil;
+              [NSException raise: NSInternalInconsistencyException format: @"Unable to determine current user name"];
+            }
+        }
     }
 #else
   /* Set olduid to some invalid uid that we could never start off running
      as.  */
-  static int	olduid = -1;
+  static int olduid = -1;
 #ifdef HAVE_GETEUID
   int uid = geteuid();
 #else
@@ -1678,7 +1669,7 @@ NSUserName(void)
     {
       const char *loginName = 0;
       char buf[BUFSIZ*10];
-#if     defined(HAVE_GETPWUID_R)
+#if defined(HAVE_GETPWUID_R)
       struct passwd pwent;
       struct passwd *p;
 
@@ -1687,7 +1678,7 @@ NSUserName(void)
           loginName = pwent.pw_name;
         }
 #else
-#if     defined(HAVE_GETPWUID)
+#if defined(HAVE_GETPWUID)
       struct passwd *pwent;
 
       [GSPrivateGlobalLock() lock];
@@ -1700,10 +1691,14 @@ NSUserName(void)
 #endif /* HAVE_GETPWUID_R */
       olduid = uid;
       if (loginName)
-	theUserName = [[NSString alloc] initWithCString: loginName];
+        {
+          theUserName = [[NSString alloc] initWithCString: loginName];
+        }
       else
-	[NSException raise: NSInternalInconsistencyException
-		    format: @"Unable to determine current user name"];
+        {
+          [NSException raise: NSInternalInconsistencyException
+            format: @"Unable to determine current user name"];
+        }
     }
 #endif
   return theUserName;
@@ -1736,7 +1731,7 @@ NSHomeDirectory(void)
 GS_DECLARE NSString *
 NSHomeDirectoryForUser(NSString *loginName)
 {
-  NSString	*s = nil;
+  NSString *s = nil;
 
 #ifdef __ANDROID__
   s = [[NSProcessInfo processInfo] androidFilesDir];
@@ -1757,17 +1752,20 @@ NSHomeDirectoryForUser(NSString *loginName)
 
   [GSPrivateGlobalLock() lock];
   pw = getpwnam ([loginName cString]);
+
   if (pw != 0 && pw->pw_dir != 0 && pw->pw_dir[0] != '\0')
     {
       s = [NSString stringWithUTF8String: pw->pw_dir];
     }
+
   [GSPrivateGlobalLock() unlock];
 #endif
 #endif
 #else
+
   if ([loginName isEqual: NSUserName()] == YES)
     {
-      NSDictionary	*e = [[NSProcessInfo processInfo] environment];
+      NSDictionary *e = [[NSProcessInfo processInfo] environment];
 
       /*
        * The environment variable HOMEPATH holds the home directory
@@ -1786,10 +1784,12 @@ NSHomeDirectoryForUser(NSString *loginName)
         {
           s = [[e objectForKey: @"HOMEDRIVE"] stringByAppendingString: s];
         }
+
       if (s == nil)
         {
           s = [e objectForKey: @"USERPROFILE"];
         }
+
       if (s == nil)
         {
           ; // FIXME: Talk to the NET API and get the profile path
@@ -1799,9 +1799,9 @@ NSHomeDirectoryForUser(NSString *loginName)
     {
       s = nil;
       fprintf(stderr, "Trying to get home for '%s' when user is '%s'\n",
-	[loginName UTF8String], [NSUserName() UTF8String]);
+              [loginName UTF8String], [NSUserName() UTF8String]);
       fprintf(stderr,
-        "Can't determine other user home directories in Win32.\n");
+              "Can't determine other user home directories in Win32.\n");
     }
 
   if ([s length] == 0 && [loginName length] != 1)
@@ -1810,11 +1810,13 @@ NSHomeDirectoryForUser(NSString *loginName)
       fprintf(stderr, "NSHomeDirectoryForUser(%s) failed.\n",
         [loginName UTF8String]);
     }
+
   if (nil != s)
     {
       s = [s stringByStandardizingPath];
     }
 #endif
+
   return s;
 }
 
@@ -1823,48 +1825,45 @@ NSFullUserName(void)
 {
   if (theFullUserName == nil)
     {
-      NSString	*userName = NSUserName();
+      NSString *userName = NSUserName();
+
 #if defined(_WIN32)
-      struct _USER_INFO_2	*userInfo;
+      struct _USER_INFO_2 *userInfo;
 
-      if (NetUserGetInfo(NULL, (const GSNativeChar*)[userName
-        cStringUsingEncoding: NSUnicodeStringEncoding], 2,
-        (LPBYTE*)&userInfo) == 0)
-	{
-	  int	length = wcslen(userInfo->usri2_full_name);
+      if (NetUserGetInfo(NULL, (const GSNativeChar*)[userName cStringUsingEncoding: NSUnicodeStringEncoding], 2, (LPBYTE*)&userInfo) == 0)
+        {
+          int length = wcslen(userInfo->usri2_full_name);
 
-	  if (length > 0)
-	    {
-	      userName = [NSString
-		stringWithCharacters: userInfo->usri2_full_name
-		length: length];
-	    }
-	}
+          if (length > 0)
+            {
+              userName = [NSString stringWithCharacters: userInfo->usri2_full_name length: length];
+            }
+        }
 #else
-#ifdef  HAVE_PWD_H
-#if     defined(HAVE_GETPWNAM_R)
-#if     defined(HAVE_PW_GECOS_IN_PASSWD)
+#ifdef HAVE_PWD_H
+#if defined(HAVE_GETPWNAM_R)
+#if defined(HAVE_PW_GECOS_IN_PASSWD)
       struct passwd pw;
       struct passwd *p;
       char buf[BUFSIZ*10];
 
       if (getpwnam_r([userName cString], &pw, buf, sizeof(buf), &p) == 0)
         {
-	  if (*pw.pw_gecos)
-	    {
+          if (*pw.pw_gecos)
+            {
               userName = [NSString stringWithUTF8String: pw.pw_gecos];
-	    }
+            }
         }
 #endif /* HAVE_PW_GECOS_IN_PASSWD */
 #else
-#if     defined(HAVE_GETPWNAM)
-#if     defined(HAVE_PW_GECOS_IN_PASSWD)
-      struct passwd	*pw;
+#if defined(HAVE_GETPWNAM)
+#if defined(HAVE_PW_GECOS_IN_PASSWD)
+      struct passwd *pw;
 
       [GSPrivateGlobalLock() lock];
       pw = getpwnam([userName cString]);
       if (pw->pw_gecos)
-	{
+        {
           userName = [NSString stringWithUTF8String: pw->pw_gecos];
         }
       [GSPrivateGlobalLock() unlock];
@@ -1875,6 +1874,7 @@ NSFullUserName(void)
 #endif /* defined(__Win32__) else */
       ASSIGN(theFullUserName, userName);
     }
+
   return theFullUserName;
 }
 
@@ -1889,32 +1889,37 @@ GSDefaultsRootForUser(NSString *userName)
   NSString *defaultsDir;
 
   InitialisePathUtilities();
+
   if ([userName length] == 0)
     {
       userName = NSUserName();
     }
+
   if ([userName isEqual: NSUserName()])
     {
       defaultsDir = gnustepUserDefaultsDir;
     }
   else
     {
-      NSMutableDictionary	*config;
+      NSMutableDictionary *config;
 
       config = GNUstepConfig(nil);
       GNUstepUserConfig(config, userName);
       defaultsDir = [config objectForKey: @"GNUSTEP_USER_DEFAULTS_DIR"];
+
       if (defaultsDir == nil)
-	{
-	  defaultsDir = @GNUSTEP_TARGET_USER_DEFAULTS_DIR;
-	}
+        {
+          defaultsDir = @GNUSTEP_TARGET_USER_DEFAULTS_DIR;
+        }
     }
-#if	defined(_WIN32)
+
+#if defined(_WIN32)
   if ([defaultsDir rangeOfString: @":REGISTRY:"].length > 0)
     {
-      return defaultsDir;	// Just use windows registry.
+      return defaultsDir; // Just use windows registry.
     }
 #endif
+
   if (NO == [defaultsDir isAbsolutePath])
     {
       NSString  *home = NSHomeDirectoryForUser(userName);
@@ -1942,16 +1947,16 @@ NSStandardLibraryPaths(void)
 GS_DECLARE NSString *
 NSTemporaryDirectory(void)
 {
-  NSFileManager	*manager;
-  NSString	*tempDirName;
-  NSString	*baseTempDirName = nil;
-  BOOL		flag;
+  NSFileManager *manager;
+  NSString *tempDirName;
+  NSString *baseTempDirName = nil;
+  BOOL flag;
 #if !defined(_WIN32)
-  NSDictionary	*attr;
-  int		perm;
-  int		owner;
+  NSDictionary *attr;
+  int perm;
+  int owner;
 #if !defined(__ANDROID__)
-  int		uid;
+  int uid;
 #endif
 #endif
 
@@ -1960,7 +1965,7 @@ NSTemporaryDirectory(void)
   if (GetTempPathW(1024, buffer))
     {
       baseTempDirName = [NSString stringWithCharacters: buffer
-						length: wcslen(buffer)];
+                                                length: wcslen(buffer)];
       // convert path to use forward slashes, which we use internally
       baseTempDirName = [baseTempDirName stringByReplacingString: @"\\"
         withString: @"/"];
@@ -1986,30 +1991,32 @@ NSTemporaryDirectory(void)
    */
   if (baseTempDirName == nil)
     {
-      NSDictionary	*env = [[NSProcessInfo processInfo] environment];
+      NSDictionary *env = [[NSProcessInfo processInfo] environment];
 
       baseTempDirName = [env objectForKey: @"TEMP"];
+
       if (baseTempDirName == nil)
-	{
-	  baseTempDirName = [env objectForKey: @"TMP"];
-	  if (baseTempDirName == nil)
-	    {
-#if	defined(__CYGWIN__)
+        {
+          baseTempDirName = [env objectForKey: @"TMP"];
+
+          if (baseTempDirName == nil)
+            {
+#if        defined(__CYGWIN__)
 #warning Basing temporary directory in /cygdrive/c; any reason?
-	      baseTempDirName = @"/cygdrive/c/";
-#elif	defined(_WIN32)
-	      baseTempDirName = @"C:\\";
+              baseTempDirName = @"/cygdrive/c/";
+#elif        defined(_WIN32)
+              baseTempDirName = @"C:\\";
 #elif   defined(__APPLE__)
-	      /*
-	       * Create temporary directory on /var/tmp since /tmp is
-	       * cleaned regularly on Darwin by default
-	       */
-	      baseTempDirName = @"/var/tmp";
+              /*
+               * Create temporary directory on /var/tmp since /tmp is
+               * cleaned regularly on Darwin by default
+               */
+              baseTempDirName = @"/var/tmp";
 #else
-	      baseTempDirName = @"/tmp";
+              baseTempDirName = @"/tmp";
 #endif
-	    }
-	}
+            }
+        }
     }
 
   /*
@@ -2018,6 +2025,7 @@ NSTemporaryDirectory(void)
    */
   tempDirName = baseTempDirName;
   manager = [NSFileManager defaultManager];
+
   if ([manager fileExistsAtPath: tempDirName isDirectory: &flag] == NO
     || flag == NO)
     {
@@ -2063,8 +2071,8 @@ NSTemporaryDirectory(void)
 #endif /* HAVE_GETEUID */
   if ((perm != 0700 && perm != 0600) || owner != uid)
     {
-      NSString	*secure;
-      NSNumber	*p = [NSNumber numberWithInt: 0700];
+      NSString *secure;
+      NSNumber *p = [NSNumber numberWithInt: 0700];
 
       attr = [NSDictionary dictionaryWithObject: p
                                          forKey: NSFilePosixPermissions];
@@ -2078,20 +2086,20 @@ NSTemporaryDirectory(void)
        */
       secure = [NSString stringWithFormat: @"GNUstepSecure%d", uid];
       tempDirName
-	= [baseTempDirName stringByAppendingPathComponent: secure];
+        = [baseTempDirName stringByAppendingPathComponent: secure];
 
       if ([manager fileExistsAtPath: tempDirName] == NO)
-	{
-	  if ([manager createDirectoryAtPath: tempDirName
+        {
+          if ([manager createDirectoryAtPath: tempDirName
                  withIntermediateDirectories: YES
-				  attributes: attr
+                                  attributes: attr
                                        error: NULL] == NO)
-	    {
-	      NSWarnFLog(@"Attempt to create a secure temporary"
-	        @" directory (%@) failed.", tempDirName);
-	      return nil;
-	    }
-	}
+            {
+              NSWarnFLog(@"Attempt to create a secure temporary"
+                @" directory (%@) failed.", tempDirName);
+              return nil;
+            }
+        }
       else
         {
           [manager changeFileAttributes: attr atPath: tempDirName];
@@ -2104,12 +2112,13 @@ NSTemporaryDirectory(void)
       owner = [[attr objectForKey: NSFileOwnerAccountID] intValue];
       perm = [[attr objectForKey: NSFilePosixPermissions] intValue];
       perm = perm & 0777;
+
       if ((perm != 0700 && perm != 0600) || owner != uid)
-	{
-	  NSWarnFLog(@"Attempt to create a secure temporary"
-	    @" directory (%@) failed.", tempDirName);
-	  return nil;
-	}
+        {
+          NSWarnFLog(@"Attempt to create a secure temporary"
+            @" directory (%@) failed.", tempDirName);
+          return nil;
+        }
     }
 #endif
 
@@ -2118,17 +2127,18 @@ NSTemporaryDirectory(void)
       NSWarnFLog(@"Temporary directory (%@) is not writable", tempDirName);
       return nil;
     }
+
   return tempDirName;
 }
 
 GS_DECLARE NSString *
 NSOpenStepRootDirectory(void)
 {
-  NSString	*root;
+  NSString *root;
 
-#if	defined(__CYGWIN__)
+#if defined(__CYGWIN__)
   root = @"/cygdrive/c/";
-#elif	defined(_WIN32)
+#elif defined(_WIN32)
   root = @"C:/";
 #else
   root = @"/";
@@ -2136,7 +2146,7 @@ NSOpenStepRootDirectory(void)
   return root;
 }
 
-#if	defined(__MINGW__)
+#if defined(__MINGW__)
 /* The developer root under MinGW (where we have an MSYS environment set up)
  * is the point in the filesystem where we can reference make.exe via
  * msys/.../bin/.  That is, it's the windows path at which msys is installed.
@@ -2148,40 +2158,41 @@ devroot(NSFileManager *manager, NSString *path)
 
   while (path && NO == [tmp isEqual: path])
     {
-      NSString	*pb;
-      NSString	*msys;
-      BOOL 	isDir;
+      NSString *pb;
+      NSString *msys;
+      BOOL         isDir;
 
       msys = [path stringByAppendingPathComponent: @"msys"];
       if (YES == [manager fileExistsAtPath: msys isDirectory: &isDir]
-	&& YES == isDir)
-	{
-	  NSEnumerator  *e;
-	  NSString      *file;
+        && YES == isDir)
+        {
+          NSEnumerator  *e;
+          NSString      *file;
 
-	  e = [[manager directoryContentsAtPath: msys] objectEnumerator];
-	  while (nil != (file = [e nextObject]))
-	    {
-	      if (isdigit([file characterAtIndex: 0]))
-		{
-		  float 	v = atof([file UTF8String]);
+          e = [[manager directoryContentsAtPath: msys] objectEnumerator];
+          while (nil != (file = [e nextObject]))
+            {
+              if (isdigit([file characterAtIndex: 0]))
+                {
+                  float         v = atof([file UTF8String]);
 
-		  if (v <= 0)
-		    {
-		      continue;
-		    }
-		  file = [msys stringByAppendingPathComponent: file];
-		  pb = [file stringByAppendingPathComponent: @"bin/make.exe"];
-		  if ([manager isExecutableFileAtPath: pb])
-		    {
-		      return path;
-		    }
-		}
-	    }
-	}
+                  if (v <= 0)
+                    {
+                      continue;
+                    }
+                  file = [msys stringByAppendingPathComponent: file];
+                  pb = [file stringByAppendingPathComponent: @"bin/make.exe"];
+                  if ([manager isExecutableFileAtPath: pb])
+                    {
+                      return path;
+                    }
+                }
+            }
+        }
       tmp = path;
       path = [tmp stringByDeletingLastPathComponent];
     }
+
   return nil;
 }
 #endif
@@ -2225,148 +2236,147 @@ if (domainMask & mask) \
   switch (directoryKey)
     {
       case NSAllApplicationsDirectory:
-	{
-	  ADD_PLATFORM_PATH(NSUserDomainMask, gnustepUserApps);
-	  ADD_PLATFORM_PATH(NSLocalDomainMask, gnustepLocalApps);
-	  ADD_PLATFORM_PATH(NSNetworkDomainMask, gnustepNetworkApps);
-	  ADD_PLATFORM_PATH(NSSystemDomainMask, gnustepSystemApps);
+        {
+          ADD_PLATFORM_PATH(NSUserDomainMask, gnustepUserApps);
+          ADD_PLATFORM_PATH(NSLocalDomainMask, gnustepLocalApps);
+          ADD_PLATFORM_PATH(NSNetworkDomainMask, gnustepNetworkApps);
+          ADD_PLATFORM_PATH(NSSystemDomainMask, gnustepSystemApps);
 
-	  ADD_PLATFORM_PATH(NSUserDomainMask, gnustepUserAdminApps);
-	  ADD_PLATFORM_PATH(NSLocalDomainMask, gnustepLocalAdminApps);
-	  ADD_PLATFORM_PATH(NSNetworkDomainMask, gnustepNetworkAdminApps);
-	  ADD_PLATFORM_PATH(NSSystemDomainMask, gnustepSystemAdminApps);
-	}
-	break;
+          ADD_PLATFORM_PATH(NSUserDomainMask, gnustepUserAdminApps);
+          ADD_PLATFORM_PATH(NSLocalDomainMask, gnustepLocalAdminApps);
+          ADD_PLATFORM_PATH(NSNetworkDomainMask, gnustepNetworkAdminApps);
+          ADD_PLATFORM_PATH(NSSystemDomainMask, gnustepSystemAdminApps);
+        }
+        break;
 
       case NSApplicationDirectory:
-	{
-	  ADD_PLATFORM_PATH(NSUserDomainMask, gnustepUserApps);
-	  ADD_PLATFORM_PATH(NSLocalDomainMask, gnustepLocalApps);
-	  ADD_PLATFORM_PATH(NSNetworkDomainMask, gnustepNetworkApps);
-	  ADD_PLATFORM_PATH(NSSystemDomainMask, gnustepSystemApps);
-	}
-	break;
+        {
+          ADD_PLATFORM_PATH(NSUserDomainMask, gnustepUserApps);
+          ADD_PLATFORM_PATH(NSLocalDomainMask, gnustepLocalApps);
+          ADD_PLATFORM_PATH(NSNetworkDomainMask, gnustepNetworkApps);
+          ADD_PLATFORM_PATH(NSSystemDomainMask, gnustepSystemApps);
+        }
+        break;
 
       case NSDemoApplicationDirectory:
-	{
-	  ADD_PLATFORM_PATH(NSUserDomainMask, gnustepUserApps);
-	  ADD_PLATFORM_PATH(NSLocalDomainMask, gnustepLocalApps);
-	  ADD_PLATFORM_PATH(NSNetworkDomainMask, gnustepNetworkApps);
-	  ADD_PLATFORM_PATH(NSSystemDomainMask, gnustepSystemApps);
+        {
+          ADD_PLATFORM_PATH(NSUserDomainMask, gnustepUserApps);
+          ADD_PLATFORM_PATH(NSLocalDomainMask, gnustepLocalApps);
+          ADD_PLATFORM_PATH(NSNetworkDomainMask, gnustepNetworkApps);
+          ADD_PLATFORM_PATH(NSSystemDomainMask, gnustepSystemApps);
 
-	  /* I imagine if ever wanted a separate Demo directory, the
-	   * only way for this to have some meaning across filesystems
-	   * would be as a subdirectory of Applications, as follows.
-	   */
-	  /*
-	    ADD_PATH(NSUserDomainMask, gnustepUserApps, @"Demos");
-	    ADD_PATH(NSLocalDomainMask, gnustepLocalApps, @"Demos");
-	    ADD_PATH(NSNetworkDomainMask, gnustepNetworkApps, @"Demos");
-	    ADD_PATH(NSSystemDomainMask, gnustepSystemApps, @"Demos");
-	  */
-	}
-	break;
+          /* I imagine if ever wanted a separate Demo directory, the
+           * only way for this to have some meaning across filesystems
+           * would be as a subdirectory of Applications, as follows.
+           */
+          /*
+            ADD_PATH(NSUserDomainMask, gnustepUserApps, @"Demos");
+            ADD_PATH(NSLocalDomainMask, gnustepLocalApps, @"Demos");
+            ADD_PATH(NSNetworkDomainMask, gnustepNetworkApps, @"Demos");
+            ADD_PATH(NSSystemDomainMask, gnustepSystemApps, @"Demos");
+          */
+        }
+        break;
 
       case NSCoreServicesDirectory:
-	{
-	  ADD_PATH(NSSystemDomainMask, gnustepSystemLibrary, @"CoreServices");
-	}
-	break;
+        {
+          ADD_PATH(NSSystemDomainMask, gnustepSystemLibrary, @"CoreServices");
+        }
+        break;
 
       case NSDesktopDirectory:
-	{
-	  ADD_PATH(NSUserDomainMask, gnustepUserHome, @"Desktop");
-	}
-	break;
+        {
+          ADD_PATH(NSUserDomainMask, gnustepUserHome, @"Desktop");
+        }
+        break;
 
       case NSDeveloperApplicationDirectory:
-	{
-	  /* Deprecated key ... for now just point to normal apps.
-	   */
-	  ADD_PLATFORM_PATH(NSUserDomainMask, gnustepUserApps);
-	  ADD_PLATFORM_PATH(NSLocalDomainMask, gnustepLocalApps);
-	  ADD_PLATFORM_PATH(NSNetworkDomainMask, gnustepNetworkApps);
-	  ADD_PLATFORM_PATH(NSSystemDomainMask, gnustepSystemApps);
-	}
-	break;
+        {
+          /* Deprecated key ... for now just point to normal apps.
+           */
+          ADD_PLATFORM_PATH(NSUserDomainMask, gnustepUserApps);
+          ADD_PLATFORM_PATH(NSLocalDomainMask, gnustepLocalApps);
+          ADD_PLATFORM_PATH(NSNetworkDomainMask, gnustepNetworkApps);
+          ADD_PLATFORM_PATH(NSSystemDomainMask, gnustepSystemApps);
+        }
+        break;
 
       case NSAdminApplicationDirectory:
-	{
-	  ADD_PLATFORM_PATH(NSUserDomainMask, gnustepUserAdminApps);
-	  ADD_PLATFORM_PATH(NSLocalDomainMask, gnustepLocalAdminApps);
-	  ADD_PLATFORM_PATH(NSNetworkDomainMask, gnustepNetworkAdminApps);
-	  ADD_PLATFORM_PATH(NSSystemDomainMask, gnustepSystemAdminApps);
-	}
-	break;
+        {
+          ADD_PLATFORM_PATH(NSUserDomainMask, gnustepUserAdminApps);
+          ADD_PLATFORM_PATH(NSLocalDomainMask, gnustepLocalAdminApps);
+          ADD_PLATFORM_PATH(NSNetworkDomainMask, gnustepNetworkAdminApps);
+          ADD_PLATFORM_PATH(NSSystemDomainMask, gnustepSystemAdminApps);
+        }
+        break;
 
       case NSAllLibrariesDirectory:
-	{
-	  ADD_PLATFORM_PATH(NSUserDomainMask, gnustepUserLibrary);
-	  ADD_PLATFORM_PATH(NSLocalDomainMask, gnustepLocalLibrary);
-	  ADD_PLATFORM_PATH(NSNetworkDomainMask, gnustepNetworkLibrary);
-	  ADD_PLATFORM_PATH(NSSystemDomainMask, gnustepSystemLibrary);
-	}
-	break;
+        {
+          ADD_PLATFORM_PATH(NSUserDomainMask, gnustepUserLibrary);
+          ADD_PLATFORM_PATH(NSLocalDomainMask, gnustepLocalLibrary);
+          ADD_PLATFORM_PATH(NSNetworkDomainMask, gnustepNetworkLibrary);
+          ADD_PLATFORM_PATH(NSSystemDomainMask, gnustepSystemLibrary);
+        }
+        break;
 
       case NSLibraryDirectory:
-	{
-	  /* We allow the environment to be used to specify the location of
-	   * the resources of uninstalled libraries so that we can run tests
-	   * on software prior to installation.
-	   */
-	  ADD_PLATFORM_PATH(NSAllDomainsMask, uninstalled);
+        {
+          /* We allow the environment to be used to specify the location of
+           * the resources of uninstalled libraries so that we can run tests
+           * on software prior to installation.
+           */
+          ADD_PLATFORM_PATH(NSAllDomainsMask, uninstalled);
 
-	  ADD_PLATFORM_PATH(NSUserDomainMask, gnustepUserLibrary);
-	  ADD_PLATFORM_PATH(NSLocalDomainMask, gnustepLocalLibrary);
-	  ADD_PLATFORM_PATH(NSNetworkDomainMask, gnustepNetworkLibrary);
-	  ADD_PLATFORM_PATH(NSSystemDomainMask, gnustepSystemLibrary);
-	}
-	break;
+          ADD_PLATFORM_PATH(NSUserDomainMask, gnustepUserLibrary);
+          ADD_PLATFORM_PATH(NSLocalDomainMask, gnustepLocalLibrary);
+          ADD_PLATFORM_PATH(NSNetworkDomainMask, gnustepNetworkLibrary);
+          ADD_PLATFORM_PATH(NSSystemDomainMask, gnustepSystemLibrary);
+        }
+        break;
 
       case NSDeveloperDirectory:
-	{
-#if	defined(__MINGW__)
+        {
+#if defined(__MINGW__)
           if (nil == gnustepDeveloperDir)
             {
               NSString          *path = nil;
-	      NSString		*bpath = nil;
-	      NSString		*ipath = nil;
-	      NSString		*mpath = nil;
-              NSFileManager	*mgr;
+              NSString *bpath = nil;
+              NSString *ipath = nil;
+              NSString *mpath = nil;
+              NSFileManager *mgr;
 
               mgr = [NSFileManager defaultManager];
 
               /* See if we can find the developer root above the
                * system tools directory of the current running process.
                */
-	      path = devroot(mgr, gnustepSystemTools);
+              path = devroot(mgr, gnustepSystemTools);
 
-	      /* Failing that, try looking above the base library.
-	       */
-	      if (nil == path)
-		{
-		  NSBundle	*baseBundle;
-
-		  baseBundle = [NSBundle bundleForLibrary: @"gnustep-base"];
-		  bpath = [baseBundle bundlePath];
-		  path = devroot(mgr, bpath);
-		}
-
-              /* If we havent found the developer area relative to the
-	       * hierarchy used by the current process, look for the
-	       * GNUstep package installation root in case we have the
-	       * developer environment installed from a package.
+              /* Failing that, try looking above the base library.
                */
               if (nil == path)
                 {
-                  HKEY	regKey;
-                  BOOL	found = NO;
+                  NSBundle *baseBundle;
+
+                  baseBundle = [NSBundle bundleForLibrary: @"gnustep-base"];
+                  bpath = [baseBundle bundlePath];
+                  path = devroot(mgr, bpath);
+                }
+
+              /* If we havent found the developer area relative to the
+               * hierarchy used by the current process, look for the
+               * GNUstep package installation root in case we have the
+               * developer environment installed from a package.
+               */
+              if (nil == path)
+                {
+                  HKEY regKey;
+                  BOOL found = NO;
 
                   /* Open the key for the current user or local machine where
                    * the installation path for the GNUstep package is stored.
                    */
-                  if (ERROR_SUCCESS == RegOpenKeyExW(HKEY_CURRENT_USER,
-L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\GNUstep",
+                  if (ERROR_SUCCESS == RegOpenKeyExW(HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\GNUstep",
                     0,
                     KEY_READ,
                     &regKey))
@@ -2375,8 +2385,7 @@ L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\GNUstep",
                     }
                   else
                     {
-                      if (ERROR_SUCCESS == RegOpenKeyExW(HKEY_LOCAL_MACHINE,
-L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\GNUstep",
+                      if (ERROR_SUCCESS == RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\GNUstep",
                         0,
                         KEY_READ,
                         &regKey))
@@ -2384,6 +2393,7 @@ L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\GNUstep",
                           found = YES;
                         }
                     }
+
                   if (found)
                     {
                       wchar_t       buf[1024];
@@ -2397,299 +2407,325 @@ L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\GNUstep",
                           ipath = [NSString stringWithCharacters: buf
                             length: wcslen(buf)];
 
-			  path = devroot(mgr, ipath);
+                          path = devroot(mgr, ipath);
                         }
+
                       RegCloseKey(regKey);
                     }
                 }
+
               if (nil == path)
                 {
-		  mpath = [NSBundle _absolutePathOfExecutable: @"make.exe"];
-		  if (nil != mpath)
-		    {
-		      path = devroot(mgr, mpath);
-		    }
-		}
+                  mpath = [NSBundle _absolutePathOfExecutable: @"make.exe"];
+                  if (nil != mpath)
+                    {
+                      path = devroot(mgr, mpath);
+                    }
+                }
+
               ASSIGNCOPY(gnustepDeveloperDir, path);
-	      if (nil == gnustepDeveloperDir)
-		{
-	          fprintf(stderr, "Failed to locate NSDeveloperDirectory"
+
+              if (nil == gnustepDeveloperDir)
+                {
+                  fprintf(stderr, "Failed to locate NSDeveloperDirectory"
                     " by GNUstep configuration, installed GNUstep package,"
                     " or process PATH.\n");
-		}
+                }
             }
 #endif
-	  if (nil == gnustepDeveloperDir)
-	    {
-	      gnustepDeveloperDir = RETAIN(NSOpenStepRootDirectory());
-	    }
+          if (nil == gnustepDeveloperDir)
+            {
+              gnustepDeveloperDir = RETAIN(NSOpenStepRootDirectory());
+            }
 
-	  /* The Developer directory is deprecated on OSX, but for GNUstep
-	   * specific apps we return the root of the system containing the
-	   * development environment.  On most systems, that's the root
-	   * directory, but on windows it can be anywhere the user has put it.
-	   * If not explicitly defined, or found relative to the hierarchy
-	   * of the running process, *with the GNUstep package installed it's
-	   * the location of the msys filesystem within the GNUstep package
-	   * installation.
-	   */
-	  ADD_PLATFORM_PATH(NSUserDomainMask, gnustepDeveloperDir);
-	  ADD_PLATFORM_PATH(NSLocalDomainMask, gnustepDeveloperDir);
-	  ADD_PLATFORM_PATH(NSNetworkDomainMask, gnustepDeveloperDir);
-	  ADD_PLATFORM_PATH(NSSystemDomainMask, gnustepDeveloperDir);
-	}
-	break;
+          /* The Developer directory is deprecated on OSX, but for GNUstep
+           * specific apps we return the root of the system containing the
+           * development environment.  On most systems, that's the root
+           * directory, but on windows it can be anywhere the user has put it.
+           * If not explicitly defined, or found relative to the hierarchy
+           * of the running process, *with the GNUstep package installed it's
+           * the location of the msys filesystem within the GNUstep package
+           * installation.
+           */
+          ADD_PLATFORM_PATH(NSUserDomainMask, gnustepDeveloperDir);
+          ADD_PLATFORM_PATH(NSLocalDomainMask, gnustepDeveloperDir);
+          ADD_PLATFORM_PATH(NSNetworkDomainMask, gnustepDeveloperDir);
+          ADD_PLATFORM_PATH(NSSystemDomainMask, gnustepDeveloperDir);
+        }
+        break;
 
       case NSUserDirectory:
-	{
-	  /* This is the directory in which user directories are located.
-	   * You can not have user directories in your own user directory,
-	   * so NSUserDomainMask will always return ''.
-	   */
-	  ADD_PLATFORM_PATH(NSLocalDomainMask, gnustepLocalUsersDir);
-	  ADD_PLATFORM_PATH(NSNetworkDomainMask, gnustepNetworkUsersDir);
-	  ADD_PLATFORM_PATH(NSSystemDomainMask, gnustepSystemUsersDir);
-	}
-	break;
+        {
+          /* This is the directory in which user directories are located.
+           * You can not have user directories in your own user directory,
+           * so NSUserDomainMask will always return ''.
+           */
+          ADD_PLATFORM_PATH(NSLocalDomainMask, gnustepLocalUsersDir);
+          ADD_PLATFORM_PATH(NSNetworkDomainMask, gnustepNetworkUsersDir);
+          ADD_PLATFORM_PATH(NSSystemDomainMask, gnustepSystemUsersDir);
+        }
+        break;
 
       case NSDocumentationDirectory:
-	{
-	  ADD_PLATFORM_PATH(NSUserDomainMask, gnustepUserDocumentation);
-	  ADD_PLATFORM_PATH(NSLocalDomainMask, gnustepLocalDocumentation);
-	  ADD_PLATFORM_PATH(NSNetworkDomainMask, gnustepNetworkDocumentation);
-	  ADD_PLATFORM_PATH(NSSystemDomainMask, gnustepSystemDocumentation);
-	}
-	break;
+        {
+          ADD_PLATFORM_PATH(NSUserDomainMask, gnustepUserDocumentation);
+          ADD_PLATFORM_PATH(NSLocalDomainMask, gnustepLocalDocumentation);
+          ADD_PLATFORM_PATH(NSNetworkDomainMask, gnustepNetworkDocumentation);
+          ADD_PLATFORM_PATH(NSSystemDomainMask, gnustepSystemDocumentation);
+        }
+        break;
 
       case NSDocumentDirectory:
-	{
-	  /* this is relative to the user home and for the user domain only
-	   * verified on Macintosh
-	   * despite the name it is Documents and not Document....
-	   */
-	  ADD_PATH(NSUserDomainMask, gnustepUserHome, @"Documents");
-	}
-	break;
+        {
+          /* this is relative to the user home and for the user domain only
+           * verified on Macintosh
+           * despite the name it is Documents and not Document....
+           */
+          ADD_PATH(NSUserDomainMask, gnustepUserHome, @"Documents");
+        }
+        break;
 
       case NSDownloadsDirectory:
-	{
-	  /* Be consistent with NSDocumentDirectory */
-	  ADD_PATH(NSUserDomainMask, gnustepUserHome, @"Downloads");
-	}
-	break;
-	
+        {
+          /* Be consistent with NSDocumentDirectory */
+          ADD_PATH(NSUserDomainMask, gnustepUserHome, @"Downloads");
+        }
+        break;
+        
       case NSMoviesDirectory:
-	{
-	  /* Be consistent with NSDocumentDirectory */
-	  ADD_PATH(NSUserDomainMask, gnustepUserHome, @"Videos");
-	}
-	break;
+        {
+          /* Be consistent with NSDocumentDirectory */
+          ADD_PATH(NSUserDomainMask, gnustepUserHome, @"Videos");
+        }
+        break;
 
       case NSMusicDirectory:
-	{
-	  /* Be consistent with NSDocumentDirectory */
-	  ADD_PATH(NSUserDomainMask, gnustepUserHome, @"Music");
-	}
-	break;
+        {
+          /* Be consistent with NSDocumentDirectory */
+          ADD_PATH(NSUserDomainMask, gnustepUserHome, @"Music");
+        }
+        break;
 
       case NSPicturesDirectory:
-	{
-	  /* Be consistent with NSDocumentDirectory */
-	  ADD_PATH(NSUserDomainMask, gnustepUserHome, @"Images");
-	}
-	break;
+        {
+          /* Be consistent with NSDocumentDirectory */
+          ADD_PATH(NSUserDomainMask, gnustepUserHome, @"Images");
+        }
+        break;
 
       case NSCachesDirectory:
-	{
+        {
 #ifdef __ANDROID__
-	  /* Use system-provided cache directory on Android */
-	  ADD_PATH(NSUserDomainMask, [[NSProcessInfo processInfo] androidCacheDir], @"");
+          /* Use system-provided cache directory on Android */
+          ADD_PATH(NSUserDomainMask, [[NSProcessInfo processInfo] androidCacheDir], @"");
 #else
-	  /* Uff - at the moment the only place to put Caches seems to
-	   * be Library.  Unfortunately under GNU/Linux Library will
-	   * end up in /usr/lib/GNUstep which could be mounted
-	   * read-only!
-	   */
-	  ADD_PATH(NSUserDomainMask, gnustepUserLibrary, @"Caches");
+          /* Uff - at the moment the only place to put Caches seems to
+           * be Library.  Unfortunately under GNU/Linux Library will
+           * end up in /usr/lib/GNUstep which could be mounted
+           * read-only!
+           */
+          ADD_PATH(NSUserDomainMask, gnustepUserLibrary, @"Caches");
 #endif
-	  ADD_PATH(NSLocalDomainMask, gnustepLocalLibrary, @"Caches");
-	  ADD_PATH(NSNetworkDomainMask, gnustepNetworkLibrary, @"Caches");
-	  ADD_PATH(NSSystemDomainMask, gnustepSystemLibrary, @"Caches");
-	}
-	break;
+          ADD_PATH(NSLocalDomainMask, gnustepLocalLibrary, @"Caches");
+          ADD_PATH(NSNetworkDomainMask, gnustepNetworkLibrary, @"Caches");
+          ADD_PATH(NSSystemDomainMask, gnustepSystemLibrary, @"Caches");
+        }
+        break;
 
       case NSApplicationSupportDirectory:
-	{
-	  ADD_PATH(NSUserDomainMask, gnustepUserLibrary, @"ApplicationSupport");
-	  ADD_PATH(NSLocalDomainMask, gnustepLocalLibrary,
-	    @"ApplicationSupport");
-	  ADD_PATH(NSNetworkDomainMask, gnustepNetworkLibrary,
-	    @"ApplicationSupport");
-	  ADD_PATH(NSSystemDomainMask, gnustepSystemLibrary,
-	    @"ApplicationSupport");
-	}
-	break;
+        {
+          ADD_PATH(NSUserDomainMask, gnustepUserLibrary, @"ApplicationSupport");
+          ADD_PATH(NSLocalDomainMask, gnustepLocalLibrary, @"ApplicationSupport");
+          ADD_PATH(NSNetworkDomainMask, gnustepNetworkLibrary, @"ApplicationSupport");
+          ADD_PATH(NSSystemDomainMask, gnustepSystemLibrary, @"ApplicationSupport");
+        }
+        break;
 
       /* Now the GNUstep additions */
       case GSFrameworksDirectory:
-	{
-	  ADD_PATH(NSUserDomainMask, gnustepUserLibrary, @"Frameworks");
-	  ADD_PATH(NSLocalDomainMask, gnustepLocalLibrary, @"Frameworks");
-	  ADD_PATH(NSNetworkDomainMask, gnustepNetworkLibrary, @"Frameworks");
-	  ADD_PATH(NSSystemDomainMask, gnustepSystemLibrary, @"Frameworks");
-	}
-	break;
+        {
+          ADD_PATH(NSUserDomainMask, gnustepUserLibrary, @"Frameworks");
+          ADD_PATH(NSLocalDomainMask, gnustepLocalLibrary, @"Frameworks");
+          ADD_PATH(NSNetworkDomainMask, gnustepNetworkLibrary, @"Frameworks");
+          ADD_PATH(NSSystemDomainMask, gnustepSystemLibrary, @"Frameworks");
+        }
+        break;
 
       case GSFontsDirectory:
-	{
-	  ADD_PATH(NSUserDomainMask, gnustepUserLibrary, @"Fonts");
-	  ADD_PATH(NSLocalDomainMask, gnustepLocalLibrary, @"Fonts");
-	  ADD_PATH(NSNetworkDomainMask, gnustepNetworkLibrary, @"Fonts");
-	  ADD_PATH(NSSystemDomainMask, gnustepSystemLibrary, @"Fonts");
-	}
-	break;
+        {
+          ADD_PATH(NSUserDomainMask, gnustepUserLibrary, @"Fonts");
+          ADD_PATH(NSLocalDomainMask, gnustepLocalLibrary, @"Fonts");
+          ADD_PATH(NSNetworkDomainMask, gnustepNetworkLibrary, @"Fonts");
+          ADD_PATH(NSSystemDomainMask, gnustepSystemLibrary, @"Fonts");
+        }
+        break;
 
       case GSLibrariesDirectory:
-	{
-	  NSString *full = nil;
-	  NSString *part = nil;
+        {
+          NSString *full = nil;
+          NSString *part = nil;
 
-	  if ([gnustep_is_flattened boolValue] == NO
-	    && gnustep_target_cpu != nil && gnustep_target_os != nil)
-	    {
-	      part = [NSString stringWithFormat: @"%@-%@",
-                gnustep_target_cpu, gnustep_target_os];
-	      if (library_combo != nil)
-		{
-		  full = [part stringByAppendingPathComponent: library_combo];
-		}
-	    }
+          if ([gnustep_is_flattened boolValue] == NO
+            && gnustep_target_cpu != nil && gnustep_target_os != nil)
+            {
+              part = [NSString stringWithFormat: @"%@-%@", gnustep_target_cpu, gnustep_target_os];
 
-	  ADD_PLATFORM_PATH(NSUserDomainMask, gnustepUserLibraries);
-	  if (full)
-	    ADD_PATH(NSUserDomainMask, gnustepUserLibraries, full);
-	  if (part)
-	    ADD_PATH(NSUserDomainMask, gnustepUserLibraries, part);
+              if (library_combo != nil)
+                {
+                  full = [part stringByAppendingPathComponent: library_combo];
+                }
+            }
 
-	  ADD_PLATFORM_PATH(NSLocalDomainMask, gnustepLocalLibraries);
-	  if (full)
-	    ADD_PATH(NSLocalDomainMask, gnustepLocalLibraries, full);
-	  if (part)
-	    ADD_PATH(NSLocalDomainMask, gnustepLocalLibraries, part);
+          ADD_PLATFORM_PATH(NSUserDomainMask, gnustepUserLibraries);
 
-	  ADD_PLATFORM_PATH(NSNetworkDomainMask, gnustepNetworkLibraries);
-	  if (full)
-	    ADD_PATH(NSNetworkDomainMask, gnustepNetworkLibraries, full);
-	  if (part)
-	    ADD_PATH(NSNetworkDomainMask, gnustepNetworkLibraries, part);
+          if (full)
+            ADD_PATH(NSUserDomainMask, gnustepUserLibraries, full);
 
-	  ADD_PLATFORM_PATH(NSSystemDomainMask, gnustepSystemLibraries);
-	  if (full)
-	    ADD_PATH(NSSystemDomainMask, gnustepSystemLibraries, full);
-	  if (part)
-	    ADD_PATH(NSSystemDomainMask, gnustepSystemLibraries, part);
-	}
-	break;
+          if (part)
+            ADD_PATH(NSUserDomainMask, gnustepUserLibraries, part);
+
+          ADD_PLATFORM_PATH(NSLocalDomainMask, gnustepLocalLibraries);
+
+          if (full)
+            ADD_PATH(NSLocalDomainMask, gnustepLocalLibraries, full);
+
+          if (part)
+            ADD_PATH(NSLocalDomainMask, gnustepLocalLibraries, part);
+
+          ADD_PLATFORM_PATH(NSNetworkDomainMask, gnustepNetworkLibraries);
+
+          if (full)
+            ADD_PATH(NSNetworkDomainMask, gnustepNetworkLibraries, full);
+
+          if (part)
+            ADD_PATH(NSNetworkDomainMask, gnustepNetworkLibraries, part);
+
+          ADD_PLATFORM_PATH(NSSystemDomainMask, gnustepSystemLibraries);
+
+          if (full)
+            ADD_PATH(NSSystemDomainMask, gnustepSystemLibraries, full);
+
+          if (part)
+            ADD_PATH(NSSystemDomainMask, gnustepSystemLibraries, part);
+        }
+        break;
 
       case GSToolsDirectory:
-	{
-	  NSString	*full = nil;
-	  NSString	*part = nil;
+        {
+          NSString *full = nil;
+          NSString *part = nil;
 
-	  if ([gnustep_is_flattened boolValue] == NO
-	    && gnustep_target_cpu != nil && gnustep_target_os != nil)
-	    {
-	      part = [NSString stringWithFormat: @"%@-%@",
+          if ([gnustep_is_flattened boolValue] == NO
+            && gnustep_target_cpu != nil && gnustep_target_os != nil)
+            {
+              part = [NSString stringWithFormat: @"%@-%@",
                 gnustep_target_cpu, gnustep_target_os];
-	      if (library_combo != nil)
-		{
-		  full = [part stringByAppendingPathComponent: library_combo];
-		}
-	    }
+              if (library_combo != nil)
+                {
+                  full = [part stringByAppendingPathComponent: library_combo];
+                }
+            }
 
-	  ADD_PLATFORM_PATH(NSUserDomainMask, gnustepUserTools);
-	  if (full)
-	    ADD_PATH(NSUserDomainMask, gnustepUserTools, full);
-	  if (part)
-	    ADD_PATH(NSUserDomainMask, gnustepUserTools, part);
+          ADD_PLATFORM_PATH(NSUserDomainMask, gnustepUserTools);
 
-	  ADD_PLATFORM_PATH(NSLocalDomainMask, gnustepLocalTools);
-	  if (full)
-	    ADD_PATH(NSLocalDomainMask, gnustepLocalTools, full);
-	  if (part)
-	    ADD_PATH(NSLocalDomainMask, gnustepLocalTools, part);
+          if (full)
+            ADD_PATH(NSUserDomainMask, gnustepUserTools, full);
 
-	  ADD_PLATFORM_PATH(NSNetworkDomainMask, gnustepNetworkTools);
-	  if (full)
-	    ADD_PATH(NSNetworkDomainMask, gnustepNetworkTools, full);
-	  if (part)
-	    ADD_PATH(NSNetworkDomainMask, gnustepNetworkTools, part);
+          if (part)
+            ADD_PATH(NSUserDomainMask, gnustepUserTools, part);
 
-	  ADD_PLATFORM_PATH(NSSystemDomainMask, gnustepSystemTools);
-	  if (full)
-	    ADD_PATH(NSSystemDomainMask, gnustepSystemTools, full);
-	  if (part)
-	    ADD_PATH(NSSystemDomainMask, gnustepSystemTools, part);
-	}
-	break;
+          ADD_PLATFORM_PATH(NSLocalDomainMask, gnustepLocalTools);
+
+          if (full)
+            ADD_PATH(NSLocalDomainMask, gnustepLocalTools, full);
+
+          if (part)
+            ADD_PATH(NSLocalDomainMask, gnustepLocalTools, part);
+
+          ADD_PLATFORM_PATH(NSNetworkDomainMask, gnustepNetworkTools);
+
+          if (full)
+            ADD_PATH(NSNetworkDomainMask, gnustepNetworkTools, full);
+
+          if (part)
+            ADD_PATH(NSNetworkDomainMask, gnustepNetworkTools, part);
+
+          ADD_PLATFORM_PATH(NSSystemDomainMask, gnustepSystemTools);
+
+          if (full)
+            ADD_PATH(NSSystemDomainMask, gnustepSystemTools, full);
+
+          if (part)
+            ADD_PATH(NSSystemDomainMask, gnustepSystemTools, part);
+        }
+        break;
 
       case GSAdminToolsDirectory:
-	{
-	  NSString	*full = nil;
-	  NSString	*part = nil;
+        {
+          NSString *full = nil;
+          NSString *part = nil;
 
-	  if ([gnustep_is_flattened boolValue] == NO
-	    && gnustep_target_cpu != nil && gnustep_target_os != nil)
-	    {
-	      part = [NSString stringWithFormat: @"%@-%@",
+          if ([gnustep_is_flattened boolValue] == NO
+            && gnustep_target_cpu != nil && gnustep_target_os != nil)
+            {
+              part = [NSString stringWithFormat: @"%@-%@",
                 gnustep_target_cpu, gnustep_target_os];
-	      if (library_combo != nil)
-		{
-		  full = [part stringByAppendingPathComponent: library_combo];
-		}
-	    }
+              if (library_combo != nil)
+                {
+                  full = [part stringByAppendingPathComponent: library_combo];
+                }
+            }
 
-	  ADD_PLATFORM_PATH(NSUserDomainMask, gnustepUserAdminTools);
-	  if (full)
-	    ADD_PATH(NSUserDomainMask, gnustepUserAdminTools, full);
-	  if (part)
-	    ADD_PATH(NSUserDomainMask, gnustepUserAdminTools, part);
+          ADD_PLATFORM_PATH(NSUserDomainMask, gnustepUserAdminTools);
+          
+          if (full)
+            ADD_PATH(NSUserDomainMask, gnustepUserAdminTools, full);
 
-	  ADD_PLATFORM_PATH(NSLocalDomainMask, gnustepLocalAdminTools);
-	  if (full)
-	    ADD_PATH(NSLocalDomainMask, gnustepLocalAdminTools, full);
-	  if (part)
-	    ADD_PATH(NSLocalDomainMask, gnustepLocalAdminTools, part);
+          if (part)
+            ADD_PATH(NSUserDomainMask, gnustepUserAdminTools, part);
 
-	  ADD_PLATFORM_PATH(NSNetworkDomainMask, gnustepNetworkAdminTools);
-	  if (full)
-	    ADD_PATH(NSNetworkDomainMask, gnustepNetworkAdminTools, full);
-	  if (part)
-	    ADD_PATH(NSNetworkDomainMask, gnustepNetworkAdminTools, part);
+          ADD_PLATFORM_PATH(NSLocalDomainMask, gnustepLocalAdminTools);
 
-	  ADD_PLATFORM_PATH(NSSystemDomainMask, gnustepSystemAdminTools);
-	  if (full)
-	    ADD_PATH(NSSystemDomainMask, gnustepSystemAdminTools, full);
-	  if (part)
-	    ADD_PATH(NSSystemDomainMask, gnustepSystemAdminTools, part);
-	}
-	break;
+          if (full)
+            ADD_PATH(NSLocalDomainMask, gnustepLocalAdminTools, full);
+
+          if (part)
+            ADD_PATH(NSLocalDomainMask, gnustepLocalAdminTools, part);
+
+          ADD_PLATFORM_PATH(NSNetworkDomainMask, gnustepNetworkAdminTools);
+
+          if (full)
+            ADD_PATH(NSNetworkDomainMask, gnustepNetworkAdminTools, full);
+
+          if (part)
+            ADD_PATH(NSNetworkDomainMask, gnustepNetworkAdminTools, part);
+
+          ADD_PLATFORM_PATH(NSSystemDomainMask, gnustepSystemAdminTools);
+
+          if (full)
+            ADD_PATH(NSSystemDomainMask, gnustepSystemAdminTools, full);
+
+          if (part)
+            ADD_PATH(NSSystemDomainMask, gnustepSystemAdminTools, part);
+        }
+        break;
 
       case GSWebApplicationsDirectory:
-	{
-	  ADD_PLATFORM_PATH(NSUserDomainMask, gnustepUserWebApps);
-	  ADD_PLATFORM_PATH(NSLocalDomainMask, gnustepLocalWebApps);
-	  ADD_PLATFORM_PATH(NSNetworkDomainMask, gnustepNetworkWebApps);
-	  ADD_PLATFORM_PATH(NSSystemDomainMask, gnustepSystemWebApps);
-	}
-	break;
+        {
+          ADD_PLATFORM_PATH(NSUserDomainMask, gnustepUserWebApps);
+          ADD_PLATFORM_PATH(NSLocalDomainMask, gnustepLocalWebApps);
+          ADD_PLATFORM_PATH(NSNetworkDomainMask, gnustepNetworkWebApps);
+          ADD_PLATFORM_PATH(NSSystemDomainMask, gnustepSystemWebApps);
+        }
+        break;
     }
 
 #undef ADD_PATH
 #undef ADD_PLATFORM_PATH
 
   count = [paths count];
-  for (i = 0; i < count; i++)
+
+  for (i = 0; i < count; ++i)
     {
       path = [paths objectAtIndex: i];
 
@@ -2701,7 +2737,7 @@ L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\GNUstep",
       else
         {
           [paths replaceObjectAtIndex: i
-            withObject: [path stringByAbbreviatingWithTildeInPath]];
+                           withObject: [path stringByAbbreviatingWithTildeInPath]];
         }
     }
 
@@ -2713,6 +2749,7 @@ L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\GNUstep",
 {
   ShutdownPathUtilities();
 }
+
 + (void) initialize
 {
   [self registerAtExit];
