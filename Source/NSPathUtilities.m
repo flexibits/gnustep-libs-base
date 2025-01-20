@@ -1317,7 +1317,10 @@ ParseConfigurationFile(NSString *fileName, NSMutableDictionary *dict,
       [NSException raise: NSInvalidArgumentException format: @"No destination dictionary supplied"];
     }
 
-  file = [NSString stringWithContentsOfFile: fileName];
+  file = [NSString stringWithContentsOfFile: fileName
+                                   encoding: NSUTF8StringEncoding
+                                   error: nil];
+
   l = [file length];
   src = (unichar*)NSZoneMalloc(NSDefaultMallocZone(), sizeof(unichar) * l);
   spos = src;
