@@ -2768,16 +2768,25 @@ GSPropertyListMake(id obj, NSDictionary *loc, BOOL xml,
           break;
 
         case NSPropertyListGNUstepBinaryFormat:
-          if (anOption == NSPropertyListImmutable)
+          NS_DURING
             {
-              result = [NSDeserializer deserializePropertyListFromData: data
-                                                     mutableContainers: NO];
+              if (anOption == NSPropertyListImmutable)
+                {
+                  result = [NSDeserializer deserializePropertyListFromData: data
+                                                         mutableContainers: NO];
+                }
+              else
+                {
+                  result = [NSDeserializer deserializePropertyListFromData: data
+                                                         mutableContainers: YES];
+                }
             }
-          else
+          NS_HANDLER
             {
-              result = [NSDeserializer deserializePropertyListFromData: data
-                                                     mutableContainers: YES];
+              result = nil;
+              errorStr = [NSString stringWithFormat: @"%@ - %@", [localException name], [localException reason]];
             }
+          NS_ENDHANDLER
           break;
           
         case NSPropertyListBinaryFormat_v1_0:
