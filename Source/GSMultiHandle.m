@@ -232,17 +232,19 @@ static int curl_timer_function(CURLM *multi, long timeout_ms, void *clientp)
 }
 
 - (void) readAndWriteAvailableDataOnSocket: (curl_socket_t)socket
-{  
+{
+  int numfds = 0;
+  
   do
     {
       handleMultiCode(curl_multi_perform(_rawHandle, &_runningHandlesCount));
 
       if (_runningHandlesCount)
         {
-          handleMultiCode(curl_multi_poll(_rawHandle, NULL, 0, 10000, NULL));
+          handleMultiCode(curl_multi_poll(_rawHandle, NULL, 0, 1000, &numfds));
         }
     }
-    while (_runningHandlesCount);
+    while (_runningHandlesCount && numfds);
 
   handleMultiCode(curl_multi_socket_action(_rawHandle, socket, 0, &_runningHandlesCount));
   
