@@ -686,7 +686,9 @@ static NSRecursiveLock *classLock = nil;
     NSDateComponents *components = [[NSDateComponents alloc] init];
 
     [components setValue:value forComponent:unit];
-    return [self dateByAddingComponents:components toDate:date options:options];
+    NSDate *result = [self dateByAddingComponents:components toDate:date options:options];
+    RELEASE(components);
+    return result;
 }
 
 static inline UCalendarDateFields NSCalendarUnitToUCalendarDateField(NSCalendarUnit unit, BOOL* out_success)
@@ -801,7 +803,9 @@ static inline UCalendarDateFields NSCalendarUnitToUCalendarDateField(NSCalendarU
     [components setSecond:secondValue];
     [components setNanosecond:nanosecondValue];
 
-    return [self dateFromComponents:components];
+    NSDate *result = [self dateFromComponents:components];
+    RELEASE(components);
+    return result;
 }
 
 - (NSDate *)dateWithEra:(NSInteger)eraValue 
@@ -824,7 +828,9 @@ static inline UCalendarDateFields NSCalendarUnitToUCalendarDateField(NSCalendarU
     [components setSecond:secondValue];
     [components setNanosecond:nanosecondValue];
 
-    return [self dateFromComponents:components];
+    NSDate *result = [self dateFromComponents:components];
+    RELEASE(components);
+    return result;
 }
 
 - (NSDate *)startOfDayForDate:(NSDate *)date
