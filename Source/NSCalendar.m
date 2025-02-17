@@ -350,6 +350,7 @@ static NSRecursiveLock *classLock = nil;
         RELEASE(my->tz);
         NSZoneFree([self zone], _NSCalendarInternal);
         [_lock unlock];
+        RELEASE(_lock);
     }
     [super dealloc];
 }
