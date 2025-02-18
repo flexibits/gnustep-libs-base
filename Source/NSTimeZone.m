@@ -2501,6 +2501,7 @@ void GSBreakTime(NSTimeInterval when,
 
 - (void)dealloc
 {
+    RELEASE(ianaZoneName);
     RELEASE(timeZoneName);
     RELEASE(daylightZoneName);
     RELEASE(timeZoneNameAbbr);
