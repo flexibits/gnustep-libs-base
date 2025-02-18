@@ -684,9 +684,10 @@ static NSRecursiveLock *classLock = nil;
 - (NSDate *)dateByAddingUnit:(NSCalendarUnit)unit value:(NSInteger)value toDate:(NSDate *)date options:(NSCalendarOptions)options
 {
     NSDateComponents *components = [[NSDateComponents alloc] init];
+    NSDate *result;
 
     [components setValue:value forComponent:unit];
-    NSDate *result = [self dateByAddingComponents:components toDate:date options:options];
+    *result = [self dateByAddingComponents:components toDate:date options:options];
     RELEASE(components);
     return result;
 }
@@ -793,6 +794,7 @@ static inline UCalendarDateFields NSCalendarUnitToUCalendarDateField(NSCalendarU
              nanosecond:(NSInteger)nanosecondValue
 {
     NSDateComponents *components = [[NSDateComponents alloc] init];
+    NSDate *result;
 
     [components setEra:eraValue];
     [components setYear:yearValue];
@@ -803,7 +805,7 @@ static inline UCalendarDateFields NSCalendarUnitToUCalendarDateField(NSCalendarU
     [components setSecond:secondValue];
     [components setNanosecond:nanosecondValue];
 
-    NSDate *result = [self dateFromComponents:components];
+    result = [self dateFromComponents:components];
     RELEASE(components);
     return result;
 }
@@ -818,6 +820,7 @@ static inline UCalendarDateFields NSCalendarUnitToUCalendarDateField(NSCalendarU
              nanosecond:(NSInteger)nanosecondValue
 {
     NSDateComponents *components = [[NSDateComponents alloc] init];
+    NSDate *result;
 
     [components setEra:eraValue];
     [components setYear:yearValue];
@@ -828,7 +831,7 @@ static inline UCalendarDateFields NSCalendarUnitToUCalendarDateField(NSCalendarU
     [components setSecond:secondValue];
     [components setNanosecond:nanosecondValue];
 
-    NSDate *result = [self dateFromComponents:components];
+    result = [self dateFromComponents:components];
     RELEASE(components);
     return result;
 }
