@@ -687,7 +687,7 @@ static NSRecursiveLock *classLock = nil;
     NSDate *result;
 
     [components setValue:value forComponent:unit];
-    *result = [self dateByAddingComponents:components toDate:date options:options];
+    result = [self dateByAddingComponents:components toDate:date options:options];
     RELEASE(components);
     return result;
 }
