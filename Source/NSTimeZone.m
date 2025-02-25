@@ -2097,6 +2097,38 @@ static NSMapTable *absolutes = 0;
  */
 - (BOOL)isDaylightSavingTimeForDate:(NSDate *)aDate
 {
+#if GS_USE_ICU
+    UCalendar *cal = ICUCalendarSetup(self, nil);
+    BOOL isDST;
+    UDate dateUDate;
+    UErrorCode err;
+
+    if (!cal)
+      {
+        return NO;
+      }
+
+    dateUDate = [aDate timeIntervalSince1970] * 1000.0;
+    err = U_ZERO_ERROR;
+    ucal_setMillis(cal, dateUDate, &err);
+
+    if (U_FAILURE(err))
+      {
+        ucal_close(cal);
+
+        return NO;
+      }
+
+    isDST = ucal_inDaylightTime(cal, &err);
+
+    if (U_FAILURE(err))
+      {
+      }
+
+    ucal_close(cal);
+
+    return isDST;
+#else
     NSTimeZoneDetail *detail;
     BOOL isDST;
 
@@ -2104,6 +2136,7 @@ static NSMapTable *absolutes = 0;
     isDST = [detail isDaylightSavingTimeZone];
 
     return isDST;
+#endif // GS_USE_ICU
 }
 
 - (BOOL)isEqual:(id)other
@@ -2219,69 +2252,60 @@ static NSMapTable *absolutes = 0;
 #endif
 }
 
-- (NSDate *)nextDaylightSavingTimeTransitionAfterDate:(NSDate *)aDate
+- (NSDate *)nextDaylightSavingTimeTransitionAfterDate: (NSDate *)aDate
 {
 #if GS_USE_ICU == 1
-    /* ICU doesn't provide transition information per se.
-     * The canonical method of retrieving this piece of information is to
-     * use binary search.
-     */
+    UCalendar *cal = ICUCalendarSetup(self, nil);
+    UDate dateUDate;
+    UErrorCode err;
+    NSDate *transitionDate;
+    UDate transitionUDate;
 
-    int32_t originalOffset, currentOffset;
-    UCalendar *cal;
-    UErrorCode err = U_ZERO_ERROR;
-    UDate currentTime;
-    int i;
-    NSDate *result = nil;
-
-    cal = ICUCalendarSetup(self, nil);
-    if (cal == NULL)
+    if (!cal)
+      {
         return nil;
+      }
 
-    currentTime = [aDate timeIntervalSince1970] * 1000.0;
-    ucal_setMillis(cal, currentTime, &err);
-    originalOffset = ucal_get(cal, UCAL_DST_OFFSET, &err);
+    dateUDate = [aDate timeIntervalSince1970] * 1000.0;
+    err = U_ZERO_ERROR;
+    ucal_setMillis(cal, dateUDate, &err);
+
     if (U_FAILURE(err))
+      {
+        ucal_close(cal);
+
         return nil;
+      }
 
-    /* First try to find the next transition by adding a week at a time */
-    /* Avoid ending in an infinite loop in case there is no transition at all */
-
-    for (i = 0; i < 53; i++) {
-        /* Add a single week */
-        currentTime += WEEK_MILLISECONDS;
-
-        ucal_setMillis(cal, currentTime, &err);
+    if (!ucal_getTimeZoneTransitionDate(cal, UCAL_TZ_TRANSITION_NEXT, &transitionUDate, &err))
+      {
         if (U_FAILURE(err))
-            break;
-
-        currentOffset = ucal_get(cal, UCAL_DST_OFFSET, &err);
+          {
+            transitionDate = nil;
+          }
+		else
+          {
+            // There is no transition date
+            transitionDate = nil;
+          }
+      }
+    else
+      {
         if (U_FAILURE(err))
-            break;
+          {
+            transitionDate = nil;
+          }
+        else
+          {
+            NSTimeInterval timeInterval = transitionUDate / 1000;
 
-        if (currentOffset != originalOffset) {
-            double interval = WEEK_MILLISECONDS / 2.0;
-            /* Now use bisection to determine the exact moment */
-
-            while (interval >= 1.0) {
-                ucal_setMillis(cal, currentTime - interval, &err);
-
-                currentOffset = ucal_get(cal, UCAL_DST_OFFSET, &err);
-
-                if (currentOffset != originalOffset)
-                    currentTime -= interval; /* it is in the lower half */
-
-                interval /= 2.0;
-            }
-
-            result =
-                [NSDate dateWithTimeIntervalSince1970:floor(currentTime / 1000.0)];
-        }
-    }
+            transitionDate = AUTORELEASE([[NSDate alloc] initWithTimeIntervalSince1970:timeInterval]);
+          }
+      }
 
     ucal_close(cal);
 
-    return result;
+    return transitionDate;
 #else
     return nil; // FIXME;
 #endif
@@ -2686,6 +2710,7 @@ void GSBreakTime(NSTimeInterval when,
     return self;
 }
 
+#if !GS_USE_ICU
 - (BOOL)isDaylightSavingTimeForDate:(NSDate *)aDate
 {
     NSInteger year, month, day, hour, minute, second, mil;
@@ -2793,6 +2818,7 @@ void GSBreakTime(NSTimeInterval when,
     }
     return NO; // Never reached
 }
+#endif // !GS_USE_ICU
 
 - (NSString*)name
 {
@@ -2851,7 +2877,7 @@ void GSBreakTime(NSTimeInterval when,
                            withAbbrev:abbr
                            withOffset:offset
                               withDST:isDST];
-    return detail;
+    return AUTORELEASE(detail);
 }
 
 - (NSString *)timeZoneName
