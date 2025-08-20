@@ -308,7 +308,9 @@ foundIgnorableWhitespace: (NSString *)string
           int ret = sscanf([value cString], "%lld-%llu-%lluT%llu:%llu:%lluZ", &year, &month, &day, &hour, &minute, &second);
           if (ret != 6)
             {
-              [NSException raise:@"failed to parse <date>" format:@"failed to parse date" arguments:nil];
+              [[NSException exceptionWithName:@"failed to parse <date>" reason:@"failed to parse <date>" userInfo:@{
+                @"date string": value,
+              }] raise];
             }
           NSTimeZone *utcTz = [NSTimeZone timeZoneForSecondsFromGMT:0];
           result = [NSCalendarDate dateWithYear:year month:month day:day hour:hour minute:minute second:second timeZone:utcTz];
