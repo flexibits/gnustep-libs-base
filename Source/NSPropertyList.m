@@ -303,8 +303,17 @@ foundIgnorableWhitespace: (NSString *)string
 
       if ([value hasSuffix: @"Z"] == YES && [value length] == 20)
 	{
-	  result = [NSCalendarDate dateWithString: value
-				   calendarFormat: @"%Y-%m-%dT%H:%M:%SZ"];
+          int64_t year;
+          uint64_t month, day, hour, minute, second;
+          int ret = sscanf([value cString], "%lld-%llu-%lluT%llu:%llu:%lluZ", &year, &month, &day, &hour, &minute, &second);
+          if (ret != 6)
+            {
+              [NSException raise:@"failed to parse <date>" format:@"failed to parse date" arguments:nil];
+            }
+          NSTimeZone *utcTz = [NSTimeZone timeZoneForSecondsFromGMT:0];
+          result = [NSCalendarDate dateWithYear:year month:month day:day hour:hour minute:minute second:second timeZone:utcTz];
+	//   result = [NSCalendarDate dateWithString: value
+	// 			   calendarFormat: @"%Y-%m-%dT%H:%M:%SZ"];
 	}
       else
 	{
