@@ -114,6 +114,7 @@ typedef struct {
 - (void) _setLocaleIdentifier: (NSString*)identifier;
 @end
 
+static NSCalendar *currentCalendar = nil;
 static NSCalendar *autoupdatingCalendar = nil;
 static NSRecursiveLock *classLock = nil;
 
@@ -122,6 +123,52 @@ static NSRecursiveLock *classLock = nil;
 #define MILLI_TO_NANO 1000000
 
 @implementation NSCalendar (PrivateMethods)
+
+- (BOOL) _needsRefreshForLocale: (NSString *)locale
+                       calendar: (NSString *)calendar
+                       timeZone: (NSString *)timeZone
+{
+    BOOL needsToRefresh;
+
+    [_lock lock];
+    
+    needsToRefresh = [locale isEqual:my->localeID] == NO
+            || [calendar isEqual:my->identifier] == NO
+            || [timeZone isEqual:[my->tz name]] == NO;
+
+    [_lock unlock];
+    
+    return needsToRefresh;
+}
+
+- (BOOL) _needsRefreshForDefaultsChangeNotification: (NSNotification *)n
+{
+    NSUserDefaults *defs = [NSUserDefaults standardUserDefaults];
+    NSString *locale = [defs stringForKey:@"Locale"];
+    NSString *calendar = [defs stringForKey:@"Calendar"];
+    NSString *tz = [defs stringForKey:@"Local Time Zone"];
+    BOOL needsToRefresh = [self _needsRefreshForLocale:locale calendar:calendar timeZone:tz];
+    
+    return needsToRefresh;
+}
+
++ (void) _refreshCurrentCalendarFromDefaultsDidChange: (NSNotification*)n
+{
+    [classLock lock];
+
+    if (currentCalendar != nil)
+      {
+        BOOL needToRefreshCurrentCalendar = [currentCalendar _needsRefreshForDefaultsChangeNotification:n];
+
+        if (needToRefreshCurrentCalendar)
+          {
+            RELEASE(currentCalendar);
+            currentCalendar = nil;
+          }
+      }
+
+    [classLock unlock];
+}
 
 #if GS_USE_ICU == 1
 - (void *) _locked_openCalendarFor: (NSTimeZone *)timeZone
@@ -132,7 +179,6 @@ static NSRecursiveLock *classLock = nil;
     const char *cLocaleId;
     UErrorCode err = U_ZERO_ERROR;
     UCalendarType type;
-    void *cal;
 
     cLocaleId = [my->localeID UTF8String];
     tzName = [timeZone name];
@@ -260,26 +306,25 @@ static NSRecursiveLock *classLock = nil;
 
 - (void) _defaultsDidChange: (NSNotification*)n
 {
-    NSUserDefaults *defs;
-    NSString *locale;
-    NSString *calendar;
-    NSString *tz;
-
-    defs = [NSUserDefaults standardUserDefaults];
-    locale = [defs stringForKey:@"Locale"];
-    calendar = [defs stringForKey:@"Calendar"];
-    tz = [defs stringForKey:@"Local Time Zone"];
+    BOOL needsToRefresh;
+    NSUserDefaults *defs = [NSUserDefaults standardUserDefaults];
+    NSString *locale = [defs stringForKey:@"Locale"];
+    NSString *calendar = [defs stringForKey:@"Calendar"];
+    NSString *tz = [defs stringForKey:@"Local Time Zone"];
 
     [classLock lock];
     [_lock lock];
-    if ([locale isEqual:my->localeID] == NO ||
-        [calendar isEqual:my->identifier] == NO ||
-        [tz isEqual:[my->tz name]] == NO) {
+
+    needsToRefresh = [self _needsRefreshForLocale:locale calendar:calendar timeZone:tz];
+
+    if (needsToRefresh)
+      {
 #if GS_USE_ICU == 1
-        if (my->cal != NULL) {
+        if (my->cal != NULL)
+          {
             ucal_close(my->cal);
             my->cal = NULL;
-        }
+          }
 #endif
 
         ASSIGN(my->localeID, locale);
@@ -289,6 +334,7 @@ static NSRecursiveLock *classLock = nil;
 
         [self _locked_resetCalendar];
     }
+
     [_lock unlock];
     [classLock unlock];
 }
@@ -298,21 +344,36 @@ static NSRecursiveLock *classLock = nil;
 
 + (void) initialize
 {
-    if (self == [NSCalendar class]) {
+    if (self == [NSCalendar class])
+      {
         classLock = [NSRecursiveLock new];
-    }
+
+        [[NSNotificationCenter defaultCenter] addObserver:self
+                                                 selector:@selector(_refreshCurrentCalendarFromDefaultsDidChange:)
+                                                     name:NSUserDefaultsDidChangeNotification
+                                                   object:nil];
+      }
 }
 
 + (id) currentCalendar
 {
     NSCalendar *result;
-    NSString *identifier;
 
-    // This identifier may be nil
-    identifier = [[NSLocale currentLocale] objectForKey:NSLocaleCalendarIdentifier];
-    result = [[NSCalendar alloc] initWithCalendarIdentifier:identifier];
+    [classLock lock];
 
-    return AUTORELEASE(result);
+    if (currentCalendar == nil)
+      {
+        // This identifier may be nil
+        NSString *identifier = [[NSLocale currentLocale] objectForKey:NSLocaleCalendarIdentifier];
+
+        currentCalendar = [[NSCalendar alloc] initWithCalendarIdentifier:identifier];
+      }
+
+    result = currentCalendar;
+
+    [classLock unlock];
+
+    return result;
 }
 
 + (id) autoupdatingCurrentCalendar
@@ -827,6 +888,10 @@ static inline UCalendarDateFields NSCalendarUnitToUCalendarDateField(NSCalendarU
 {
     void *cal;
 	UErrorCode err = U_ZERO_ERROR;
+    BOOL ok;
+    UCalendarDateFields ucalField;
+    NSTimeInterval epochTime;
+    NSTimeInterval newEpochTime;
 
     [_lock lock];
     cal = [self _locked_cloneCalendar:&err];
@@ -840,12 +905,11 @@ static inline UCalendarDateFields NSCalendarUnitToUCalendarDateField(NSCalendarU
     ucal_clear(cal);
 
     // Convert to ICU-equivalent calendar unit
-    BOOL ok;
-    UCalendarDateFields ucalField = NSCalendarUnitToUCalendarDateField(unit, &ok);
+    ucalField = NSCalendarUnitToUCalendarDateField(unit, &ok);
     NSAssert(ok, @"GNUStep does not implement the given date field.");
 
     // Set the ICU calendar to this date
-    NSTimeInterval epochTime = [date timeIntervalSince1970] * SECOND_TO_MILLI;
+    epochTime = [date timeIntervalSince1970] * SECOND_TO_MILLI;
     ucal_setMillis(cal, epochTime, &err);
     NSAssert(!U_FAILURE(err), ([NSString stringWithFormat:@"Couldn't setMillis to calendar: %s", u_errorName(err)]));
 
@@ -853,7 +917,7 @@ static inline UCalendarDateFields NSCalendarUnitToUCalendarDateField(NSCalendarU
     ucal_set(cal, ucalField, value);
 
     // Get the date back from the ICU calendar
-    NSTimeInterval newEpochTime = ucal_getMillis(cal, &err);
+    newEpochTime = ucal_getMillis(cal, &err);
     ucal_close(cal);
 
     NSAssert(!U_FAILURE(err), ([NSString stringWithFormat:@"Couldn't getMillis from calendar: %s", u_errorName(err)]));

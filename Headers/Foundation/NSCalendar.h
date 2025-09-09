@@ -249,7 +249,7 @@ GS_EXPORT_CLASS
 {
 @private
   void *_NSCalendarInternal;
-  NSLock *_lock;
+  NSRecursiveLock *_lock;
 }
 
 /**
