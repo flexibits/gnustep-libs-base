@@ -114,6 +114,7 @@ typedef struct {
 - (void) _setLocaleIdentifier: (NSString*)identifier;
 @end
 
+static NSCalendar *currentCalendar = nil;
 static NSCalendar *autoupdatingCalendar = nil;
 static NSRecursiveLock *classLock = nil;
 
@@ -122,6 +123,42 @@ static NSRecursiveLock *classLock = nil;
 #define MILLI_TO_NANO 1000000
 
 @implementation NSCalendar (PrivateMethods)
+
++ (void) _refreshCurrentCalendarFromDefaultsDidChange (NSNotification*)n
+{
+    NSUserDefaults *defs;
+    NSString *locale;
+    NSString *calendar;
+    NSString *tz;
+
+    defs = [NSUserDefaults standardUserDefaults];
+    locale = [defs stringForKey:@"Locale"];
+    calendar = [defs stringForKey:@"Calendar"];
+    tz = [defs stringForKey:@"Local Time Zone"];
+
+    [classLock lock];
+
+    if (currentCalendar != nil)
+      {
+        BOOL needToRefreshCurrentCalendar;
+
+        [currentCalendar->_lock lock];
+
+        needToRefreshCurrentCalendar = [locale isEqual:currentCalendar->my->localeID] == NO
+            || [calendar isEqual:currentCalendar->my->identifier] == NO
+            || [tz isEqual:[currentCalendar->my->tz name]] == NO;
+
+        [currentCalendar->_lock unlock];
+
+        if (needToRefreshCurrentCalendar)
+          {
+            RELEASE(currentCalendar);
+            currentCalendar = nil;
+          }
+      }
+
+    [classLock unlock];
+}
 
 #if GS_USE_ICU == 1
 - (void *) _locked_openCalendarFor: (NSTimeZone *)timeZone
@@ -298,21 +335,36 @@ static NSRecursiveLock *classLock = nil;
 
 + (void) initialize
 {
-    if (self == [NSCalendar class]) {
+    if (self == [NSCalendar class])
+      {
         classLock = [NSRecursiveLock new];
-    }
+
+        [[NSNotificationCenter defaultCenter] addObserver:self
+                                                 selector:@selector(_refreshCurrentCalendarFromDefaultsDidChange:)
+                                                     name:NSUserDefaultsDidChangeNotification
+                                                   object:nil];
+      }
 }
 
 + (id) currentCalendar
 {
     NSCalendar *result;
-    NSString *identifier;
 
-    // This identifier may be nil
-    identifier = [[NSLocale currentLocale] objectForKey:NSLocaleCalendarIdentifier];
-    result = [[NSCalendar alloc] initWithCalendarIdentifier:identifier];
+    [classLock lock];
 
-    return AUTORELEASE(result);
+    if (currentCalendar == nil)
+      {
+        // This identifier may be nil
+        NSString *identifier = [[NSLocale currentLocale] objectForKey:NSLocaleCalendarIdentifier];
+
+        currentCalendar = [[NSCalendar alloc] initWithCalendarIdentifier:identifier];
+      }
+
+    result = currentCalendar;
+
+    [classLock unlock];
+
+    return result;
 }
 
 + (id) autoupdatingCurrentCalendar
