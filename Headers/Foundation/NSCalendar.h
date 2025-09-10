@@ -44,24 +44,24 @@ extern "C" {
 #endif
 
 #if OS_API_VERSION(MAC_OS_X_VERSION_10_6, GS_API_LATEST)
-GS_EXPORT NSString *const NSCalendarIdentifierGregorian;
-GS_EXPORT NSString *const NSCalendarIdentifierBuddhist;
-GS_EXPORT NSString *const NSCalendarIdentifierChinese;
-GS_EXPORT NSString *const NSCalendarIdentifierCoptic;
-GS_EXPORT NSString *const NSCalendarIdentifierEthiopicAmeteMihret;
-GS_EXPORT NSString *const NSCalendarIdentifierEthiopicAmeteAlem;
-GS_EXPORT NSString *const NSCalendarIdentifierHebrew;
-GS_EXPORT NSString *const NSCalendarIdentifierISO8601;
-GS_EXPORT NSString *const NSCalendarIdentifierIndian;
-GS_EXPORT NSString *const NSCalendarIdentifierIslamic;
-GS_EXPORT NSString *const NSCalendarIdentifierIslamicCivil;
-GS_EXPORT NSString *const NSCalendarIdentifierJapanese;
-GS_EXPORT NSString *const NSCalendarIdentifierPersian;
-GS_EXPORT NSString *const NSCalendarIdentifierRepublicOfChina;
+GS_EXPORT NSString * _Nonnull const NSCalendarIdentifierGregorian;
+GS_EXPORT NSString * _Nonnull const NSCalendarIdentifierBuddhist;
+GS_EXPORT NSString * _Nonnull const NSCalendarIdentifierChinese;
+GS_EXPORT NSString * _Nonnull const NSCalendarIdentifierCoptic;
+GS_EXPORT NSString * _Nonnull const NSCalendarIdentifierEthiopicAmeteMihret;
+GS_EXPORT NSString * _Nonnull const NSCalendarIdentifierEthiopicAmeteAlem;
+GS_EXPORT NSString * _Nonnull const NSCalendarIdentifierHebrew;
+GS_EXPORT NSString * _Nonnull const NSCalendarIdentifierISO8601;
+GS_EXPORT NSString * _Nonnull const NSCalendarIdentifierIndian;
+GS_EXPORT NSString * _Nonnull const NSCalendarIdentifierIslamic;
+GS_EXPORT NSString * _Nonnull const NSCalendarIdentifierIslamicCivil;
+GS_EXPORT NSString * _Nonnull const NSCalendarIdentifierJapanese;
+GS_EXPORT NSString * _Nonnull const NSCalendarIdentifierPersian;
+GS_EXPORT NSString * _Nonnull const NSCalendarIdentifierRepublicOfChina;
 #endif
 #if OS_API_VERSION(MAC_OS_X_VERSION_10_10, GS_API_LATEST)
-GS_EXPORT NSString *const NSCalendarIdentifierIslamicTabular;
-GS_EXPORT NSString *const NSCalendarIdentifierIslamicUmmAlQura;
+GS_EXPORT NSString * _Nonnull const NSCalendarIdentifierIslamicTabular;
+GS_EXPORT NSString * _Nonnull const NSCalendarIdentifierIslamicUmmAlQura;
 #endif
 
 // NSCalendarOptions enum
@@ -179,10 +179,10 @@ GS_EXPORT_CLASS
 #endif
 
 #if OS_API_VERSION(MAC_OS_X_VERSION_10_7, GS_API_LATEST)
-- (NSCalendar *) calendar;
-- (NSTimeZone *) timeZone;
-- (void) setCalendar: (NSCalendar *) cal;
-- (void) setTimeZone: (NSTimeZone *) tz;
+- (NSCalendar * _Nullable) calendar;
+- (NSTimeZone * _Nullable) timeZone;
+- (void) setCalendar: (NSCalendar * _Nullable) cal;
+- (void) setTimeZone: (NSTimeZone * _Nullable) tz;
 
 /**
  * <p>
@@ -194,7 +194,7 @@ GS_EXPORT_CLASS
  * calling this method.
  * </p>
  */
-- (NSDate *) date;
+- (NSDate * _Nullable) date;
 
 /** Returns the number of the week in this month. */
 - (NSInteger) weekOfMonth;
@@ -236,7 +236,7 @@ GS_EXPORT_CLASS
 
 #if OS_API_VERSION(MAC_OS_X_VERSION_10_9, GS_API_LATEST)
 - (BOOL) isValidDate;
-- (BOOL) isValidDateInCalendar: (NSCalendar *) calendar;
+- (BOOL) isValidDateInCalendar: (NSCalendar * _Nonnull) calendar;
 - (NSInteger) valueForComponent: (NSCalendarUnit) unit;
 - (void) setValue: (NSInteger) value
      forComponent: (NSCalendarUnit) unit;
@@ -255,28 +255,28 @@ GS_EXPORT_CLASS
 /**
  * Returns the current calendar.
  */
-+ (id) currentCalendar;
++ (id _Nonnull) currentCalendar;
 
 /**
  * Create a calendar with the given string as identifier.
  */
-+ (id) calendarWithIdentifier: (NSString *) string;
++ (id _Nonnull) calendarWithIdentifier: (NSString * _Nullable) string;
 
 /**
  * Instantiate a calendar with the given string as identifier.
  */
-- (id) initWithCalendarIdentifier: (NSString *) string;
+- (id _Nonnull) initWithCalendarIdentifier: (NSString * _Nullable) string;
 
 /**
  * Returns the calendar identifier for the receiver.
  */
-- (NSString *) calendarIdentifier;
+- (NSString * _Nullable) calendarIdentifier;
 
 /**
  * Returns the calendar units specified by unitFlags for the given date object.
  */
-- (NSDateComponents *) components: (NSUInteger) unitFlags
-                         fromDate: (NSDate *) date;
+- (NSDateComponents * _Nonnull) components: (NSUInteger) unitFlags
+                                  fromDate: (NSDate * _Nonnull) date;
 /**
  * Compute the different between the specified components in the two dates.
  * Values are summed up as long as now higher-granularity unit is specified.
@@ -288,119 +288,119 @@ GS_EXPORT_CLASS
  * Please note that the NSWrapCalendarComponents option that should affect the
  * calculations is not presently supported.
  */
-- (NSDateComponents *) components: (NSUInteger) unitFlags
-                         fromDate: (NSDate *) startingDate
-                           toDate: (NSDate *) resultDate
-                          options: (NSUInteger) opts;
+- (NSDateComponents * _Nonnull) components: (NSUInteger) unitFlags
+                                  fromDate: (NSDate * _Nonnull) startingDate
+                                    toDate: (NSDate * _Nonnull) resultDate
+                                   options: (NSUInteger) opts;
 
 /**
  * Returns a date object created by adding the NSDateComponents in comps to
  * to object date with the options specified by opts.
  */
-- (NSDate *) dateByAddingComponents: (NSDateComponents *) comps
-                             toDate: (NSDate *) date
-                            options: (NSUInteger) opts;
+- (NSDate * _Nonnull) dateByAddingComponents: (NSDateComponents * _Nonnull) comps
+                                      toDate: (NSDate * _Nonnull) date
+                                     options: (NSUInteger) opts;
 
 #if OS_API_VERSION(MAC_OS_X_VERSION_10_9, GS_API_LATEST)
 
 /**
  * 
  */
-- (NSDateComponents *)components:(NSCalendarUnit)unitFlags 
-              fromDateComponents:(NSDateComponents *)startingDateComp 
-                toDateComponents:(NSDateComponents *)resultDateComp  
-                         options:(NSCalendarOptions)options;
+- (NSDateComponents * _Nonnull)components:(NSCalendarUnit)unitFlags 
+                       fromDateComponents:(NSDateComponents * _Nonnull)startingDateComp 
+                         toDateComponents:(NSDateComponents * _Nonnull)resultDateComp  
+                                  options:(NSCalendarOptions)options;
 
 /**
  * 
  */
-- (NSDate *)dateByAddingUnit:(NSCalendarUnit)unit 
-                       value:(NSInteger)value 
-                      toDate:(NSDate *)date 
-                     options:(NSCalendarOptions)options;
+- (NSDate * _Nullable)dateByAddingUnit:(NSCalendarUnit)unit 
+                                 value:(NSInteger)value 
+                                toDate:(NSDate * _Nonnull)date 
+                               options:(NSCalendarOptions)options;
 
 /**
  * 
  */
-- (NSDate *)dateBySettingHour:(NSInteger)h 
-                       minute:(NSInteger)m 
-                       second:(NSInteger)s 
-                       ofDate:(NSDate *)date 
-                      options:(NSCalendarOptions)opts;
+- (NSDate * _Nullable)dateBySettingHour:(NSInteger)h 
+                                 minute:(NSInteger)m 
+                                 second:(NSInteger)s 
+                                 ofDate:(NSDate * _Nonnull)date 
+                                options:(NSCalendarOptions)opts;
 
 /**
  * 
  */
-- (NSDate *)dateWithEra:(NSInteger)eraValue 
-                   year:(NSInteger)yearValue 
-                  month:(NSInteger)monthValue 
-                    day:(NSInteger)dayValue 
-                   hour:(NSInteger)hourValue 
-                 minute:(NSInteger)minuteValue 
-                 second:(NSInteger)secondValue 
-             nanosecond:(NSInteger)nanosecondValue;
+- (NSDate * _Nullable)dateWithEra:(NSInteger)eraValue 
+                             year:(NSInteger)yearValue 
+                            month:(NSInteger)monthValue 
+                              day:(NSInteger)dayValue 
+                             hour:(NSInteger)hourValue 
+                           minute:(NSInteger)minuteValue 
+                           second:(NSInteger)secondValue 
+                       nanosecond:(NSInteger)nanosecondValue;
 
 /**
  * 
  */
-- (NSDate *)startOfDayForDate:(NSDate *)date;
+- (NSDate * _Nonnull)startOfDayForDate:(NSDate * _Nonnull)date;
 
 /**
  * 
  */
-- (BOOL)isDate:(NSDate *)date1 inSameDayAsDate:(NSDate *)date2;
+- (BOOL)isDate:(NSDate * _Nonnull)date1 inSameDayAsDate:(NSDate * _Nonnull)date2;
 
 /**
  * 
  */
-- (BOOL)isDate:(NSDate *)date1 equalToDate:(NSDate *)date2 toUnitGranularity:(NSCalendarUnit)unit;
+- (BOOL)isDate:(NSDate * _Nonnull)date1 equalToDate:(NSDate * _Nonnull)date2 toUnitGranularity:(NSCalendarUnit)unit;
 
 /**
  * 
  */
-- (NSComparisonResult)compareDate:(NSDate *)date1 toDate:(NSDate *)date2 toUnitGranularity:(NSCalendarUnit)unit;
+- (NSComparisonResult)compareDate:(NSDate * _Nonnull)date1 toDate:(NSDate * _Nonnull)date2 toUnitGranularity:(NSCalendarUnit)unit;
 
 /**
  * 
  */
-- (NSDate *)dateBySettingUnit:(NSCalendarUnit)unit value:(NSInteger)v ofDate:(NSDate *)date options:(NSCalendarOptions)opts;
+- (NSDate * _Nonnull)dateBySettingUnit:(NSCalendarUnit)unit value:(NSInteger)v ofDate:(NSDate * _Nonnull)date options:(NSCalendarOptions)opts;
 
 /**
  * 
  */
-- (BOOL)isDateInWeekend:(NSDate *)date;
+- (BOOL)isDateInWeekend:(NSDate * _Nonnull)date;
 
 /**
  * 
  */
-- (BOOL)nextWeekendStartDate:(out NSDate * _Nullable *)datep interval:(out NSTimeInterval *)tip options:(NSCalendarOptions)options afterDate:(NSDate *)date;
+- (BOOL)nextWeekendStartDate:(out NSDate * _Nullable * _Nullable)datep interval:(out NSTimeInterval * _Nullable)tip options:(NSCalendarOptions)options afterDate:(NSDate * _Nonnull)date;
 
 /**
  * 
  */
-- (BOOL)isDateInToday:(NSDate *)date;
+- (BOOL)isDateInToday:(NSDate * _Nonnull)date;
 
 /**
  * 
  */
-- (BOOL)isDateInTomorrow:(NSDate *)date;
+- (BOOL)isDateInTomorrow:(NSDate * _Nonnull)date;
 
 #endif
 
 /**
  * Creates an NSDate from NSDateComponents in comps.
  */
-- (NSDate *) dateFromComponents: (NSDateComponents *) comps;
+- (NSDate * _Nullable) dateFromComponents: (NSDateComponents * _Nonnull) comps;
 
 /**
  * Returns the locale of the receiver.
  */
-- (NSLocale *) locale;
+- (NSLocale * _Nullable) locale;
 
 /**
  * Sets the locale of the receiver.
  */
-- (void)setLocale: (NSLocale *) locale;
+- (void)setLocale: (NSLocale * _Nullable) locale;
 
 /**
  * Returns the integer value of the first weekday (0-6).
@@ -425,12 +425,12 @@ GS_EXPORT_CLASS
 /**
  * Returns the NSTimeZone associated with the receiver.
  */
-- (NSTimeZone *) timeZone;
+- (NSTimeZone * _Nonnull) timeZone;
 
 /**
  * Sets tz as the current NSTimeZone of the receiver.
  */
-- (void) setTimeZone: (NSTimeZone *) tz;
+- (void) setTimeZone: (NSTimeZone * _Nonnull) tz;
 
 /**
  * Returns the maximum range of unit.
@@ -448,63 +448,63 @@ GS_EXPORT_CLASS
  */
 - (NSUInteger) ordinalityOfUnit: (NSCalendarUnit) smaller
                          inUnit: (NSCalendarUnit) larger
-                        forDate: (NSDate *) date;
+                        forDate: (NSDate * _Nonnull) date;
 
 /**
  * Returns the range of unit smaller in larger in date.
  */
 - (NSRange) rangeOfUnit: (NSCalendarUnit) smaller
                  inUnit: (NSCalendarUnit) larger
-                forDate: (NSDate *) date;
+                forDate: (NSDate * _Nonnull) date;
 
 #if OS_API_VERSION(MAC_OS_X_VERSION_10_5, GS_API_LATEST)
 /**
  * A calendar that tracks changes to the user's calendar.
  */
-+ (id) autoupdatingCurrentCalendar;
++ (id _Nonnull) autoupdatingCurrentCalendar;
 
 /**
  * Returns by referene the started time and duration of a given unit containing the given date.
  */ 
 - (BOOL) rangeOfUnit: (NSCalendarUnit) unit
-           startDate: (NSDate **) datep
-            interval: (NSTimeInterval *)tip
-             forDate: (NSDate *)date;
+           startDate: (NSDate * _Nullable * _Nullable) datep
+            interval: (NSTimeInterval * _Nullable)tip
+             forDate: (NSDate * _Nonnull)date;
 #endif
 
 #if OS_API_VERSION(MAC_OS_X_VERSION_10_9, GS_API_LATEST)
 /**
  * Returns by reference the era, year, month, and day from the given date.
  */
-- (void) getEra: (NSInteger *)eraValuePointer
-           year: (NSInteger *)yearValuePointer
-          month: (NSInteger *)monthValuePointer
-            day: (NSInteger *)dayValuePointer
-       fromDate: (NSDate *)date;
+- (void) getEra: (NSInteger * _Nullable)eraValuePointer
+           year: (NSInteger * _Nullable)yearValuePointer
+          month: (NSInteger * _Nullable)monthValuePointer
+            day: (NSInteger * _Nullable)dayValuePointer
+       fromDate: (NSDate * _Nonnull)date;
 
 /**
  * Returns by reference the hour, minute, second, and nanosecond from the given date.
  */
-- (void) getHour: (NSInteger *)hourValuePointer
-          minute: (NSInteger *)minuteValuePointer
-          second: (NSInteger *)secondValuePointer
-      nanosecond: (NSInteger *)nanosecondValuePointer
-        fromDate: (NSDate *)date;
+- (void) getHour: (NSInteger * _Nullable)hourValuePointer
+          minute: (NSInteger * _Nullable)minuteValuePointer
+          second: (NSInteger * _Nullable)secondValuePointer
+      nanosecond: (NSInteger * _Nullable)nanosecondValuePointer
+        fromDate: (NSDate * _Nonnull)date;
 
 /**
  * Returns by reference the era, year, week of year, and weekday from the given date.
  */
-- (void) getEra: (NSInteger *)eraValuePointer 
-yearForWeekOfYear: (NSInteger *)yearValuePointer 
-     weekOfYear: (NSInteger *)weekValuePointer 
-        weekday: (NSInteger *)weekdayValuePointer 
-       fromDate: (NSDate *)date;
+- (void)   getEra: (NSInteger * _Nullable)eraValuePointer 
+yearForWeekOfYear: (NSInteger * _Nullable)yearValuePointer 
+       weekOfYear: (NSInteger * _Nullable)weekValuePointer 
+          weekday: (NSInteger * _Nullable)weekdayValuePointer 
+         fromDate: (NSDate * _Nonnull)date;
 
 /**
  * Returns the integer value of the specified unit from the given date.
  */
 - (NSInteger) component: (NSCalendarUnit)unit 
-               fromDate: (NSDate *)date;
+               fromDate: (NSDate * _Nonnull)date;
 #endif
 
 @end
