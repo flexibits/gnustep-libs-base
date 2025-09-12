@@ -37,12 +37,13 @@
 }
 
 - (id) initWithType: (RunLoopEventType)aType
-	   receiver: (id)anObj
-	       data: (void*)item
+           receiver: (id)anObj
+               data: (void*)item
 {
   _invalidated = NO;
   receiver = anObj;
   data = item;
+
   switch (aType)
     {
 #if	defined(_WIN32)
@@ -56,9 +57,8 @@
       case ET_RPORT: 	type = aType;	break;
       case ET_TRIGGER: 	type = aType;	break;
       default: 
-	DESTROY(self);
-	[NSException raise: NSInvalidArgumentException
-		    format: @"NSRunLoop - unknown event type"];
+        DESTROY(self);
+        [NSException raise: NSInvalidArgumentException format: @"NSRunLoop - unknown event type"];
     }
 
   if ([anObj respondsToSelector: @selector(runLoopShouldBlock:)])
@@ -69,9 +69,9 @@
   if (![anObj respondsToSelector: @selector(receivedEvent:type:extra:forMode:)])
     {
       DESTROY(self);
-      [NSException raise: NSInvalidArgumentException
-		  format: @"RunLoop listener has no event handling method"];
+      [NSException raise: NSInvalidArgumentException format: @"RunLoop listener has no event handling method"];
     }
+
   return self;
 }
 
@@ -87,6 +87,7 @@
       *trigger = YES;
       return NO;	// By default triggers may fire immediately
     }
+
   *trigger = YES;
   return YES;		// By default we must wait for input sources
 }
