@@ -1740,18 +1740,8 @@ static NSUInteger	urlAlign;
         {
           char		buf[len];
           char		*ptr;
-          char		*tmp;
 
           ptr = [self _path: buf withEscapes: withEscapes];
-
-          /* Remove any trailing '/' from the path for MacOS-X compatibility.
-           */
-          tmp = ptr + strlen(ptr) - 1;
-          if (tmp > ptr && *tmp == '/')
-            {
-              *tmp = '\0';
-            }
-
           path = [NSString stringWithUTF8String: ptr];
         }
       else if (YES == myData->emptyPath)
