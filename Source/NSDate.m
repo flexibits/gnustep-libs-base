@@ -953,19 +953,37 @@ otherTime(NSDate* other)
 
 - (NSComparisonResult) compare: (NSDate*)otherDate
 {
-  if (otherDate == self)
+  NSComparisonResult result;
+
+  if (otherDate == nil)
     {
-      return NSOrderedSame;
+      // UB, but this matches Apple's implementation
+      result = NSOrderedDescending;
     }
-  if (otherTime(self) > otherTime(otherDate))
+  else if (otherDate == self)
     {
-      return NSOrderedDescending;
+      result = NSOrderedSame;
     }
-  if (otherTime(self) < otherTime(otherDate))
+  else
     {
-      return NSOrderedAscending;
+      NSTimeInterval t1 = otherTime(self);
+      NSTimeInterval t2 = otherTime(otherDate);
+
+      if (t1 > t2)
+        {
+          result = NSOrderedDescending;
+        }
+      else if (t1 < t2)
+        {
+          result = NSOrderedAscending;
+        }
+      else
+        {
+          result = NSOrderedSame;
+        }
     }
-  return NSOrderedSame;
+
+  return result;
 }
 
 - (id) copyWithZone: (NSZone*)zone
