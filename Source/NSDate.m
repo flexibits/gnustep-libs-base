@@ -1262,24 +1262,36 @@ otherTime(NSDate* other)
 
 - (NSComparisonResult) compare: (NSDate*)otherDate
 {
-  if (otherDate == self)
-    {
-      return NSOrderedSame;
-    }
+  NSComparisonResult result;
+
   if (otherDate == nil)
     {
-      [NSException raise: NSInvalidArgumentException
-		  format: @"nil argument for compare:"];
+      // UB, but this matches Apple's implementation
+      result = NSOrderedDescending;
     }
-  if (_seconds_since_ref > otherTime(otherDate))
+  else if (otherDate == self)
     {
-      return NSOrderedDescending;
+      result = NSOrderedSame;
     }
-  if (_seconds_since_ref < otherTime(otherDate))
+  else
     {
-      return NSOrderedAscending;
+      NSTimeInterval otherDateTime = otherTime(otherDate);
+
+      if (_seconds_since_ref > otherDateTime)
+        {
+          result = NSOrderedDescending;
+        }
+      else if (_seconds_since_ref < otherDateTime)
+        {
+          result = NSOrderedAscending;
+        }
+      else
+        {
+          result = NSOrderedSame;
+        }
     }
-  return NSOrderedSame;
+
+  return result;
 }
 
 - (NSDate*) earlierDate: (NSDate*)otherDate
