@@ -1717,17 +1717,23 @@ NSZoneCalloc (NSZone *zone, NSUInteger elems, NSUInteger bytes)
 {
   void *mem;
 
-  if (0 == zone || NSDefaultMallocZone() == zone)
+  if (0 == zone)
     {
-      mem = calloc(elems, bytes);
-      if (mem != NULL)
-        {
-          return mem;
-        }
-      [NSException raise: NSMallocException
-                  format: @"Default zone has run out of memory"];
+      zone = NSDefaultMallocZone();
     }
-  return memset(NSZoneMalloc(zone, elems*bytes), 0, elems*bytes);
+
+  mem = NSZoneMalloc(zone, elems*bytes);
+
+  if (NSDefaultMallocZone() == zone)
+    {
+      if (mem == NULL)
+        {
+          [NSException raise: NSMallocException
+                      format: @"Default zone has run out of memory"];
+        }
+    }
+
+  return memset(mem, 0, elems*bytes);
 }
 
 GS_DECLARE void*
