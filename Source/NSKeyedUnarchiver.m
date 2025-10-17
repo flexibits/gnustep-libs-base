@@ -24,7 +24,7 @@
    */
 
 #import "common.h"
-#define	EXPOSE_NSKeyedUnarchiver_IVARS	1
+#define EXPOSE_NSKeyedUnarchiver_IVARS 1
 #import "Foundation/NSAutoreleasePool.h"
 #import "Foundation/NSData.h"
 #import "Foundation/NSDictionary.h"
@@ -38,32 +38,33 @@
 /*
  *      Setup for inline operation of arrays.
  */
-#define GSI_ARRAY_RETAIN(A, X)	[(X).obj retain]
-#define GSI_ARRAY_RELEASE(A, X)	[(X).obj release]
+#define GSI_ARRAY_RETAIN(A, X) [(X).obj retain]
+#define GSI_ARRAY_RELEASE(A, X) [(X).obj release]
 #define GSI_ARRAY_TYPES GSUNION_OBJ
-
 
 #include "GNUstepBase/GSIArray.h"
 
-#define	_IN_NSKEYEDUNARCHIVER_M	1
+#define _IN_NSKEYEDUNARCHIVER_M 1
 #import "Foundation/NSKeyedArchiver.h"
-#undef	_IN_NSKEYEDUNARCHIVER_M
+#undef  _IN_NSKEYEDUNARCHIVER_M
 
 @interface NilMarker: NSObject
+
 @end
+
 @implementation NilMarker
+
 @end
 
-static NSMapTable	*globalClassMap = 0;
+static NSMapTable *globalClassMap = 0;
 
-#define	GETVAL \
-  id		o; \
+#define GETVAL \
+  id o; \
   \
   if ([aKey isKindOfClass: [NSString class]] == NO) \
     { \
       [NSException raise: NSInvalidArgumentException \
-		  format: @"%@, bad key '%@' in %@", \
-	NSStringFromClass([self class]), aKey, NSStringFromSelector(_cmd)]; \
+                  format: @"%@, bad key '%@' in %@", NSStringFromClass([self class]), aKey, NSStringFromSelector(_cmd)]; \
     } \
   if ([aKey hasPrefix: @"$"] == YES) \
     { \
@@ -74,57 +75,60 @@ static NSMapTable	*globalClassMap = 0;
 
 
 @interface NSKeyedUnarchiver (Private)
+
 - (id) _decodeObject: (unsigned)index;
+
 @end
 
 @implementation NSKeyedUnarchiver (Internal)
+
 /**
  * Internal method used to decode an array relatively efficiently.<br />
  * Some MacOS-X library classes seem to use this.
  */
 - (id) _decodeArrayOfObjectsForKey: (NSString*)aKey
 {
-  id	o = [_keyMap objectForKey: aKey];
+  id o = [_keyMap objectForKey: aKey];
 
   if (o != nil)
     {
       if ([o isKindOfClass: [NSArray class]] == YES)
-	{
-	  unsigned		c = [o count];
-	  NSMutableArray	*m = [NSMutableArray arrayWithCapacity: c];
-	  unsigned		i;
+        {
+          unsigned c = [o count];
+          NSMutableArray *m = [NSMutableArray arrayWithCapacity: c];
+          unsigned i;
+        
+          for (i = 0; i < c; i++)
+            {
+              unsigned ref;
+              id val;
+        
+              ref = [[[o objectAtIndex: i] objectForKey: @"CF$UID"] unsignedIntValue];
+              val = [self _decodeObject: ref];
 
-	  for (i = 0; i < c; i++)
-	    {
-	      unsigned	ref;
-	      id	val;
+              if (val == nil)
+                {
+                  [NSException raise: NSInvalidUnarchiveOperationException
+                              format: @"[%@ +%@]: decoded nil in array", NSStringFromClass([self class]), NSStringFromSelector(_cmd)];
+                }
 
-	      ref = [[[o objectAtIndex: i] objectForKey: @"CF$UID"]
-		unsignedIntValue];
-	      val = [self _decodeObject: ref];
-	      if (val == nil)
-		{
-		  [NSException raise:
-		    NSInvalidUnarchiveOperationException
-		    format: @"[%@ +%@]: decoded nil in array",
-		    NSStringFromClass([self class]),
-		    NSStringFromSelector(_cmd)];
-		}
-	      [m addObject: val];
-	    }
-	  o = m;
-	}
+              [m addObject: val];
+            }
+
+          o = m;
+        }
       else
-	{
-	  o = nil;
-	}
+        {
+          o = nil;
+        }
     }
+
   return o;
 }
 
 - (id) _decodePropertyListForKey: (NSString*)aKey
 {
-  id	o = [_keyMap objectForKey: aKey];
+  id o = [_keyMap objectForKey: aKey];
 
   return o;
 }
@@ -138,9 +142,11 @@ static NSMapTable	*globalClassMap = 0;
 {
   unsigned int i = 0;
   unsigned int count = GSIArrayCount(_objMap);
+
   for (i = 0; i < count; i++)
     {
       id obj = GSIArrayItemAtIndex(_objMap, i).obj;
+
       if (obj == oldObj)
         break;
     }
@@ -153,25 +159,29 @@ static NSMapTable	*globalClassMap = 0;
 
   return NO;
 }
+
 @end
 
 @implementation NSKeyedUnarchiver (Private)
+
 - (id) _decodeObject: (unsigned)index
 {
-  id	o;
-  id	obj;
+  id o;
+  id obj;
 
   /*
    * If the referenced object is already in _objMap
    * we simply return it (the object at index 0 maps to nil)
    */
   obj = GSIArrayItemAtIndex(_objMap, index).obj;
+
   if (obj != nil)
     {
       if (obj == GSIArrayItemAtIndex(_objMap, 0).obj)
-	{
-	  return nil;
-	}
+      {
+        return nil;
+      }
+
       return obj;
     }
 
@@ -180,14 +190,15 @@ static NSMapTable	*globalClassMap = 0;
    * in _objects
    */
   obj = [_objects objectAtIndex: index];
+
   if ([obj isKindOfClass: [NSDictionary class]] == YES)
     {
-      NSString		*classname;
-      NSArray		*classes;
-      Class		c;
-      id		r;
-      NSDictionary	*savedKeyMap;
-      unsigned		savedCursor;
+      NSString *classname;
+      NSArray *classes;
+      Class c;
+      id r;
+      NSDictionary *savedKeyMap;
+      unsigned savedCursor;
 
       /*
        * Fetch the class information from the table.
@@ -198,71 +209,75 @@ static NSMapTable	*globalClassMap = 0;
       classname = [o objectForKey: @"$classname"];
       classes = [o objectForKey: @"$classes"];
       c = [self classForClassName: classname];
+
       if (c == nil)
-	{
-	  c = [[self class] classForClassName: classname];
-	  if (c == nil)
-	    {
-	      c = NSClassFromString(classname);
-	      if (c == nil)
-		{
-		  c = [_delegate unarchiver: self
-		    cannotDecodeObjectOfClassName: classname
-		    originalClasses: classes];
-		  if (c == nil)
-		    {
-		      [NSException raise:
-			NSInvalidUnarchiveOperationException
-			format: @"[%@ +%@]: no class for name '%@'",
-			NSStringFromClass([self class]),
-			NSStringFromSelector(_cmd),
-			classname];
-		    }
-		}
-	    }
-	}
+        {
+          c = [[self class] classForClassName: classname];
+
+          if (c == nil)
+            {
+              c = NSClassFromString(classname);
+
+              if (c == nil)
+                {
+                  c = [_delegate unarchiver: self cannotDecodeObjectOfClassName: classname originalClasses: classes];
+
+                  if (c == nil)
+                    {
+                      [NSException raise: NSInvalidUnarchiveOperationException
+                                  format: @"[%@ +%@]: no class for name '%@'", NSStringFromClass([self class]), NSStringFromSelector(_cmd), classname];
+                    }
+                }
+            }
+        }
 
       savedCursor = _cursor;
       savedKeyMap = _keyMap;
 
-      _cursor = 0;			// Starting object decode
-      _keyMap = obj;			// Dictionary describing object
+      _cursor = 0; // Starting object decode
+      _keyMap = obj; // Dictionary describing object
 
-      o = [c allocWithZone: _zone];	// Create instance.
+      o = [c allocWithZone: _zone]; // Create instance.
+
       // Store object in map so that decoding of it can be self referential.
       GSIArraySetItemAtIndex(_objMap, (GSIArrayItem)o, index);
       r = [o initWithCoder: self];
+
       if (r != o)
-	{
-	  [_delegate unarchiver: self
-	      willReplaceObject: o
-		     withObject: r];
-	  o = r;
-	  GSIArraySetItemAtIndex(_objMap, (GSIArrayItem)o, index);
-	}
+        {
+          [_delegate unarchiver: self
+              willReplaceObject: o
+                 withObject: r];
+          o = r;
+          GSIArraySetItemAtIndex(_objMap, (GSIArrayItem)o, index);
+        }
+
       r = [o awakeAfterUsingCoder: self];
+
       if (r != o)
-	{
-	  [_delegate unarchiver: self
-	      willReplaceObject: o
-		     withObject: r];
-	  o = r;
-	  GSIArraySetItemAtIndex(_objMap, (GSIArrayItem)o, index);
-	}
+        {
+          [_delegate unarchiver: self
+              willReplaceObject: o
+                     withObject: r];
+          o = r;
+          GSIArraySetItemAtIndex(_objMap, (GSIArrayItem)o, index);
+        }
 
       if (_delegate != nil)
-	{
-	  r = [_delegate unarchiver: self didDecodeObject: o];
-	  if (r != o)
-	    {
-	      [_delegate unarchiver: self
-		  willReplaceObject: o
-			 withObject: r];
-	      o = r;
-	      GSIArraySetItemAtIndex(_objMap, (GSIArrayItem)o, index);
-	    }
-	}
-      RELEASE(o);	// Retained in array
+        {
+          r = [_delegate unarchiver: self didDecodeObject: o];
+
+          if (r != o)
+            {
+              [_delegate unarchiver: self
+                  willReplaceObject: o
+                         withObject: r];
+              o = r;
+              GSIArraySetItemAtIndex(_objMap, (GSIArrayItem)o, index);
+            }
+        }
+
+      RELEASE(o);   // Retained in array
       obj = o;
       _keyMap = savedKeyMap;
       _cursor = savedCursor;
@@ -283,6 +298,7 @@ static NSMapTable	*globalClassMap = 0;
 
   return obj;
 }
+
 @end
 
 
@@ -299,9 +315,7 @@ static NSMapTable	*globalClassMap = 0;
 
   if (globalClassMap == 0)
     {
-      globalClassMap =
-	NSCreateMapTable(NSObjectMapKeyCallBacks,
-			  NSNonOwnedPointerMapValueCallBacks, 0);
+      globalClassMap = NSCreateMapTable(NSObjectMapKeyCallBacks, NSNonOwnedPointerMapValueCallBacks, 0);
       [[NSObject leakAt: &globalClassMap] release];
     }
 }
@@ -324,8 +338,8 @@ static NSMapTable	*globalClassMap = 0;
  */
 + (id) unarchiveObjectWithData: (NSData*)data
 {
-  NSKeyedUnarchiver	*u = nil;
-  id			o = nil;
+  NSKeyedUnarchiver *u = nil;
+  id o = nil;
 
   NS_DURING
     {
@@ -341,16 +355,18 @@ static NSMapTable	*globalClassMap = 0;
       [localException raise];
     }
   NS_ENDHANDLER
+
   return AUTORELEASE(o);
 }
 
 + (id) unarchiveObjectWithFile: (NSString*)aPath
 {
-  NSData	*d;
-  id		o;
+  NSData *d;
+  id o;
 
   d = [NSData dataWithContentsOfFile: aPath];
   o = [self unarchiveObjectWithData: d];
+
   return o;
 }
 
@@ -432,266 +448,274 @@ static NSMapTable	*globalClassMap = 0;
 - (BOOL) containsValueForKey: (NSString*)aKey
 {
   GETVAL
+
   if (o != nil)
     {
       return YES;
     }
+
   return NO;
 }
 
 - (void) dealloc
 {
   DESTROY(_archive);
+
   if (_clsMap != 0)
     {
       NSFreeMapTable(_clsMap);
       _clsMap = 0;
     }
+
   if (_objMap != 0)
     {
-      NSZone    *z = _objMap->zone;
+      NSZone *z = _objMap->zone;
 
       GSIArrayEmpty(_objMap);
       NSZoneFree(z, (void*)_objMap);
     }
+
   [super dealloc];
 }
 
 - (void) decodeArrayOfObjCType: (const char*)type
-			 count: (NSUInteger)expected
-			    at: (void*)buf
+                         count: (NSUInteger)expected
+                            at: (void*)buf
 {
-  id	 	o = [self decodeObject];
-  NSUInteger	size;
+  id o = [self decodeObject];
+  NSUInteger size;
 
   if ([o isKindOfClass: [_NSKeyedCoderOldStyleArray class]] == NO)
     {
       [NSException raise: NSInvalidUnarchiveOperationException
-		  format: @"[%@ +%@]: value is '%@'",
-	NSStringFromClass([self class]), NSStringFromSelector(_cmd), o];
+                  format: @"[%@ +%@]: value is '%@'", NSStringFromClass([self class]), NSStringFromSelector(_cmd), o];
     }
+
   if (strcmp([o type], type) != 0)
     {
       [NSException raise: NSInvalidUnarchiveOperationException
-		  format: @"[%@ +%@]: type mismatch for %@",
-	NSStringFromClass([self class]), NSStringFromSelector(_cmd), o];
+                  format: @"[%@ +%@]: type mismatch for %@", NSStringFromClass([self class]), NSStringFromSelector(_cmd), o];
     }
+
   if ([o count] != expected)
     {
       [NSException raise: NSInvalidUnarchiveOperationException
-		  format: @"[%@ +%@]: count mismatch for %@",
-	NSStringFromClass([self class]), NSStringFromSelector(_cmd), o];
+                  format: @"[%@ +%@]: count mismatch for %@", NSStringFromClass([self class]), NSStringFromSelector(_cmd), o];
     }
+
   NSGetSizeAndAlignment(type, &size, NULL);
   memcpy(buf, [o bytes], expected * size);
 }
 
 - (BOOL) decodeBoolForKey: (NSString*)aKey
 {
-  NSString	*oldKey = aKey;
+  NSString  *oldKey = aKey;
+
   GETVAL
+
   if (o != nil)
     {
       if ([o isKindOfClass: [NSNumber class]] == YES)
-	{
-	  return [o boolValue];
-	}
+        {
+          return [o boolValue];
+        }
       else
-	{
-	  [NSException raise: NSInvalidUnarchiveOperationException
-		      format: @"[%@ +%@]: value for key(%@) is '%@'",
-	    NSStringFromClass([self class]), NSStringFromSelector(_cmd),
-	    oldKey, o];
-	}
+        {
+          [NSException raise: NSInvalidUnarchiveOperationException
+                      format: @"[%@ +%@]: value for key(%@) is '%@'", NSStringFromClass([self class]), NSStringFromSelector(_cmd), oldKey, o];
+        }
     }
+
   return NO;
 }
 
 - (const uint8_t*) decodeBytesForKey: (NSString*)aKey
-		      returnedLength: (NSUInteger*)length
+              returnedLength: (NSUInteger*)length
 {
-  NSString	*oldKey = aKey;
+  NSString  *oldKey = aKey;
+
   GETVAL
+
   if (o != nil)
     {
       if ([o isKindOfClass: [NSData class]] == YES)
-	{
-	  *length = [o length];
-	  return [o bytes];
-	}
+        {
+          *length = [o length];
+          return [o bytes];
+        }
       else
-	{
-	  [NSException raise: NSInvalidUnarchiveOperationException
-		      format: @"[%@ +%@]: value for key(%@) is '%@'",
-	    NSStringFromClass([self class]), NSStringFromSelector(_cmd),
-	    oldKey, o];
-	}
+        {
+          [NSException raise: NSInvalidUnarchiveOperationException
+                      format: @"[%@ +%@]: value for key(%@) is '%@'", NSStringFromClass([self class]), NSStringFromSelector(_cmd), oldKey, o];
+        }
     }
+
   *length = 0;
   return 0;
 }
 
 - (double) decodeDoubleForKey: (NSString*)aKey
 {
-  NSString	*oldKey = aKey;
+  NSString  *oldKey = aKey;
   GETVAL
   if (o != nil)
     {
       if ([o isKindOfClass: [NSNumber class]] == YES)
-	{
-	  return [o doubleValue];
-	}
+        {
+          return [o doubleValue];
+        }
       else
-	{
-	  [NSException raise: NSInvalidUnarchiveOperationException
-		      format: @"[%@ +%@]: value for key(%@) is '%@'",
-	    NSStringFromClass([self class]), NSStringFromSelector(_cmd),
-	    oldKey, o];
-	}
+        {
+          [NSException raise: NSInvalidUnarchiveOperationException
+                      format: @"[%@ +%@]: value for key(%@) is '%@'", NSStringFromClass([self class]), NSStringFromSelector(_cmd), oldKey, o];
+        }
     }
+
   return 0.0;
 }
 
 - (float) decodeFloatForKey: (NSString*)aKey
 {
-  NSString	*oldKey = aKey;
+  NSString  *oldKey = aKey;
+
   GETVAL
+
   if (o != nil)
     {
       if ([o isKindOfClass: [NSNumber class]] == YES)
-	{
-	  return [o floatValue];
-	}
+        {
+          return [o floatValue];
+        }
       else
-	{
-	  [NSException raise: NSInvalidUnarchiveOperationException
-		      format: @"[%@ +%@]: value for key(%@) is '%@'",
-	    NSStringFromClass([self class]), NSStringFromSelector(_cmd),
-	    oldKey, o];
-	}
+        {
+          [NSException raise: NSInvalidUnarchiveOperationException
+                      format: @"[%@ +%@]: value for key(%@) is '%@'", NSStringFromClass([self class]), NSStringFromSelector(_cmd), oldKey, o];
+        }
     }
+
   return 0.0;
 }
 
 - (int) decodeIntForKey: (NSString*)aKey
 {
-  int64_t	i = [self decodeInt64ForKey: aKey];
+  int64_t i = [self decodeInt64ForKey: aKey];
 
-#if	(INT_MAX < INT64_MAX)
+#if (INT_MAX < INT64_MAX)
   if (i > INT_MAX || i < INT_MIN)
     {
       [NSException raise: NSRangeException
-	format: @"[%@ +%@]: value %"PRIu64" for key(%@) is out of range",
-        NSStringFromClass([self class]), NSStringFromSelector(_cmd), i, aKey];
+                  format: @"[%@ +%@]: value %"PRIu64" for key(%@) is out of range", NSStringFromClass([self class]), NSStringFromSelector(_cmd), i, aKey];
     }
 #endif
+
   return (int)i;
 }
 
 - (NSInteger) decodeIntegerForKey: (NSString*)aKey
 {
-  int64_t	i = [self decodeInt64ForKey: aKey];
+  int64_t i = [self decodeInt64ForKey: aKey];
 
-/* Older Solaris systems define INTPTR_MAX incorrectly ... so we use the
- * void pointer size we determined at configure time to decide whether
- * we need to check for overflow.
- */
-#if	(GS_SIZEOF_VOIDP < 8)
+#if (GS_SIZEOF_VOIDP < 8)
+  /* Older Solaris systems define INTPTR_MAX incorrectly ... so we use the
+   * void pointer size we determined at configure time to decide whether
+   * we need to check for overflow.
+   */
   if (i > INT32_MAX || i < INT32_MIN)
     {
       [NSException raise: NSRangeException
-	          format: @"[%@ +%@]: value for key(%@) is out of range",
-	NSStringFromClass([self class]), NSStringFromSelector(_cmd), aKey];
+                  format: @"[%@ +%@]: value for key(%@) is out of range", NSStringFromClass([self class]), NSStringFromSelector(_cmd), aKey];
     }
 #endif
+
   return (NSInteger)i;
 }
 
 - (int32_t) decodeInt32ForKey: (NSString*)aKey
 {
-  int64_t	i = [self decodeInt64ForKey: aKey];
+  int64_t i = [self decodeInt64ForKey: aKey];
 
   if (i > INT32_MAX || i < INT32_MIN)
     {
       [NSException raise: NSRangeException
-	format: @"[%@ +%@]: value %"PRIu64" for key(%@) is out of range",
-	NSStringFromClass([self class]), NSStringFromSelector(_cmd), i, aKey];
+                  format: @"[%@ +%@]: value %"PRIu64" for key(%@) is out of range", NSStringFromClass([self class]), NSStringFromSelector(_cmd), i, aKey];
     }
+
   return (int32_t)i;
 }
 
 - (int64_t) decodeInt64ForKey: (NSString*)aKey
 {
-  NSString	*oldKey = aKey;
+  NSString *oldKey = aKey;
+
   GETVAL
+
   if (o != nil)
     {
       if ([o isKindOfClass: [NSNumber class]] == YES)
-	{
-	  long long	l = [o longLongValue];
-
-	  return l;
-	}
+        {
+          long long l = [o longLongValue];
+    
+          return l;
+        }
       else
-	{
-	  [NSException raise: NSInvalidUnarchiveOperationException
-		      format: @"[%@ +%@]: value for key(%@) is '%@'",
-	    NSStringFromClass([self class]), NSStringFromSelector(_cmd),
-	    oldKey, o];
-	}
+        {
+          [NSException raise: NSInvalidUnarchiveOperationException
+                      format: @"[%@ +%@]: value for key(%@) is '%@'", NSStringFromClass([self class]), NSStringFromSelector(_cmd), oldKey, o];
+        }
     }
+
   return 0;
 }
 
 - (id) decodeObject
 {
-  NSString	*key = [NSString stringWithFormat: @"$%d", _cursor++];
-  NSNumber	*pos;
-  id		o = [_keyMap objectForKey: key];
+  NSString *key = [NSString stringWithFormat: @"$%d", _cursor++];
+  NSNumber *pos;
+  id o = [_keyMap objectForKey: key];
 
   if (o != nil)
     {
       if ([o isKindOfClass: [NSDictionary class]] == YES
-	&& (pos = [o objectForKey: @"CF$UID"]) != nil)
-	{
-	  int	index = [pos intValue];
-
-	  return [self _decodeObject: index];
-	}
+        && (pos = [o objectForKey: @"CF$UID"]) != nil)
+        {
+          int index = [pos intValue];
+        
+          return [self _decodeObject: index];
+        }
       else
-	{
-	  [NSException raise: NSInvalidUnarchiveOperationException
-		      format: @"[%@ +%@]: value for key(%@) is '%@'",
-	    NSStringFromClass([self class]), NSStringFromSelector(_cmd),
-	    key, o];
-	}
+        {
+          [NSException raise: NSInvalidUnarchiveOperationException
+                      format: @"[%@ +%@]: value for key(%@) is '%@'", NSStringFromClass([self class]), NSStringFromSelector(_cmd), key, o];
+        }
     }
+
   return nil;
 }
 
 - (id) decodeObjectForKey: (NSString*)aKey
 {
-  NSString	*oldKey = aKey;
+  NSString *oldKey = aKey;
+
   GETVAL
+
   if (o != nil)
     {
-      NSNumber	*pos;
+      NSNumber  *pos;
 
       if ([o isKindOfClass: [NSDictionary class]] == YES
-	&& (pos = [o objectForKey: @"CF$UID"]) != nil)
-	{
-	  int	index = [pos intValue];
-
-	  return [self _decodeObject: index];
-	}
+        && (pos = [o objectForKey: @"CF$UID"]) != nil)
+        {
+          int   index = [pos intValue];
+        
+          return [self _decodeObject: index];
+        }
       else
-	{
-	  [NSException raise: NSInvalidUnarchiveOperationException
-		      format: @"[%@ +%@]: value for key(%@) is '%@'",
-	    NSStringFromClass([self class]), NSStringFromSelector(_cmd),
-	    oldKey, o];
-	}
+        {
+          [NSException raise: NSInvalidUnarchiveOperationException
+                      format: @"[%@ +%@]: value for key(%@) is '%@'", NSStringFromClass([self class]), NSStringFromSelector(_cmd), oldKey, o];
+        }
     }
+
   return nil;
 }
 
@@ -702,55 +726,60 @@ static NSMapTable	*globalClassMap = 0;
 
 - (NSPoint) decodePoint
 {
-  NSPoint	p;
+  NSPoint p;
 
   [self decodeValueOfObjCType: @encode(CGFloat) at: &p.x];
   [self decodeValueOfObjCType: @encode(CGFloat) at: &p.y];
+
   return p;
 }
 
 - (NSRect) decodeRect
 {
-  NSRect	r;
+  NSRect r;
 
   [self decodeValueOfObjCType: @encode(CGFloat) at: &r.origin.x];
   [self decodeValueOfObjCType: @encode(CGFloat) at: &r.origin.y];
   [self decodeValueOfObjCType: @encode(CGFloat) at: &r.size.width];
   [self decodeValueOfObjCType: @encode(CGFloat) at: &r.size.height];
+
   return r;
 }
 
 - (NSSize) decodeSize
 {
-  NSSize	s;
+  NSSize s;
 
   [self decodeValueOfObjCType: @encode(CGFloat) at: &s.width];
   [self decodeValueOfObjCType: @encode(CGFloat) at: &s.height];
+
   return s;
 }
 
 - (void) decodeValueOfObjCType: (const char*)type
-			    at: (void*)address
+                            at: (void*)address
 {
-  NSString	*aKey;
-  id		o;
+  NSString *aKey;
+  id o;
 
   if (*type == _C_ID || *type == _C_CLASS
     || *type == _C_SEL || *type == _C_CHARPTR)
     {
       o = [self decodeObject];
+
       if (*type == _C_ID || *type == _C_CLASS)
-	{
-	  *(id*)address = RETAIN(o);
-	}
+        {
+          *(id*)address = RETAIN(o);
+        }
       else if (*type == _C_SEL)
-	{
-	  *(SEL*)address = NSSelectorFromString(o);
-	}
+        {
+          *(SEL*)address = NSSelectorFromString(o);
+        }
       else if (*type == _C_CHARPTR)
-	{
-	  *(const char**)address = [o cString];
-	}
+        {
+          *(const char**)address = [o cString];
+        }
+
       return;
     }
 
@@ -760,82 +789,81 @@ static NSMapTable	*globalClassMap = 0;
   switch (*type)
     {
       case _C_CHR:
-	*(char*)address = [o charValue];
-	return;
+        *(char*)address = [o charValue];
+        return;
 
       case _C_UCHR:
-	*(unsigned char*)address = [o unsignedCharValue];
-	return;
+        *(unsigned char*)address = [o unsignedCharValue];
+        return;
 
       case _C_SHT:
-	*(short*)address = [o shortValue];
-	return;
+        *(short*)address = [o shortValue];
+        return;
 
       case _C_USHT:
-	*(unsigned short*)address = [o unsignedShortValue];
-	return;
+        *(unsigned short*)address = [o unsignedShortValue];
+        return;
 
       case _C_INT:
-	*(int*)address = [o intValue];
-	return;
+        *(int*)address = [o intValue];
+        return;
 
       case _C_UINT:
-	*(unsigned int*)address = [o unsignedIntValue];
-	return;
+        *(unsigned int*)address = [o unsignedIntValue];
+        return;
 
       case _C_LNG:
-	*(long int*)address = [o longValue];
-	return;
+        *(long int*)address = [o longValue];
+        return;
 
       case _C_ULNG:
-	*(unsigned long int*)address = [o unsignedLongValue];
-	return;
+        *(unsigned long int*)address = [o unsignedLongValue];
+        return;
 
       case _C_LNG_LNG:
-	*(long long int*)address = [o longLongValue];
-	return;
+        *(long long int*)address = [o longLongValue];
+        return;
 
       case _C_ULNG_LNG:
-	*(unsigned long long int*)address = [o unsignedLongLongValue];
-	return;
+        *(unsigned long long int*)address = [o unsignedLongLongValue];
+        return;
 
       case _C_FLT:
-	*(float*)address = [o floatValue];
-	return;
+        *(float*)address = [o floatValue];
+        return;
 
       case _C_DBL:
-	*(double*)address = [o doubleValue];
-	return;
+        *(double*)address = [o doubleValue];
+        return;
 
 #if defined(_C_BOOL) && (!defined(__GNUC__) || __GNUC__ > 2)
       case _C_BOOL:
-	*(_Bool*)address = (_Bool)[o unsignedCharValue];
-	return;
+        *(_Bool*)address = (_Bool)[o unsignedCharValue];
+        return;
 #endif
 
       case _C_STRUCT_B:
-	[NSException raise: NSInvalidArgumentException
-		    format: @"-[%@ %@]: this archiver cannote decode structs",
-	  NSStringFromClass([self class]), NSStringFromSelector(_cmd)];
-	return;
+        [NSException raise: NSInvalidArgumentException
+                    format: @"-[%@ %@]: this archiver cannote decode structs", NSStringFromClass([self class]), NSStringFromSelector(_cmd)];
+    return;
 
       case _C_ARY_B:
-	{
-	  int		count = atoi(++type);
+        {
+          int count = atoi(++type);
 
-	  while (isdigit(*type))
-	    {
-	      type++;
-	    }
-	  [self decodeArrayOfObjCType: type count: count at: address];
-	}
-	return;
+          while (isdigit(*type))
+            {
+              type++;
+            }
+
+          [self decodeArrayOfObjCType: type count: count at: address];
+        }
+    return;
 
       default:
-	[NSException raise: NSInvalidArgumentException
-		    format: @"-[%@ %@]: unknown type encoding ('%c')",
-	  NSStringFromClass([self class]), NSStringFromSelector(_cmd), *type];
-	break;
+        [NSException raise: NSInvalidArgumentException
+                    format: @"-[%@ %@]: unknown type encoding ('%c')", NSStringFromClass([self class]), NSStringFromSelector(_cmd), *type];
+    break;
     }
 }
 
@@ -850,8 +878,9 @@ static NSMapTable	*globalClassMap = 0;
     {
       // For consistency with OSX
       [NSException raise: NSInvalidArgumentException
-		  format: @"method sent to uninitialised unarchiver"];
+                  format: @"method sent to uninitialised unarchiver"];
     }
+
   return [super description];
 }
 
@@ -867,51 +896,54 @@ static NSMapTable	*globalClassMap = 0;
   Class c = [self class];
   DESTROY(self);
   [NSException raise: NSInvalidArgumentException
-              format: @"-[%@ init]: cannot use -init for initialisation",
-              NSStringFromClass(c)];
+              format: @"-[%@ init]: cannot use -init for initialisation", NSStringFromClass(c)];
   return nil;
 }
 
 - (id) initForReadingWithData: (NSData*)data
 {
   self = [super init];
+
   if (self)
     {
-      NSPropertyListFormat	format;
-      NSString			*error;
+      NSPropertyListFormat format;
+      NSString *error;
 
       _zone = [self zone];
       _archive = [NSPropertyListSerialization propertyListFromData: data
-	mutabilityOption: NSPropertyListImmutable
-	format: &format
-	errorDescription: &error];
+                                                  mutabilityOption: NSPropertyListImmutable
+                                                            format: &format
+                                                  errorDescription: &error];
       if (_archive == nil)
-	{
-	  DESTROY(self);
-	}
+        {
+          DESTROY(self);
+        }
       else
-	{
-	  unsigned	count;
-	  unsigned	i;
+        {
+          unsigned count;
+          unsigned i;
+        
+          IF_NO_ARC(RETAIN(_archive);)
 
-	  IF_NO_ARC(RETAIN(_archive);)
-	  _archiverClass = [_archive objectForKey: @"$archiver"];
-	  _version = [_archive objectForKey: @"$version"];
+          _archiverClass = [_archive objectForKey: @"$archiver"];
+          _version = [_archive objectForKey: @"$version"];
+        
+          _objects = [_archive objectForKey: @"$objects"];
+          _keyMap = [_archive objectForKey: @"$top"];
+          _objMap = NSZoneMalloc(_zone, sizeof(GSIArray_t));
+          count = [_objects count];
+          GSIArrayInitWithZoneAndCapacity(_objMap, _zone, count);
+          // Add marker for nil object
+          GSIArrayAddItem(_objMap, (GSIArrayItem)((id)[NilMarker class]));
 
-	  _objects = [_archive objectForKey: @"$objects"];
-	  _keyMap = [_archive objectForKey: @"$top"];
-	  _objMap = NSZoneMalloc(_zone, sizeof(GSIArray_t));
-	  count = [_objects count];
-	  GSIArrayInitWithZoneAndCapacity(_objMap, _zone, count);
-	  // Add marker for nil object
-	  GSIArrayAddItem(_objMap, (GSIArrayItem)((id)[NilMarker class]));
-	  // Add markers for unencoded objects.
-	  for (i = 1; i < count; i++)
-	    {
-	      GSIArrayAddItem(_objMap, (GSIArrayItem)(id)nil);
-	    }
-	}
+          // Add markers for unencoded objects.
+          for (i = 1; i < count; i++)
+            {
+              GSIArrayAddItem(_objMap, (GSIArrayItem)(id)nil);
+            }
+        }
     }
+
   return self;
 }
 
@@ -920,33 +952,35 @@ static NSMapTable	*globalClassMap = 0;
   if (aString == nil)
     {
       if (_clsMap != 0)
-	{
-          NSMapRemove(_clsMap, (void*)aString);
-	}
+        {
+              NSMapRemove(_clsMap, (void*)aString);
+        }
     }
   else
     {
       if (_clsMap == 0)
-	{
-	  _clsMap = NSCreateMapTable(NSObjectMapKeyCallBacks,
-	    NSNonOwnedPointerMapValueCallBacks, 0);
-	}
+        {
+          _clsMap = NSCreateMapTable(NSObjectMapKeyCallBacks, NSNonOwnedPointerMapValueCallBacks, 0);
+        }
+
       NSMapInsert(_clsMap, (void*)aString, (void*)aClass);
     }
 }
 
 - (void) setDelegate: (id)delegate
 {
-  _delegate = delegate;		// Not retained.
+  _delegate = delegate;     // Not retained.
 }
 
 - (NSInteger) versionForClassName: (NSString*)className
 {
-  return 0;	// Not used for keyed unarchiving.
+  return 0; // Not used for keyed unarchiving.
 }
+
 @end
 
 @implementation NSObject (NSKeyedUnarchiverDelegate)
+
 /** <override-dummy />
  */
 - (Class) unarchiver: (NSKeyedUnarchiver*)anUnarchiver
@@ -955,6 +989,7 @@ static NSMapTable	*globalClassMap = 0;
 {
   return nil;
 }
+
 /** <override-dummy />
  */
 - (id) unarchiver: (NSKeyedUnarchiver*)anUnarchiver
@@ -962,29 +997,35 @@ static NSMapTable	*globalClassMap = 0;
 {
   return anObject;
 }
+
 /** <override-dummy />
  */
 - (void) unarchiverDidFinish: (NSKeyedUnarchiver*)anUnarchiver
 {
 }
+
 /** <override-dummy />
  */
 - (void) unarchiverWillFinish: (NSKeyedUnarchiver*)anUnarchiver
 {
 }
+
 /** <override-dummy />
  */
 - (void) unarchiver: (NSKeyedUnarchiver*)anUnarchiver
   willReplaceObject: (id)anObject
-	 withObject: (id)newObject
+     withObject: (id)newObject
 {
 }
+
 @end
 
 @implementation NSObject (NSKeyedUnarchiverObjectSubstitution)
+
 + (Class) classForKeyedUnarchiver
 {
   return self;
 }
+
 @end
 
