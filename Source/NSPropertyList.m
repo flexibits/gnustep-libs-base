@@ -4099,99 +4099,99 @@ isEqualFunc(const void *item1, const void *item2,
     }
 }
 
+@class NSBoolNumber;
+
 - (void) storeNumber: (NSNumber*) number
 {
-  const char *type;
   unsigned char code;
 
-  type = [number objCType];
-
-  switch (*type)
+  if ([number isKindOfClass:[NSBoolNumber class]])
     {
-      case 'c':
-      case 'C':
-      case 's':
-      case 'S':
-      case 'i':
-      case 'I':
-      case 'l':
-      case 'L':
-      case 'q':
-      case 'Q':
-        {
-      unsigned long long val;
+      BOOL boolValue = [number boolValue];
 
-      val = [number unsignedLongLongValue];
-
-      // FIXME: We need a better way to determine boolean values!
-      if ((val == 0) && ((*type == 'c') || (*type == 'C')))
-        {
-          code = 0x08;
-          [dest appendBytes: &code length: 1];
-        }
-      else if ((val == 1) && ((*type == 'c') || (*type == 'C')))
-        {
-          code = 0x09;
-          [dest appendBytes: &code length: 1];
-        }
-      else if (val < 256)
-        {
-          unsigned char cval;
-
-          code = 0x10;
-          [dest appendBytes: &code length: 1];
-          cval = (unsigned char) val;
-          [dest appendBytes: &cval length: 1];
-        }
-      else if (val < 256 * 256)
-        {
-          unsigned short sval;
-
-          code = 0x11;
-          [dest appendBytes: &code length: 1];
-          sval = NSSwapHostShortToBig([number unsignedShortValue]);
-          [dest appendBytes: &sval length: 2];
-        }
-      else if (val <= UINT_MAX)
-        {
-          unsigned int ival;
-
-          code = 0x12;
-          [dest appendBytes: &code length: 1];
-          ival = NSSwapHostIntToBig([number unsignedIntValue]);
-          [dest appendBytes: &ival length: 4];
-        }
-      else
-        {
-          unsigned long long lval;
-
-          code = 0x13;
-          [dest appendBytes: &code length: 1];
-          lval = NSSwapHostLongLongToBig([number unsignedLongLongValue]);
-          [dest appendBytes: &lval length: 8];
-        }
-      break;
+      code = boolValue == NO ? 0x08 : 0x09;
+      [dest appendBytes: &code length: 1];
     }
-      case 'f':
-        {
-          NSSwappedFloat val = NSSwapHostFloatToBig([number floatValue]);
+  else
+    {
+      const char *type = [number objCType];
 
-          code = 0x22;
-          [dest appendBytes: &code length: 1];
-          [dest appendBytes: &val length: sizeof(float)];
-          break;
-        }
-      case 'd':
+      switch (*type)
         {
-          NSSwappedDouble val = NSSwapHostDoubleToBig([number doubleValue]);
+          case 'c':
+          case 'C':
+          case 's':
+          case 'S':
+          case 'i':
+          case 'I':
+          case 'l':
+          case 'L':
+          case 'q':
+          case 'Q':
+            {
+              unsigned long long val;
 
-          code = 0x23;
-          [dest appendBytes: &code length: 1];
-          [dest appendBytes: &val length: sizeof(double)];
-          break;
+              val = [number unsignedLongLongValue];
+
+              if (val < 256)
+                {
+                  unsigned char cval;
+
+                  code = 0x10;
+                  [dest appendBytes: &code length: 1];
+                  cval = (unsigned char) val;
+                  [dest appendBytes: &cval length: 1];
+                }
+              else if (val < 256 * 256)
+                {
+                  unsigned short sval;
+
+                  code = 0x11;
+                  [dest appendBytes: &code length: 1];
+                  sval = NSSwapHostShortToBig([number unsignedShortValue]);
+                  [dest appendBytes: &sval length: 2];
+                }
+              else if (val <= UINT_MAX)
+                {
+                  unsigned int ival;
+
+                  code = 0x12;
+                  [dest appendBytes: &code length: 1];
+                  ival = NSSwapHostIntToBig([number unsignedIntValue]);
+                  [dest appendBytes: &ival length: 4];
+                }
+              else
+                {
+                  unsigned long long lval;
+
+                  code = 0x13;
+                  [dest appendBytes: &code length: 1];
+                  lval = NSSwapHostLongLongToBig([number unsignedLongLongValue]);
+                  [dest appendBytes: &lval length: 8];
+                }
+              break;
+            }
+          case 'f':
+            {
+              NSSwappedFloat val = NSSwapHostFloatToBig([number floatValue]);
+
+              code = 0x22;
+              [dest appendBytes: &code length: 1];
+              [dest appendBytes: &val length: sizeof(float)];
+              break;
+            }
+          case 'd':
+            {
+              NSSwappedDouble val = NSSwapHostDoubleToBig([number doubleValue]);
+
+              code = 0x23;
+              [dest appendBytes: &code length: 1];
+              [dest appendBytes: &val length: sizeof(double)];
+              break;
+            }
+          default:
+            [NSException raise: NSGenericException format: @"Attempt to store number with unknown ObjC type"];
         }
-      default:
-        [NSException raise: NSGenericException format: @"Attempt to store number with unknown ObjC type"];
     }
 }
 
