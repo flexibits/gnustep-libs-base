@@ -1071,6 +1071,12 @@ if (aValue >= -1 && aValue <= 12)\
 
   [self getValue: buffer];
   [coder encodeValueOfObjCType: type at: buffer];
+  [coder encodeInteger: 1 forKey: @"version"];
+
+  if ([self isKindOfClass: NSBoolNumberClass])
+    {
+      [coder encodeBool: [self boolValue] forKey: @"boolValue"];
+    }
 }
 
 - (id) copyWithZone: (NSZone *) aZone
@@ -1090,8 +1096,10 @@ if (aValue >= -1 && aValue <= 12)\
   float floatbuf;
   double doublebuf;
   void *buffer;
+  NSInteger version;
 
   [coder decodeValueOfObjCType: @encode(char) at: type];
+
   switch (type[0])
     {
       case 'c':
@@ -1118,7 +1126,21 @@ if (aValue >= -1 && aValue <= 12)\
                     format: @"unknown NSNumber type '%c'", type[0]];
         return nil;     // Avoid spurious compiler warning.
      }
+
   [coder decodeValueOfObjCType: type at: buffer];
+
+  version = [coder decodeIntegerForKey: @"version"];
+
+  if (version >= 1)
+    {
+      if ([coder containsValueForKey: @"boolValue"])
+        {
+          BOOL boolValue = [coder decodeBoolForKey: @"boolValue"];
+
+          return [self initWithBool:boolValue];
+        }
+    }
+
   return [self initWithBytes: buffer objCType: type];
 }
 
