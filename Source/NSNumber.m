@@ -31,16 +31,15 @@
 
 #import "common.h"
 
-#if	!defined(LLONG_MAX)
-#  if	defined(__LONG_LONG_MAX__)
-#    define LLONG_MAX __LONG_LONG_MAX__
-#    define LLONG_MIN	(-LLONG_MAX-1)
-#    define ULLONG_MAX	(LLONG_MAX * 2ULL + 1)
-#  else
-#    error Neither LLONG_MAX nor __LONG_LONG_MAX__ found
-#  endif
+#if !defined(LLONG_MAX)
+#if defined(__LONG_LONG_MAX__)
+#define LLONG_MAX __LONG_LONG_MAX__
+#define LLONG_MIN   (-LLONG_MAX-1)
+#define ULLONG_MAX  (LLONG_MAX * 2ULL + 1)
+#else
+#error Neither LLONG_MAX nor __LONG_LONG_MAX__ found
 #endif
-
+#endif
 
 #import "common.h"
 #import "Foundation/NSCoder.h"
@@ -108,33 +107,33 @@ return NSOrderedSame;
   if (isnan(value)) \
     { \
       if (isnan(other)) \
-	{ \
-	  return NSOrderedSame; \
-	} \
+        { \
+          return NSOrderedSame; \
+        } \
       else \
-	{ \
-	  return NSOrderedAscending; \
-	} \
+        { \
+          return NSOrderedAscending; \
+        } \
     } \
   else \
     { \
       if (isnan(other)) \
-	{ \
-	  if (value < 0.0) \
-	    { \
-	      return NSOrderedAscending; \
-	    } \
-	  return NSOrderedDescending; \
-	} \
-      else if (value < other) \
-	{ \
-	  return NSOrderedAscending; \
-	} \
-      else if (value > other) \
-	{ \
-	  return NSOrderedDescending; \
-	} \
-      return NSOrderedSame; \
+        { \
+          if (value < 0.0) \
+            { \
+              return NSOrderedAscending; \
+            } \
+          return NSOrderedDescending; \
+        } \
+          else if (value < other) \
+        { \
+          return NSOrderedAscending; \
+        } \
+          else if (value > other) \
+        { \
+          return NSOrderedDescending; \
+        } \
+        return NSOrderedSame; \
     }
 
 @implementation NSSignedIntegerNumber
@@ -147,7 +146,7 @@ return NSOrderedSame;
   if (aNumber == nil)
     {
       [NSException raise: NSInvalidArgumentException
-		  format: @"nil argument for compare:"];
+                  format: @"nil argument for compare:"];
     }
 
   switch ([aNumber objCType][0])
@@ -164,49 +163,49 @@ return NSOrderedSame;
       case 'l':
       case 'L':
       case 'q':
-	{
-	  long long value = [self longLongValue];
-	  long long other = [aNumber longLongValue];
-
-	  COMPARE (value, other);
-	}
+        {
+          long long value = [self longLongValue];
+          long long other = [aNumber longLongValue];
+        
+          COMPARE (value, other);
+        }
       case 'Q':
-	{
-	  unsigned long long other;
-	  unsigned long long value;
-	  long long v;
-
-	  /* According to the C type promotion rules, we should cast this to
-	   * an unsigned long long, however Apple's code does not do this.
-	   * Instead, it performs a real comparison.
-	   */
-	  v = [self longLongValue];
-
-	  /* If this value is less than 0, then it is less than any value
-	   * that can possibly be stored in an unsigned value.
-	   */
-	  if (v < 0)
-	    {
-	      return NSOrderedAscending;
-	    }
-
-	  other = [aNumber unsignedLongLongValue];
-	  value = (unsigned long long) v;
-	  COMPARE (value, other);
-	}
+        {
+          unsigned long long other;
+          unsigned long long value;
+          long long v;
+        
+          /* According to the C type promotion rules, we should cast this to
+           * an unsigned long long, however Apple's code does not do this.
+           * Instead, it performs a real comparison.
+           */
+          v = [self longLongValue];
+        
+          /* If this value is less than 0, then it is less than any value
+           * that can possibly be stored in an unsigned value.
+           */
+          if (v < 0)
+            {
+              return NSOrderedAscending;
+            }
+        
+          other = [aNumber unsignedLongLongValue];
+          value = (unsigned long long) v;
+          COMPARE (value, other);
+        }
       case 'f':
       case 'd':
-	{
-	  double other = [aNumber doubleValue];
-	  double value = [self doubleValue];
-
-	  DCOMPARE(value, other)
-	}
+        {
+          double other = [aNumber doubleValue];
+          double value = [self doubleValue];
+        
+          DCOMPARE(value, other)
+        }
       default:
-	[NSException raise: NSInvalidArgumentException
-		    format: @"unrecognised type for compare:"];
+        [NSException raise: NSInvalidArgumentException
+                    format: @"unrecognised type for compare:"];
     }
-  return 0;			// Not reached.
+  return 0; // Not reached.
 }
 @end
 
@@ -215,7 +214,7 @@ return NSOrderedSame;
 #include "NSNumberMethods.h"
 @end
 
-@implementation	NSBoolNumber
+@implementation NSBoolNumber
 - (void) getValue: (void*)buffer
 {
   BOOL *ptr = (BOOL*)buffer;
@@ -244,7 +243,7 @@ return NSOrderedSame;
   if (aNumber == nil)
     {
       [NSException raise: NSInvalidArgumentException
-		  format: @"nil argument for compare:"];
+                  format: @"nil argument for compare:"];
     }
 
   switch ([aNumber objCType][0])
@@ -261,34 +260,34 @@ return NSOrderedSame;
       case 'l':
       case 'L':
       case 'q':
-	{
-	  long long other = [aNumber longLongValue];
-
-	  if (other < 0)
-	    {
-	      return NSOrderedDescending;
-	    }
-	  COMPARE (value, ((unsigned long long) other));
-	}
+        {
+          long long other = [aNumber longLongValue];
+        
+          if (other < 0)
+            {
+              return NSOrderedDescending;
+            }
+          COMPARE (value, ((unsigned long long) other));
+        }
       case 'Q':
-	{
-	  unsigned long long other = [aNumber unsignedLongLongValue];
-
-	  COMPARE (value, other);
-	}
+        {
+          unsigned long long other = [aNumber unsignedLongLongValue];
+        
+          COMPARE (value, other);
+        }
       case 'f':
       case 'd':
-	{
-	  double other = [aNumber doubleValue];
-	  double selfv = [self doubleValue];
-
-	  DCOMPARE(selfv, other)
-	}
+        {
+          double other = [aNumber doubleValue];
+          double selfv = [self doubleValue];
+        
+          DCOMPARE(selfv, other)
+        }
       default:
-	[NSException raise: NSInvalidArgumentException
-		    format: @"unrecognised type for compare:"];
+        [NSException raise: NSInvalidArgumentException
+                    format: @"unrecognised type for compare:"];
     }
-  return 0;			// Not reached.
+  return 0; // Not reached.
 }
 @end
 
@@ -319,7 +318,7 @@ return NSOrderedSame;
   if (aNumber == nil)
     {
       [NSException raise: NSInvalidArgumentException
-		  format: @"nil argument for compare:"];
+                  format: @"nil argument for compare:"];
     }
 
   other = [aNumber doubleValue];
@@ -638,8 +637,8 @@ static Class NSDoubleNumberClass;
  * Numbers from -1 to 12 inclusive that are reused.
  */
 static NSNumber *ReusedInstances[14];
-static NSBoolNumber *boolY;		// Boolean YES (integer 1)
-static NSBoolNumber *boolN;		// Boolean NO (integer 0)
+static NSBoolNumber *boolY; // Boolean YES (integer 1)
+static NSBoolNumber *boolN; // Boolean NO (integer 0)
 
 + (void) initialize
 {
@@ -681,7 +680,7 @@ static NSBoolNumber *boolN;		// Boolean NO (integer 0)
    * they are.
    */
   [self subclassResponsibility: _cmd];
-  return NULL;			// Not reached
+  return NULL; // Not reached
 }
 
 - (BOOL) isEqualToNumber: (NSNumber*)aNumber
@@ -720,13 +719,13 @@ static NSBoolNumber *boolN;		// Boolean NO (integer 0)
 - (NSString*) descriptionWithLocale: (id)aLocale
 {
   [self subclassResponsibility: _cmd];
-  return nil;			// Not reached
+  return nil; // Not reached
 }
 
 - (NSComparisonResult) compare: (NSNumber*)aNumber
 {
   [self subclassResponsibility: _cmd];
-  return 0;			// Not reached
+  return 0; // Not reached
 }
 
 #define INTEGER_MACRO(encoding,type, ignored, name) \
@@ -986,29 +985,29 @@ if (aValue >= -1 && aValue <= 12)\
   switch (type[0])
     {
       case 'c':
-	return [self initWithInteger: *(signed char *) value];
+        return [self initWithInteger: *(signed char *) value];
       case 'C':
-	return [self initWithInteger: *(unsigned char *) value];
+        return [self initWithInteger: *(unsigned char *) value];
       case 's':
-	return [self initWithInteger: *(short *) value];
+        return [self initWithInteger: *(short *) value];
       case 'S':
-	return [self initWithInteger: *(unsigned short *) value];
+        return [self initWithInteger: *(unsigned short *) value];
       case 'i':
-	return [self initWithInteger: *(int *) value];
+        return [self initWithInteger: *(int *) value];
       case 'I':
-	return [self initWithInteger: *(unsigned int *) value];
+        return [self initWithInteger: *(unsigned int *) value];
       case 'l':
-	return [self initWithLong: *(long *) value];
+        return [self initWithLong: *(long *) value];
       case 'L':
-	return [self initWithUnsignedLong: *(unsigned long *) value];
+        return [self initWithUnsignedLong: *(unsigned long *) value];
       case 'q':
-	return [self initWithLongLong: *(long long *) value];
+        return [self initWithLongLong: *(long long *) value];
       case 'Q':
-	return [self initWithUnsignedLongLong: *(unsigned long long *) value];
+        return [self initWithUnsignedLongLong: *(unsigned long long *) value];
       case 'f':
-	return [self initWithFloat: *(float *) value];
+        return [self initWithFloat: *(float *) value];
       case 'd':
-	return [self initWithDouble: *(double *) value];
+        return [self initWithDouble: *(double *) value];
     }
   return [super initWithBytes: value objCType: type];
 }
