@@ -320,14 +320,17 @@ foundIgnorableWhitespace: (NSString *)string
         {
               int64_t year;
               uint64_t month, day, hour, minute, second;
+              NSTimeZone *utcTz;
               int ret = sscanf([value cString], "%lld-%llu-%lluT%llu:%llu:%lluZ", &year, &month, &day, &hour, &minute, &second);
+
               if (ret != 6)
                 {
                   [[NSException exceptionWithName:@"failed to parse <date>" reason:@"failed to parse <date>" userInfo:@{
                     @"date string": value,
                   }] raise];
                 }
-              NSTimeZone *utcTz = [NSTimeZone timeZoneForSecondsFromGMT:0];
+
+              utcTz = [NSTimeZone timeZoneForSecondsFromGMT:0];
               result = [NSCalendarDate dateWithYear:year month:month day:day hour:hour minute:minute second:second timeZone:utcTz];
         //   result = [NSCalendarDate dateWithString: value
         //             calendarFormat: @"%Y-%m-%dT%H:%M:%SZ"];
@@ -447,6 +450,7 @@ foundIgnorableWhitespace: (NSString *)string
           {
             unichar c = [value characterAtIndex: r.location + 2];
             NSString *unescapedString = nil;
+            NSUInteger newLocation;
 
             if (isxdigit(c))
               {
@@ -512,9 +516,9 @@ foundIgnorableWhitespace: (NSString *)string
                                                             if (0xDC00 <= lo && lo <= 0xDFFF)
                                                               {
                                                                 uint32_t code_point = 0x10000 | ((hi - 0xD800) << 10) | (lo - 0xDC00);
+                                                                NSRange escapeRange = NSMakeRange(r.location, 12);
 
                                                                 unescapedString = [[NSString alloc] initWithBytes:&code_point length:sizeof(code_point) encoding:NSUTF32StringEncoding];
-                                                                NSRange escapeRange = NSMakeRange(r.location, 12);
 
                                                                 [value replaceCharactersInRange:escapeRange withString:unescapedString];
                                                               }
@@ -528,8 +532,9 @@ foundIgnorableWhitespace: (NSString *)string
                               }
                             else
                               {
-                                unescapedString = [[NSString alloc] initWithCharacters:&v length:1];
                                 NSRange escapeRange = NSMakeRange(r.location, 6);
+
+                                unescapedString = [[NSString alloc] initWithCharacters:&v length:1];
 
                                 [value replaceCharactersInRange:escapeRange withString:unescapedString];
                               }
@@ -537,8 +542,6 @@ foundIgnorableWhitespace: (NSString *)string
                       }
                   }
               }
-
-            NSUInteger newLocation;
 
             if (unescapedString)
               {
