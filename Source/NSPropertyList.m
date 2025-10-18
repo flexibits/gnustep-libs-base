@@ -3091,6 +3091,7 @@ GSPropertyListMake(id obj, NSDictionary *loc, BOOL xml,
 
 
 @implementation GSBinaryPLParser
+
 #define PUSH_OBJ(index) if (NO == [self _pushObject: index]) \
         { \
           [NSException raise: NSGenericException \
@@ -3678,6 +3679,9 @@ isEqualFunc(const void *item1, const void *item2,
   return [o1 isEqual: o2];
 }
 
+@interface NSBoolNumber : NSNumber
+@end
+
 @implementation GSBinaryPLGenerator
 
 + (void) serializePropertyList: (id)aPropertyList
@@ -4101,8 +4105,6 @@ isEqualFunc(const void *item1, const void *item2,
 #endif
     }
 }
-
-@class NSBoolNumber;
 
 - (void) storeNumber: (NSNumber*) number
 {
