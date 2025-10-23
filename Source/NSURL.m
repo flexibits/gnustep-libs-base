@@ -51,6 +51,7 @@ function may be incorrect
   NSString *_path; \
   NSNumber *_port; \
   NSArray  *_queryItems; \
+  NSArray *_percentEncodedQueryItems; \
   NSString *_scheme; \
   NSString *_user; \
   NSRange   _rangeOfFragment; \
@@ -2545,6 +2546,7 @@ static NSCharacterSet   *queryItemCharSet = nil;
   RELEASE(internal->_path);
   RELEASE(internal->_port);
   RELEASE(internal->_queryItems);
+  RELEASE(internal->_percentEncodedQueryItems);
   RELEASE(internal->_scheme);
   RELEASE(internal->_user);
   GS_DESTROY_INTERNAL(NSURLComponents);
@@ -2647,7 +2649,7 @@ static NSCharacterSet   *queryItemCharSet = nil;
       location += len;
     }
 
-  if ([internal->_queryItems count] > 0)
+  if ([internal->_percentEncodedQueryItems count] > 0 || [internal->_queryItems count] > 0)
     {
       component = [self percentEncodedQuery];
       len = [component length];
@@ -2778,7 +2780,48 @@ static NSCharacterSet   *queryItemCharSet = nil;
 {
   NSString  *result = nil;
 
-  if (internal->_queryItems != nil)
+  if (internal->_percentEncodedQueryItems != nil)
+    {
+      NSMutableString   *query = nil;
+      NSURLQueryItem    *item = nil;
+      NSEnumerator  *en;
+
+      en = [internal->_percentEncodedQueryItems objectEnumerator];
+
+      while ((item = (NSURLQueryItem *)[en nextObject]) != nil)
+        {
+          NSString  *name = [item name];
+          NSString  *value = [item value];
+        
+          if (nil == query)
+            {
+              query = [[NSMutableString alloc] initWithCapacity: 1000];
+            }
+          else
+            {
+              [query appendString: @"&"];
+            }
+
+          [query appendString: [name stringByRemovingPercentEncoding]];
+
+          if (value != nil)
+            {
+              [query appendString: @"="];
+              [query appendString: [value stringByRemovingPercentEncoding]];
+            }
+        }
+
+      if (nil == query)
+        {
+          result = @"";
+        }
+      else
+        {
+          result = AUTORELEASE([query copy]);
+          RELEASE(query);
+        }
+    }
+  else if (internal->_queryItems != nil)
     {
       NSMutableString   *query = nil;
       NSURLQueryItem    *item = nil;
@@ -2870,16 +2913,18 @@ static NSCharacterSet   *queryItemCharSet = nil;
                 }
             }
 
-          if (encoded)
-            {
-              name = [name stringByRemovingPercentEncoding];
-              value = [value stringByRemovingPercentEncoding];
-            }
-
           qitem = [NSURLQueryItem queryItemWithName: name value: value];
           [result addObject: qitem];
         }
-      [self setQueryItems: result];
+        
+      if (encoded)
+        {
+          [self setPercentEncodedQueryItems: result];
+        }
+      else
+        {
+          [self setQueryItems: result];
+        }
     }
 }
 
@@ -2890,12 +2935,44 @@ static NSCharacterSet   *queryItemCharSet = nil;
 
 - (NSArray *) queryItems
 {
-  return AUTORELEASE(RETAIN(internal->_queryItems));
+  NSArray *result = nil;
+
+  if (internal->_queryItems != nil)
+    {
+      result = AUTORELEASE(RETAIN(internal->_queryItems));
+    }
+  else if (internal->_percentEncodedQueryItems != nil)
+    {
+      NSMutableArray *items;
+      NSEnumerator *en = [internal->_percentEncodedQueryItems objectEnumerator];
+      NSURLQueryItem  *i = nil;
+
+      items = [[NSMutableArray alloc] initWithCapacity: [internal->_percentEncodedQueryItems count]];
+
+      while ((i = [en nextObject]) != nil)
+        {
+          NSURLQueryItem *ni;
+          NSString *name = [i name];
+          NSString *value = [i value];
+
+          name = [name stringByRemovingPercentEncoding];
+          value = [value stringByRemovingPercentEncoding];
+          ni = [NSURLQueryItem queryItemWithName: name
+                                           value: value];
+          [items addObject: ni];
+        }
+
+      result = AUTORELEASE([items copy]);
+      RELEASE(items);
+    }
+
+  return result;
 }
 
 - (void) setQueryItems: (NSArray *)queryItems
 { 
   ASSIGNCOPY(internal->_queryItems, queryItems);
+  ASSIGN(internal->_percentEncodedQueryItems, nil);
   internal->_dirty = YES;
 }
 
@@ -2974,7 +3051,7 @@ static NSCharacterSet   *queryItemCharSet = nil;
 {
   NSString  *result = nil;
 
-  if (internal->_queryItems != nil)
+  if (internal->_percentEncodedQueryItems != nil || internal->_queryItems != nil)
     {
       NSMutableString   *query = nil;
       NSURLQueryItem    *item = nil;
@@ -3025,7 +3102,11 @@ static NSCharacterSet   *queryItemCharSet = nil;
 {
   NSArray   *result = nil;
 
-  if (internal->_queryItems != nil)
+  if (internal->_percentEncodedQueryItems != nil)
+    {
+      result = AUTORELEASE(RETAIN(internal->_percentEncodedQueryItems));
+    }
+  else if (internal->_queryItems != nil)
     {
       NSMutableArray    *items;
       NSEnumerator  *en = [internal->_queryItems objectEnumerator];
@@ -3055,29 +3136,9 @@ static NSCharacterSet   *queryItemCharSet = nil;
 
 - (void) setPercentEncodedQueryItems: (NSArray *)queryItems
 {
-  NSMutableArray    *items = nil;
-
-  if (queryItems != nil)
-    {
-      NSEnumerator  *en = [queryItems objectEnumerator];
-      NSURLQueryItem    *i = nil;
-
-      items = [NSMutableArray arrayWithCapacity: [queryItems count]];
-
-      while ((i = [en nextObject]) != nil)
-        {
-          NSString      *name;
-          NSString      *value;
-          NSURLQueryItem    *ni;
-          
-          name = [[i name] stringByRemovingPercentEncoding];
-          value = [[i value] stringByRemovingPercentEncoding];
-          ni = [NSURLQueryItem queryItemWithName: name value: value];
-          [items addObject: ni];
-        }
-    }
-
-  [self setQueryItems: items];
+  ASSIGN(internal->_queryItems, nil);
+  ASSIGNCOPY(internal->_percentEncodedQueryItems, queryItems);
+  internal->_dirty = YES;
 }
 
 - (NSString *) percentEncodedUser
