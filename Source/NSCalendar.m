@@ -154,7 +154,7 @@ static NSRecursiveLock *classLock = nil;
 
       if (currentCalendar != nil)
         {
-            BOOL needToRefreshCurrentCalendar = [self _needsRefreshForLocale:locale calendar:calendar timeZone:tz];
+            BOOL needToRefreshCurrentCalendar = [currentCalendar _needsRefreshForLocale:locale calendar:calendar timeZone:tz];
 
             if (needToRefreshCurrentCalendar)
               {
