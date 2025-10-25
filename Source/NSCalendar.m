@@ -413,23 +413,36 @@ static NSRecursiveLock *classLock = nil;
 
 - (id) initWithCalendarIdentifier: (NSString *) identifier
 {
-    NSAssert(0 == _NSCalendarInternal, NSInvalidArgumentException);
-    _NSCalendarInternal = NSZoneCalloc([self zone], sizeof(Calendar), 1);
-    _lock = [[NSRecursiveLock alloc] init];
+  if (self = [super init])
+    {
+      NSAssert(0 == _NSCalendarInternal, NSInvalidArgumentException);
+      _NSCalendarInternal = NSZoneCalloc([self zone], sizeof(Calendar), 1);
+      _lock = [[NSRecursiveLock alloc] init];
 
-    if (identifier != NULL) {
-        [_lock setName:[NSString stringWithFormat:@"NSCalendar.%@", identifier]];
-    } else {
-        [_lock setName:@"NSCalendar"];
+      if (_NSCalendarInternal == NULL || _lock == nil)
+        {
+          RELEASE(self);
+          return nil;
+        }
+
+      if (identifier != nil)
+        {
+          [_lock setName:[NSString stringWithFormat:@"NSCalendar.%@", identifier]];
+        }
+      else
+        {
+          [_lock setName:@"NSCalendar"];
+        }
+
+      my->firstWeekday = NSNotFound;
+      my->minimumDaysInFirstWeek = NSNotFound;
+      ASSIGN(my->identifier, identifier);
+      ASSIGN(my->tz, [NSTimeZone defaultTimeZone]);
+      my->cal = NULL;
+      [self setLocale:[NSLocale currentLocale]];
     }
-    my->firstWeekday = NSNotFound;
-    my->minimumDaysInFirstWeek = NSNotFound;
-    ASSIGN(my->identifier, identifier);
-    ASSIGN(my->tz, [NSTimeZone defaultTimeZone]);
-    my->cal = NULL;
-    [self setLocale:[NSLocale currentLocale]];
 
-    return self;
+  return self;
 }
 
 - (void) dealloc
