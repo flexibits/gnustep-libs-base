@@ -1633,6 +1633,9 @@ yearForWeekOfYear: (NSInteger *)yearValuePointer
   result = [[[self class] allocWithZone:zone] initWithCalendarIdentifier:my->identifier];
   [result _setLocaleIdentifier:my->localeID];
   [result setTimeZone:my->tz];
+  [result setFirstWeekday:my->firstWeekday];
+  [result setMinimumDaysInFirstWeek:my->minimumDaysInFirstWeek];
+
   [_lock unlock];
 
   return result;
