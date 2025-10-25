@@ -141,33 +141,30 @@ static NSRecursiveLock *classLock = nil;
     return needsToRefresh;
 }
 
-- (BOOL) _needsRefreshForDefaultsChangeNotification: (NSNotification *)n
-{
-    NSUserDefaults *defs = [NSUserDefaults standardUserDefaults];
-    NSString *locale = [defs stringForKey:@"Locale"];
-    NSString *calendar = [defs stringForKey:@"Calendar"];
-    NSString *tz = [defs stringForKey:@"Local Time Zone"];
-    BOOL needsToRefresh = [self _needsRefreshForLocale:locale calendar:calendar timeZone:tz];
-    
-    return needsToRefresh;
-}
-
 + (void) _refreshCurrentCalendarFromDefaultsDidChange: (NSNotification*)n
 {
-    [classLock lock];
+  if (currentCalendar != nil)
+    {
+      NSUserDefaults *defs = [NSUserDefaults standardUserDefaults];
+      NSString *locale = [defs stringForKey:@"Locale"];
+      NSString *calendar = [defs stringForKey:@"Calendar"];
+      NSString *tz = [defs stringForKey:@"Local Time Zone"];
 
-    if (currentCalendar != nil)
-      {
-        BOOL needToRefreshCurrentCalendar = [currentCalendar _needsRefreshForDefaultsChangeNotification:n];
+      [classLock lock];
 
-        if (needToRefreshCurrentCalendar)
-          {
-            RELEASE(currentCalendar);
-            currentCalendar = nil;
-          }
-      }
+      if (currentCalendar != nil)
+        {
+            BOOL needToRefreshCurrentCalendar = [self _needsRefreshForLocale:locale calendar:calendar timeZone:tz];
 
-    [classLock unlock];
+            if (needToRefreshCurrentCalendar)
+              {
+                RELEASE(currentCalendar);
+                currentCalendar = nil;
+              }
+        }
+
+      [classLock unlock];
+    }
 }
 
 #if GS_USE_ICU == 1
@@ -357,46 +354,51 @@ static NSRecursiveLock *classLock = nil;
 
 + (id) currentCalendar
 {
-  NSCalendar *result;
+  NSCalendar *result = AUTORELEASE([currentCalendar copy]);
 
-  [classLock lock];
-
-  if (currentCalendar == nil)
+  if (result == nil)
     {
-      // This identifier may be nil
-      NSString *identifier = [[NSLocale currentLocale] objectForKey:NSLocaleCalendarIdentifier];
+      [classLock lock];
 
-      currentCalendar = [[NSCalendar alloc] initWithCalendarIdentifier:identifier];
+      if (currentCalendar == nil)
+        {
+          // This identifier may be nil
+          NSString *identifier = [[NSLocale currentLocale] objectForKey:NSLocaleCalendarIdentifier];
+
+          currentCalendar = [[NSCalendar alloc] initWithCalendarIdentifier:identifier];
+        }
+
+      result = AUTORELEASE([currentCalendar copy]);
+
+      [classLock unlock];
     }
-
-    result = AUTORELEASE([currentCalendar copy]);
-
-    [classLock unlock];
 
     return result;
 }
 
 + (id) autoupdatingCurrentCalendar
 {
-  if (autoupdatingCalendar != nil)
+  NSCalendar *result = AUTORELEASE(RETAIN(autoupdatingCalendar));
+
+  if (result == nil)
     {
-      return AUTORELEASE(RETAIN(autoupdatingCalendar));
+      [classLock lock];
+
+      if (nil == autoupdatingCalendar)
+        {
+          ASSIGN(autoupdatingCalendar, [self currentCalendar]);
+          [[NSNotificationCenter defaultCenter] addObserver:autoupdatingCalendar
+                                                   selector:@selector(_defaultsDidChange:)
+                                                       name:NSUserDefaultsDidChangeNotification
+                                                     object:nil];
+        }
+
+      result = AUTORELEASE(RETAIN(autoupdatingCalendar));
+
+      [classLock unlock];
     }
 
-  [classLock lock];
-
-  if (nil == autoupdatingCalendar)
-    {
-      ASSIGN(autoupdatingCalendar, [self currentCalendar]);
-      [[NSNotificationCenter defaultCenter] addObserver:autoupdatingCalendar
-                                               selector:@selector(_defaultsDidChange:)
-                                                   name:NSUserDefaultsDidChangeNotification
-                                                 object:nil];
-    }
-
-  [classLock unlock];
-
-  return AUTORELEASE(RETAIN(autoupdatingCalendar));
+  return result;
 }
 
 + (id) calendarWithIdentifier:(NSString *)identifier
