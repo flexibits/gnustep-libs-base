@@ -686,7 +686,7 @@ static NSRecursiveLock *classLock = nil;
     }
 
   udateFrom = (UDate)floor([startingDate timeIntervalSince1970] * SECOND_TO_MILLI);
-  updateTo = (UDate)floor([resultDate timeIntervalSince1970] * SECOND_TO_MILLI);
+  udateTo = (UDate)floor([resultDate timeIntervalSince1970] * SECOND_TO_MILLI);
 
   ucal_setMillis(cal, udateFrom, &err);
   
