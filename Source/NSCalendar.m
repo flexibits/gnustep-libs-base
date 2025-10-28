@@ -357,19 +357,19 @@ static NSRecursiveLock *classLock = nil;
 
 + (id) currentCalendar
 {
-    NSCalendar *result;
+  NSCalendar *result;
 
-    [classLock lock];
+  [classLock lock];
 
-    if (currentCalendar == nil)
-      {
-        // This identifier may be nil
-        NSString *identifier = [[NSLocale currentLocale] objectForKey:NSLocaleCalendarIdentifier];
+  if (currentCalendar == nil)
+    {
+      // This identifier may be nil
+      NSString *identifier = [[NSLocale currentLocale] objectForKey:NSLocaleCalendarIdentifier];
 
-        currentCalendar = [[NSCalendar alloc] initWithCalendarIdentifier:identifier];
-      }
+      currentCalendar = [[NSCalendar alloc] initWithCalendarIdentifier:identifier];
+    }
 
-    result = currentCalendar;
+    result = AUTORELEASE([currentCalendar copy]);
 
     [classLock unlock];
 
@@ -378,17 +378,25 @@ static NSRecursiveLock *classLock = nil;
 
 + (id) autoupdatingCurrentCalendar
 {
-    [classLock lock];
-    if (nil == autoupdatingCalendar) {
-        autoupdatingCalendar = [[self currentCalendar] copy];
-        [[NSNotificationCenter defaultCenter] addObserver:autoupdatingCalendar
-                                                 selector:@selector(_defaultsDidChange:)
-                                                     name:NSUserDefaultsDidChangeNotification
-                                                   object:nil];
+  if (autoupdatingCalendar != nil)
+    {
+      return AUTORELEASE(RETAIN(autoupdatingCalendar));
     }
 
-    [classLock unlock];
-    return autoupdatingCalendar;
+  [classLock lock];
+
+  if (nil == autoupdatingCalendar)
+    {
+      ASSIGN(autoupdatingCalendar, [self currentCalendar]);
+      [[NSNotificationCenter defaultCenter] addObserver:autoupdatingCalendar
+                                               selector:@selector(_defaultsDidChange:)
+                                                   name:NSUserDefaultsDidChangeNotification
+                                                 object:nil];
+    }
+
+  [classLock unlock];
+
+  return AUTORELEASE(RETAIN(autoupdatingCalendar));
 }
 
 + (id) calendarWithIdentifier:(NSString *)identifier
@@ -1603,19 +1611,16 @@ yearForWeekOfYear: (NSInteger *)yearValuePointer
 
 - (id) copyWithZone: (NSZone*)zone
 {
-    NSCalendar *result;
+  NSCalendar *result;
 
-    if (NSShouldRetainWithZone(self, zone)) {
-        return RETAIN(self);
-    } else {
-        [_lock lock];
-        result = [[[self class] allocWithZone:zone] initWithCalendarIdentifier:my->identifier];
-        [result _setLocaleIdentifier:my->localeID];
-        [result setTimeZone:my->tz];
-        [_lock unlock];
-    }
+  [_lock lock];
 
-    return result;
+  result = [[[self class] allocWithZone:zone] initWithCalendarIdentifier:my->identifier];
+  [result _setLocaleIdentifier:my->localeID];
+  [result setTimeZone:my->tz];
+  [_lock unlock];
+
+  return result;
 }
 
 @end
@@ -1655,6 +1660,7 @@ typedef struct {
       RELEASE(my->tz);
       NSZoneFree([self zone], _NSDateComponentsInternal);
     }
+
   [super dealloc];
 }
 
@@ -1662,27 +1668,35 @@ typedef struct {
 {
   if (nil != (self = [super init]))
     {
-      _NSDateComponentsInternal =
-        NSZoneCalloc([self zone], sizeof(DateComp), 1);
+      _NSDateComponentsInternal = NSZoneCalloc([self zone], sizeof(DateComp), 1);
 
-      my->era = NSDateComponentUndefined;
-      my->year = NSDateComponentUndefined;
-      my->month = NSDateComponentUndefined;
-      my->day = NSDateComponentUndefined;
-      my->hour = NSDateComponentUndefined;
-      my->minute = NSDateComponentUndefined;
-      my->second = NSDateComponentUndefined;
-      my->week = NSDateComponentUndefined;
-      my->weekday = NSDateComponentUndefined;
-      my->weekdayOrdinal = NSDateComponentUndefined;
-      my->quarter = NSDateComponentUndefined;
-      my->weekOfMonth = NSDateComponentUndefined;
-      my->yearForWeekOfYear = NSDateComponentUndefined;
-      my->leapMonth = NO;
-      my->nanosecond = NSDateComponentUndefined;
-      my->cal = NULL;
-      my->tz = NULL;
-     }
+      if (_NSDateComponentsInternal != NULL)
+        {
+          my->era = NSDateComponentUndefined;
+          my->year = NSDateComponentUndefined;
+          my->month = NSDateComponentUndefined;
+          my->day = NSDateComponentUndefined;
+          my->hour = NSDateComponentUndefined;
+          my->minute = NSDateComponentUndefined;
+          my->second = NSDateComponentUndefined;
+          my->week = NSDateComponentUndefined;
+          my->weekday = NSDateComponentUndefined;
+          my->weekdayOrdinal = NSDateComponentUndefined;
+          my->quarter = NSDateComponentUndefined;
+          my->weekOfMonth = NSDateComponentUndefined;
+          my->yearForWeekOfYear = NSDateComponentUndefined;
+          my->leapMonth = NO;
+          my->nanosecond = NSDateComponentUndefined;
+          my->cal = NULL;
+          my->tz = NULL;
+        }
+      else
+        {
+          RELEASE(self);
+          self = nil;
+        }
+    }
+
   return self;
 }
 
@@ -1968,22 +1982,38 @@ typedef struct {
 
 - (id) copyWithZone: (NSZone*)zone
 {
-  if (NSShouldRetainWithZone(self, zone))
-    {
-      return RETAIN(self);
-    }
-  else
-    {
-      NSDateComponents  *c = [[NSDateComponents allocWithZone: zone] init];
+  NSDateComponents *c = [[NSDateComponents allocWithZone: zone] init];
 
-      memcpy(c->_NSDateComponentsInternal, _NSDateComponentsInternal,
-        sizeof(DateComp));
-      /* We gave objects to the copy, so we need to retain them too.
-       */
-      RETAIN(my->cal);
-      RETAIN(my->tz);
-      return c;
+  if (c != nil)
+    {
+      if (c->_NSDateComponentsInternal != NULL)
+        {
+          ((DateComp *)c->_NSDateComponentsInternal)->era = my->era;
+          ((DateComp *)c->_NSDateComponentsInternal)->year = my->year;
+          ((DateComp *)c->_NSDateComponentsInternal)->month = my->month;
+          ((DateComp *)c->_NSDateComponentsInternal)->day = my->day;
+          ((DateComp *)c->_NSDateComponentsInternal)->hour = my->hour;
+          ((DateComp *)c->_NSDateComponentsInternal)->minute = my->minute;
+          ((DateComp *)c->_NSDateComponentsInternal)->second = my->second;
+          ((DateComp *)c->_NSDateComponentsInternal)->week = my->week;
+          ((DateComp *)c->_NSDateComponentsInternal)->weekday = my->weekday;
+          ((DateComp *)c->_NSDateComponentsInternal)->weekdayOrdinal = my->weekdayOrdinal;
+          ((DateComp *)c->_NSDateComponentsInternal)->quarter = my->quarter;
+          ((DateComp *)c->_NSDateComponentsInternal)->weekOfMonth = my->weekOfMonth;
+          ((DateComp *)c->_NSDateComponentsInternal)->yearForWeekOfYear = my->yearForWeekOfYear;
+          ((DateComp *)c->_NSDateComponentsInternal)->leapMonth = my->leapMonth;
+          ((DateComp *)c->_NSDateComponentsInternal)->nanosecond = my->nanosecond;
+          ((DateComp *)c->_NSDateComponentsInternal)->cal = [my->cal copy];
+          ((DateComp *)c->_NSDateComponentsInternal)->tz = [my->tz copy];
+        }
+      else
+        {
+            RELEASE(c);
+            c = nil;
+        }
     }
+
+  return c;
 }
 
 - (BOOL)isEqual:(id)object
