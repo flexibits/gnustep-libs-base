@@ -1136,6 +1136,7 @@ static inline UCalendarDateFields NSCalendarUnitToUCalendarDateField(NSCalendarU
     NSInteger day = [self component:NSCalendarUnitWeekday fromDate:date];
     NSInteger daysUntil;
     BOOL back = (options & NSCalendarSearchBackwards) == NSCalendarSearchBackwards;
+    NSDate *next;
     
     if (back) {
         // previous Monday
@@ -1145,7 +1146,7 @@ static inline UCalendarDateFields NSCalendarUnitToUCalendarDateField(NSCalendarU
         daysUntil = 7 - (day % 7);
     }
     
-    NSDate *next = [self dateByAddingUnit:NSDayCalendarUnit value:daysUntil toDate:date options:0];
+    next = [self dateByAddingUnit:NSDayCalendarUnit value:daysUntil toDate:date options:0];
     next = [self startOfDayForDate:next];
     
     if (back) {
