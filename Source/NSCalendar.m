@@ -1000,8 +1000,6 @@ static inline UCalendarDateFields NSCalendarUnitToUCalendarDateField(NSCalendarU
 	    return nil;
       }
 
-    ucal_clear(cal);
-
     // Convert to ICU-equivalent calendar unit
     ucalField = NSCalendarUnitToUCalendarDateField(unit, &ok);
     NSAssert(ok, @"GNUStep does not implement the given date field.");
