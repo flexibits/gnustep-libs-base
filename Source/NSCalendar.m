@@ -102,6 +102,8 @@ typedef struct {
 #define my ((Calendar*)_NSCalendarInternal)
 
 @interface NSCalendar (PrivateMethods)
++ (NSString *) _localeIDWithCalendarIdentifier: (NSString *)calendarIdentifier
+                                     forLocale: (NSLocale *)locale;
 #if GS_USE_ICU == 1
 - (void *) _locked_openCalendarFor: (NSTimeZone *)timeZone;
 // Ensures that the calendar is initialized for the current time zone
@@ -109,9 +111,8 @@ typedef struct {
 - (void *) _locked_cloneCalendar:(UErrorCode *)err; 
 #endif
 - (void) _locked_resetCalendar;
-- (NSString *) _localeIDWithLocale: (NSLocale*)locale;
 - (NSString *) _localeIdentifier;
-- (void) _setLocaleIdentifier: (NSString*)identifier;
+- (void) _setLocaleIdentifier: (NSString *)identifier;
 @end
 
 static NSCalendar *currentCalendar = nil;
@@ -124,29 +125,38 @@ static NSRecursiveLock *classLock = nil;
 
 @implementation NSCalendar (PrivateMethods)
 
-- (BOOL) _needsRefreshForLocale: (NSString *)locale
-                       calendar: (NSString *)calendar
-                       timeZone: (NSString *)timeZone
++ (NSString *) _localeIDWithCalendarIdentifier: (NSString *)calendarIdentifier
+                                     forLocale: (NSLocale *)locale
+{
+  NSString *result;
+  NSString *localeId;
+
+  localeId = [locale localeIdentifier];
+
+  if (calendarIdentifier != nil)
+    {
+      NSMutableDictionary *tmpDict = [[NSLocale componentsFromLocaleIdentifier:localeId] mutableCopyWithZone:NULL];
+
+      [tmpDict removeObjectForKey: NSLocaleCalendar];
+      [tmpDict setObject:calendarIdentifier forKey: NSLocaleCalendarIdentifier];
+      result = [NSLocale localeIdentifierFromComponents: tmpDict];
+      RELEASE(tmpDict);
+    }
+  else
+    {
+      result = localeId;
+    }
+  
+  return result;
+}
+
+- (BOOL) _needsRefreshForCalendar: (NSString *)calendar
+                           locale: (NSString *)localeID
+                         timeZone: (NSTimeZone *)timeZone
 {
     BOOL needsToRefresh = NO;
 
     [_lock lock];
-
-    if (!needsToRefresh)
-      {
-
-        if (locale != my->localeID)
-          {
-            if (locale == nil || my->localeID == nil)
-              {
-                needsToRefresh = YES;
-              }
-            else
-              {
-                needsToRefresh = ![locale isEqualToString:my->localeID];
-              }
-          }
-      }
 
     if (!needsToRefresh)
       {
@@ -162,20 +172,33 @@ static NSRecursiveLock *classLock = nil;
               }
           }
       }
-    
+
     if (!needsToRefresh)
       {
-        NSString *timeZoneName = [my->tz name];
-
-        if (timeZone != timeZoneName)
+        if (localeID != my->localeID)
           {
-            if (timeZone == nil || timeZoneName == nil)
+            if (localeID == nil || my->localeID == nil)
               {
                 needsToRefresh = YES;
               }
             else
               {
-                needsToRefresh = ![timeZone isEqualToString:timeZoneName];
+                needsToRefresh = ![localeID isEqualToString:my->localeID];
+              }
+          }
+      }
+
+    if (!needsToRefresh)
+      {
+        if (timeZone != my->tz)
+          {
+            if (timeZone == nil || my->tz == nil)
+              {
+                needsToRefresh = YES;
+              }
+            else
+              {
+                needsToRefresh = ![my->tz isEqualToTimeZone:timeZone];
               }
           }
       }
@@ -185,25 +208,55 @@ static NSRecursiveLock *classLock = nil;
     return needsToRefresh;
 }
 
+- (void) _refreshautoupdatingCalendarWithCalendar: (NSString *)calendar
+                                           locale: (NSString *)localeID
+                                         timeZone: (NSTimeZone *)timeZone
+{
+  [_lock lock];
+
+  my->firstWeekday = NSNotFound;
+  my->minimumDaysInFirstWeek = NSNotFound;
+  ASSIGN(my->identifier, calendar);
+  ASSIGN(my->localeID, localeID);
+  ASSIGN(my->tz, timeZone);
+  [self _locked_resetCalendar];
+
+  [_lock unlock];
+}
+
 + (void) _refreshCurrentCalendarFromDefaultsDidChange: (NSNotification*)n
 {
-  if (currentCalendar != nil)
+  if (currentCalendar != nil || autoupdatingCalendar != nil)
     {
-      NSUserDefaults *defs = [NSUserDefaults standardUserDefaults];
-      NSString *locale = [defs stringForKey:@"Locale"];
-      NSString *calendar = [defs stringForKey:@"Calendar"];
-      NSString *tz = [defs stringForKey:@"Local Time Zone"];
+      BOOL needToRefreshCurrentCalendar = NO;
+      NSLocale *locale = [NSLocale currentLocale];
+      // This identifier may be nil
+      NSString *calendar = [locale objectForKey: NSLocaleCalendarIdentifier];
+      NSString *localeID = [self _localeIDWithCalendarIdentifier: calendar
+                                                       forLocale: locale];
+      NSTimeZone *timeZone = [NSTimeZone defaultTimeZone];
 
       [classLock lock];
 
-      if (currentCalendar != nil)
+      if (currentCalendar != nil || autoupdatingCalendar != nil)
         {
-            BOOL needToRefreshCurrentCalendar = [currentCalendar _needsRefreshForLocale:locale calendar:calendar timeZone:tz];
+            NSCalendar *referenceCalendar = currentCalendar != nil ? currentCalendar : autoupdatingCalendar;
+
+            needToRefreshCurrentCalendar = [referenceCalendar _needsRefreshForCalendar: calendar
+                                                                                locale: localeID
+                                                                              timeZone: timeZone];
 
             if (needToRefreshCurrentCalendar)
               {
                 RELEASE(currentCalendar);
                 currentCalendar = nil;
+
+                if (autoupdatingCalendar)
+                  {
+                    [autoupdatingCalendar _refreshautoupdatingCalendarWithCalendar: calendar
+                                                                            locale: localeID
+                                                                          timeZone: timeZone];
+                  }
               }
         }
 
@@ -276,9 +329,6 @@ static NSRecursiveLock *classLock = nil;
 
     my->cal = [self _locked_openCalendarFor:my->tz];
 
-    my->firstWeekday = NSNotFound;
-    my->minimumDaysInFirstWeek = NSNotFound;
-
     if (NSNotFound == my->firstWeekday)
       {
         my->firstWeekday = ucal_getAttribute(my->cal, UCAL_FIRST_DAY_OF_WEEK);
@@ -299,28 +349,6 @@ static NSRecursiveLock *classLock = nil;
 #endif
 }
 
-- (NSString*) _localeIDWithLocale:(NSLocale *)locale
-{
-    NSString *result;
-    NSString *localeId;
-    NSMutableDictionary *tmpDict;
-
-    [_lock lock];
-    localeId = [locale localeIdentifier];
-    if (my->identifier) {
-        tmpDict = [[NSLocale componentsFromLocaleIdentifier:localeId] mutableCopyWithZone:NULL];
-        [tmpDict removeObjectForKey:NSLocaleCalendar];
-        [tmpDict setObject:my->identifier forKey:NSLocaleCalendarIdentifier];
-        result = [NSLocale localeIdentifierFromComponents:tmpDict];
-        RELEASE(tmpDict);
-    } else {
-        result = localeId;
-    }
-    [_lock unlock];
-
-    return result;
-}
-
 - (NSString*) _localeIdentifier
 {
     NSString *localeIdentifier;
@@ -334,51 +362,19 @@ static NSRecursiveLock *classLock = nil;
 
 - (void) _setLocaleIdentifier: (NSString *)identifier
 {
-    [_lock lock];
-    if ([identifier isEqualToString:my->localeID]) {
-        [_lock unlock];
-        return;
+  [_lock lock];
+
+  if ([identifier isEqualToString:my->localeID])
+    {
+      [_lock unlock];
+      return;
     }
 
-    ASSIGN(my->localeID, identifier);
-    [self _locked_resetCalendar];
-    [_lock unlock];
+  ASSIGN(my->localeID, identifier);
+  [self _locked_resetCalendar];
+  [_lock unlock];
 }
 
-- (void) _defaultsDidChange: (NSNotification*)n
-{
-    BOOL needsToRefresh;
-    NSUserDefaults *defs = [NSUserDefaults standardUserDefaults];
-    NSString *locale = [defs stringForKey:@"Locale"];
-    NSString *calendar = [defs stringForKey:@"Calendar"];
-    NSString *tz = [defs stringForKey:@"Local Time Zone"];
-
-    [classLock lock];
-    [_lock lock];
-
-    needsToRefresh = [self _needsRefreshForLocale:locale calendar:calendar timeZone:tz];
-
-    if (needsToRefresh)
-      {
-#if GS_USE_ICU == 1
-        if (my->cal != NULL)
-          {
-            ucal_close(my->cal);
-            my->cal = NULL;
-          }
-#endif
-
-        ASSIGN(my->localeID, locale);
-        ASSIGN(my->identifier, calendar);
-        RELEASE(my->tz);
-        my->tz = [[NSTimeZone alloc] initWithName:tz];
-
-        [self _locked_resetCalendar];
-    }
-
-    [_lock unlock];
-    [classLock unlock];
-}
 @end
 
 @implementation NSCalendar
@@ -387,11 +383,24 @@ static NSRecursiveLock *classLock = nil;
 {
     if (self == [NSCalendar class])
       {
-        classLock = [NSRecursiveLock new];
+        classLock = [[NSRecursiveLock alloc] init];
 
         [[NSNotificationCenter defaultCenter] addObserver:self
                                                  selector:@selector(_refreshCurrentCalendarFromDefaultsDidChange:)
                                                      name:NSUserDefaultsDidChangeNotification
+                                                   object:nil];
+        [[NSNotificationCenter defaultCenter] addObserver:self
+                                                 selector:@selector(_refreshCurrentCalendarFromDefaultsDidChange:)
+                                                     name:NSCurrentLocaleDidChangeNotification
+                                                   object:nil];
+
+        [[NSNotificationCenter defaultCenter] addObserver:self
+                                                 selector:@selector(_refreshCurrentCalendarFromDefaultsDidChange:)
+                                                     name:NSSystemTimeZoneDidChangeNotification
+                                                   object:nil];
+        [[NSNotificationCenter defaultCenter] addObserver:self
+                                                 selector:@selector(_refreshCurrentCalendarFromDefaultsDidChange:)
+                                                     name:GSDefaultTimeZoneDidChangeNotification
                                                    object:nil];
       }
 }
@@ -431,10 +440,6 @@ static NSRecursiveLock *classLock = nil;
       if (nil == autoupdatingCalendar)
         {
           ASSIGN(autoupdatingCalendar, [self currentCalendar]);
-          [[NSNotificationCenter defaultCenter] addObserver:autoupdatingCalendar
-                                                   selector:@selector(_defaultsDidChange:)
-                                                       name:NSUserDefaultsDidChangeNotification
-                                                     object:nil];
         }
 
       result = AUTORELEASE(RETAIN(autoupdatingCalendar));
@@ -1306,9 +1311,25 @@ static inline UCalendarDateFields NSCalendarUnitToUCalendarDateField(NSCalendarU
 
 - (void) setLocale: (NSLocale *) locale
 {
-    // It's much easier to keep a copy of the NSLocale's string representation
-    // than to have to build it everytime we have to open a UCalendar.
-    [self _setLocaleIdentifier:[self _localeIDWithLocale:locale]];
+  // It's much easier to keep a copy of the NSLocale's string representation
+  // than to have to build it everytime we have to open a UCalendar.
+  NSString *localeID;
+
+  [_lock lock];
+
+  localeID = [[self class] _localeIDWithCalendarIdentifier: my->identifier
+                                                 forLocale: locale];
+
+  if ([localeID isEqualToString:my->localeID])
+    {
+      [_lock unlock];
+      return;
+    }
+
+  ASSIGN(my->localeID, localeID);
+  [self _locked_resetCalendar];
+
+  [_lock unlock];
 }
 
 - (NSUInteger) firstWeekday
@@ -1366,15 +1387,17 @@ static inline UCalendarDateFields NSCalendarUnitToUCalendarDateField(NSCalendarU
 
 - (void) setTimeZone: (NSTimeZone *) tz
 {
-    [_lock lock];
-    if ([tz isEqual:my->tz]) {
-        [_lock unlock];
-        return;
+  [_lock lock];
+
+  if ([tz isEqualToTimeZone:my->tz])
+    {
+      [_lock unlock];
+      return;
     }
 
-    ASSIGN(my->tz, tz);
-    [self _locked_resetCalendar];
-    [_lock unlock];
+  ASSIGN(my->tz, tz);
+  [self _locked_resetCalendar];
+  [_lock unlock];
 }
 
 - (NSRange) maximumRangeOfUnit: (NSCalendarUnit)unit
