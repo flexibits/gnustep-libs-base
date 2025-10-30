@@ -128,13 +128,57 @@ static NSRecursiveLock *classLock = nil;
                        calendar: (NSString *)calendar
                        timeZone: (NSString *)timeZone
 {
-    BOOL needsToRefresh;
+    BOOL needsToRefresh = NO;
 
     [_lock lock];
+
+    if (!needsToRefresh)
+      {
+
+        if (locale != my->localeID)
+          {
+            if (locale == nil || my->localeID == nil)
+              {
+                needsToRefresh = YES;
+              }
+            else
+              {
+                needsToRefresh = ![locale isEqualToString:my->localeID];
+              }
+          }
+      }
+
+    if (!needsToRefresh)
+      {
+        if (calendar != my->identifier)
+          {
+            if (calendar == nil || my->identifier == nil)
+              {
+                needsToRefresh = YES;
+              }
+            else
+              {
+                needsToRefresh = ![calendar isEqualToString:my->identifier];
+              }
+          }
+      }
     
-    needsToRefresh = [locale isEqual:my->localeID] == NO
-            || [calendar isEqual:my->identifier] == NO
-            || [timeZone isEqual:[my->tz name]] == NO;
+    if (!needsToRefresh)
+      {
+        NSString *timeZoneName = [my->tz name];
+
+        if (timeZone != timeZoneName)
+          {
+            if (timeZone == nil || timeZoneName == nil)
+              {
+                needsToRefresh = YES;
+              }
+            else
+              {
+                needsToRefresh = ![timeZone isEqualToString:timeZoneName];
+              }
+          }
+      }
 
     [_lock unlock];
     
