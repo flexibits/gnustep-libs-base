@@ -1284,14 +1284,14 @@ static NSMapTable *absolutes = 0;
  * Destroy the system time zone so that it will be recreated
  * next time it is used.
  */
-+ (void)resetSystemTimeZone
++ (void) resetSystemTimeZone
 {
-    GS_MUTEX_LOCK(zone_mutex);
-    DESTROY(systemTimeZone);
-    GS_MUTEX_UNLOCK(zone_mutex);
-    [[NSNotificationCenter defaultCenter]
-        postNotificationName:NSSystemTimeZoneDidChangeNotification
-                      object:nil];
+  GS_MUTEX_LOCK(zone_mutex);
+  DESTROY(systemTimeZone);
+  GS_MUTEX_UNLOCK(zone_mutex);
+
+  [[NSNotificationCenter defaultCenter] postNotificationName: NSSystemTimeZoneDidChangeNotification
+                                                      object: nil];
 }
 
 /**
@@ -1299,17 +1299,23 @@ static NSMapTable *absolutes = 0;
  */
 + (void)setDefaultTimeZone:(NSTimeZone *)aTimeZone
 {
-    if (aTimeZone != defaultTimeZone) {
-        /*
-         * We can't make the localTimeZone the default since that would
-         * cause recursion ...
-         */
-        if (aTimeZone == localTimeZone) {
-            aTimeZone = [self systemTimeZone];
-        }
-        GS_MUTEX_LOCK(zone_mutex);
-        ASSIGN(defaultTimeZone, aTimeZone);
-        GS_MUTEX_UNLOCK(zone_mutex);
+  /*
+   * We can't make the localTimeZone the default since that would
+   * cause recursion ...
+   */
+  if (aTimeZone == localTimeZone)
+    {
+      aTimeZone = [self systemTimeZone];
+    }
+
+  if (aTimeZone != defaultTimeZone && (aTimeZone == nil || defaultTimeZone == nil || ![aTimeZone isEqualToTimeZone:defaultTimeZone]))
+    {
+      GS_MUTEX_LOCK(zone_mutex);
+      ASSIGN(defaultTimeZone, aTimeZone);
+      GS_MUTEX_UNLOCK(zone_mutex);
+
+      [[NSNotificationCenter defaultCenter] postNotificationName: GSDefaultTimeZoneDidChangeNotification
+                                                          object: nil];
     }
 }
 

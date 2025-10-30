@@ -44,6 +44,7 @@ enum {
 };
 typedef NSInteger NSTimeZoneNameStyle;
 GS_EXPORT NSString * const NSSystemTimeZoneDidChangeNotification;
+GS_EXPORT NSString * const GSDefaultTimeZoneDidChangeNotification;
 #endif
 
 GS_EXPORT_CLASS

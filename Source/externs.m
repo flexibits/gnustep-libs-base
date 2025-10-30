@@ -543,6 +543,7 @@ GS_DECLARE NSString* const NSGrammarCorrections = @"NSGrammarCorrections";
 
 /* NSTimeZone */
 GS_DECLARE NSString* const NSSystemTimeZoneDidChangeNotification = @"NSSystemTimeZoneDidChangeNotification";
+GS_DECLARE NSString* const GSDefaultTimeZoneDidChangeNotification = @"GSDefaultTimeZoneDidChangeNotification";
 
 /* NSURLCredentialStorage */
 GS_DECLARE NSString* const NSURLCredentialStorageChangedNotification = @"NSURLCredentialStorageChangedNotification";
