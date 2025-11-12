@@ -407,9 +407,10 @@ static NSRecursiveLock *classLock = nil;
 
 + (id) currentCalendar
 {
-  NSCalendar *result = AUTORELEASE([currentCalendar copy]);
+  NSCalendar *result;
+  NSCalendar *activeCurrentCalendar = RETAIN(currentCalendar);
 
-  if (result == nil)
+  if (activeCurrentCalendar == nil)
     {
       [classLock lock];
 
@@ -421,31 +422,36 @@ static NSRecursiveLock *classLock = nil;
           currentCalendar = [[NSCalendar alloc] initWithCalendarIdentifier:identifier];
         }
 
-      result = AUTORELEASE([currentCalendar copy]);
-
+      activeCurrentCalendar = RETAIN(currentCalendar);
       [classLock unlock];
     }
 
-    return result;
+  result = [activeCurrentCalendar copy];
+  RELEASE(activeCurrentCalendar);
+
+  return result;
 }
 
 + (id) autoupdatingCurrentCalendar
 {
-  NSCalendar *result = AUTORELEASE(RETAIN(autoupdatingCalendar));
+  NSCalendar *result;
+  NSCalendar *activeAutoupdatingCalendar = RETAIN(autoupdatingCalendar);
 
-  if (result == nil)
+  if (activeAutoupdatingCalendar == nil)
     {
       [classLock lock];
 
-      if (nil == autoupdatingCalendar)
+      if (autoupdatingCalendar == nil)
         {
           ASSIGN(autoupdatingCalendar, [self currentCalendar]);
         }
 
-      result = AUTORELEASE(RETAIN(autoupdatingCalendar));
-
+      activeAutoupdatingCalendar = RETAIN(autoupdatingCalendar);
       [classLock unlock];
     }
+
+  result = [activeAutoupdatingCalendar copy];
+  RELEASE(activeAutoupdatingCalendar);
 
   return result;
 }
