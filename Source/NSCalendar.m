@@ -256,8 +256,10 @@ static NSRecursiveLock *classLock = nil;
 
             if (needToRefreshCurrentCalendar)
               {
-                RELEASE(currentCalendar);
+                NSCalendar *previousCurrentCalendar = currentCalendar;
+
                 currentCalendar = nil;
+                RELEASE(previousCurrentCalendar);
 
                 if (autoupdatingCalendar)
                   {
