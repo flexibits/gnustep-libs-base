@@ -131,7 +131,7 @@ static NSRecursiveLock *classLock = nil;
   NSString *result;
   NSString *localeId;
 
-  localeId = [locale localeIdentifier];
+  localeId = RETAIN([locale localeIdentifier]);
 
   if (calendarIdentifier != nil)
     {
@@ -141,12 +141,14 @@ static NSRecursiveLock *classLock = nil;
       [tmpDict setObject:calendarIdentifier forKey: NSLocaleCalendarIdentifier];
       result = [NSLocale localeIdentifierFromComponents: tmpDict];
       RELEASE(tmpDict);
+      RELEASE(localeId);
+      localeId = nil;
     }
   else
     {
-      result = localeId;
+      result = AUTORELEASE(localeId);
     }
-  
+
   return result;
 }
 
