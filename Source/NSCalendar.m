@@ -160,45 +160,51 @@ static NSRecursiveLock *classLock = nil;
 
     if (!needsToRefresh)
       {
-        if (calendar != my->identifier)
+        NSString *myIdentifier = my->identifier;
+
+        if (calendar != myIdentifier)
           {
-            if (calendar == nil || my->identifier == nil)
+            if (calendar == nil || myIdentifier == nil)
               {
                 needsToRefresh = YES;
               }
             else
               {
-                needsToRefresh = ![calendar isEqualToString:my->identifier];
+                needsToRefresh = ![calendar isEqualToString:myIdentifier];
               }
           }
       }
 
     if (!needsToRefresh)
       {
-        if (localeID != my->localeID)
+        NSString *myLocaleID = my->localeID;
+
+        if (localeID != myLocaleID)
           {
-            if (localeID == nil || my->localeID == nil)
+            if (localeID == nil || myLocaleID == nil)
               {
                 needsToRefresh = YES;
               }
             else
               {
-                needsToRefresh = ![localeID isEqualToString:my->localeID];
+                needsToRefresh = ![localeID isEqualToString:myLocaleID];
               }
           }
       }
 
     if (!needsToRefresh)
       {
-        if (timeZone != my->tz)
+        NSTimeZone *myTz = my->tz;
+
+        if (timeZone != myTz)
           {
-            if (timeZone == nil || my->tz == nil)
+            if (timeZone == nil || myTz == nil)
               {
                 needsToRefresh = YES;
               }
             else
               {
-                needsToRefresh = ![my->tz isEqualToTimeZone:timeZone];
+                needsToRefresh = ![timeZone isEqualToTimeZone:myTz];
               }
           }
       }
@@ -502,21 +508,26 @@ static NSRecursiveLock *classLock = nil;
 
 - (void) dealloc
 {
-    if (0 != _NSCalendarInternal) {
+    if (0 != _NSCalendarInternal)
+      {
         [_lock lock];
+
 #if GS_USE_ICU == 1
-        if (my->cal != NULL) {
+        if (my->cal != NULL)
+          {
             ucal_close(my->cal);
             my->cal = NULL;
-        }
+          }
 #endif
+
         RELEASE(my->identifier);
         RELEASE(my->localeID);
         RELEASE(my->tz);
         NSZoneFree([self zone], _NSCalendarInternal);
         [_lock unlock];
         RELEASE(_lock);
-    }
+      }
+
     [super dealloc];
 }
 
