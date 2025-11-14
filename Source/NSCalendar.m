@@ -436,7 +436,7 @@ static NSRecursiveLock *classLock = nil;
       [classLock unlock];
     }
 
-  result = [activeCurrentCalendar copy];
+  result = AUTORELEASE([activeCurrentCalendar copy]);
   RELEASE(activeCurrentCalendar);
 
   return result;
@@ -460,7 +460,7 @@ static NSRecursiveLock *classLock = nil;
       [classLock unlock];
     }
 
-  result = [activeAutoupdatingCalendar copy];
+  result = AUTORELEASE([activeAutoupdatingCalendar copy]);
   RELEASE(activeAutoupdatingCalendar);
 
   return result;
