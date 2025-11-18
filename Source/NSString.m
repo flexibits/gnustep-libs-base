@@ -4057,6 +4057,10 @@ GSICUCollatorOpen(NSStringCompareOptions mask, NSLocale *locale)
 // of a null terminator.
 inline static int HACK_GetCharacterWidth(NSStringEncoding encoding)
 {
+    const static NSString *testString = @"a";
+    NSData *data;
+    NSUInteger width;
+
     // return quickly on common encodings
     switch (encoding) {
         case NSASCIIStringEncoding:
@@ -4070,12 +4074,10 @@ inline static int HACK_GetCharacterWidth(NSStringEncoding encoding)
     }
 
     // otherwise, do the hacky thing
-    const static NSString *testString = @"a";
-
-    NSData *data = [testString dataUsingEncoding:encoding];
+    data = [testString dataUsingEncoding:encoding];
     assert(data != nil);
 
-    NSUInteger width =  [data length];
+    width =  [data length];
 
     return width;
 }
@@ -4131,21 +4133,26 @@ inline static int HACK_GetCharacterWidth(NSStringEncoding encoding)
   else
     {
       NSData *data = [self dataUsingEncoding: encoding];
+      NSUInteger stringBytesWithoutTerminator;
+      int characterWidth;
+      NSUInteger totalStringBytes;
+      BOOL partialCopy;
+
       if (data == nil)
         {
           [NSException raise: NSCharacterConversionException
                       format: @"Can't convert to C string."];
         }
 
-      NSUInteger stringBytesWithoutTerminator = [data length];
+      stringBytesWithoutTerminator = [data length];
 
       // HACK: get size of null terminator for this encoding
-      int characterWidth = HACK_GetCharacterWidth(encoding);
-      NSUInteger totalStringBytes = stringBytesWithoutTerminator + characterWidth;
+      characterWidth = HACK_GetCharacterWidth(encoding);
+      totalStringBytes = stringBytesWithoutTerminator + characterWidth;
 
       // If the buffer is too small, we have to copy as much as possible and
       // then return NO. (Not how I'd design it, but that's how it is...)
-      BOOL partialCopy = totalStringBytes > maxBytes;
+      partialCopy = totalStringBytes > maxBytes;
 
       if (partialCopy)
         {
@@ -4208,7 +4215,7 @@ inline static int HACK_GetCharacterWidth(NSStringEncoding encoding)
     {
       unsigned index;
       SEL sel = @selector(characterAtIndex:);
-      unichar (*imp)() = (unichar (*)())[self methodForSelector: sel];
+      unichar (*imp)(id, SEL, NSUInteger) = (unichar (*)(id, SEL, NSUInteger))[self methodForSelector: sel];
 
       for (index = 0; index < length; index++)
         {
