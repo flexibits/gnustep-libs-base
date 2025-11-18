@@ -1492,7 +1492,7 @@ GSICUCollatorOpen(NSStringCompareOptions mask, NSLocale *locale)
   if ([format isKindOfClass:[GSLocalizedString class]])
     {
       // Get the appropriate format according to the pluralization rules.
-      format = [(GSLocalizedString *) format getPluralizedFormat:argList];
+      format = [(GSLocalizedString *) format getPluralizedFormat: argList];
     }
 
   /*
@@ -7170,7 +7170,7 @@ static NSFileManager *fm = nil;
 
 /* Returns a format that's appropriate for the pluralization of the arguments in
  * the current language */
-- (NSString *)getPluralizedFormat:(va_list)argList
+- (NSString *)getPluralizedFormat: (va_list)argList
 {
   /* Sample dictionary:
       NSStringLocalizedFormatKey=%#@x_hours@, %#@x_minutes@
@@ -7191,95 +7191,141 @@ static NSFileManager *fm = nil;
    */
 
   NSString *formatKey = _dict[@"NSStringLocalizedFormatKey"];
+  NSRegularExpression *regex;
+  NSArray<NSTextCheckingResult *> *matches;
+  NSMutableString *newFormat;
+  NSInteger offset;
+  BOOL isBadLocalizationString;
+  va_list args;
 
   if (!formatKey)
     {
       return self;
     }
 
-  NSRegularExpression *regex = [NSRegularExpression regularExpressionWithPattern: @"%#@([^@]+)@"
-                                                                         options: NSRegularExpressionCaseInsensitive
-                                                                           error: nil];
+  regex = [NSRegularExpression regularExpressionWithPattern: @"%#@([^@]+)@"
+                                                    options: NSRegularExpressionCaseInsensitive
+                                                      error: nil];
 
-  NSArray<NSTextCheckingResult *> *matches = [regex matchesInString: formatKey
-                                                            options: 0
-                                                              range: NSMakeRange(0, [formatKey length])];
+  matches = [regex matchesInString: formatKey
+                           options: 0
+                             range: NSMakeRange(0, [formatKey length])];
 
-  va_list args;
+  
   va_copy(args, argList);
 
-  NSMutableString *newFormat = [formatKey mutableCopy];
-  NSInteger offset = 0;
+  newFormat = AUTORELEASE([formatKey mutableCopy]);
+  offset = 0;
+  isBadLocalizationString = NO;
 
   for (NSTextCheckingResult *match in matches)
     {
+      NSString *replacement;
       NSString *varKey = [formatKey substringWithRange:[match rangeAtIndex:1]];
-      NSDictionary<NSString *, NSString *> *varDict = _dict[varKey];
 
-      // Get the numeric value of the variable (luckily, only "%ld", "%lu", and
-      // "%1g" is used).
-      unsigned long number = 0;
-      NSString	   *type = varDict[@"NSStringFormatValueTypeKey"];
-
-      if ([type isEqualToString:@"ld"])
+      if (isBadLocalizationString)
         {
-          number = va_arg(args, long);
-        }
-      else if ([type isEqualToString:@"lu"])
-        {
-          number = va_arg(args, unsigned long);
-        }
-      else if ([type isEqualToString:@"d"])
-        {
-          number = va_arg(args, int);
-        }
-      else if ([type isEqualToString:@"u"])
-        {
-          number = va_arg(args, unsigned int);
-        }
-      else if ([type isEqualToString:@"1g"])
-        {
-          double d = va_arg(args, double);
-          // Casting to an int would mean 0.3 is "zero" and 1.2 would be "one", so
-          // check against just 0 or 1 and let any other value be "other".
-          number = d == 0 ? 0 : (d == 1 || d == -1) ? 1 : 10;
+          replacement = nil;
         }
       else
         {
-          number = va_arg(args, int);
-        }
+          NSDictionary<NSString *, NSString *> *varDict = _dict[varKey];
 
-      // Only supports languages which have similar rules to english (zero,
-      // none, or other), as well as japanese (zero or other).
-      NSString *variantKey;
+          if (varDict && [varDict isKindOfClass: [NSDictionary class]])
+            {
+              // Get the numeric value of the variable (luckily, only "%ld", "%lu", and
+              // "%1g" is used).
+              BOOL haveNumber = NO;
+              unsigned long number = 0;
+              NSString *type = varDict[@"NSStringFormatValueTypeKey"];
+              NSString *variantKey;
+    
+              if (!type || ![type isKindOfClass: [NSString class]])
+                {
+                  haveNumber = NO;
+                }
+              else if ([type isEqualToString:@"ld"])
+                {
+                  number = va_arg(args, long);
+                  haveNumber = YES;
+                }
+              else if ([type isEqualToString:@"lu"])
+                {
+                  number = va_arg(args, unsigned long);
+                  haveNumber = YES;
+                }
+              else if ([type isEqualToString:@"d"])
+                {
+                  number = va_arg(args, int);
+                  haveNumber = YES;
+                }
+              else if ([type isEqualToString:@"u"])
+                {
+                  number = va_arg(args, unsigned int);
+                  haveNumber = YES;
+                }
+              else if ([type isEqualToString:@"1g"])
+                {
+                  double d = va_arg(args, double);
+                  // Casting to an int would mean 0.3 is "zero" and 1.2 would be "one", so
+                  // check against just 0 or 1 and let any other value be "other".
+                  number = d == 0 ? 0 : (d == 1 || d == -1) ? 1 : 10;
+                  haveNumber = YES;
+                }
+              else
+                {
+                  haveNumber = NO;
+                }
+    
+              // Only supports languages which have similar rules to english (zero,
+              // none, or other), as well as japanese (zero or other).
+              if (!haveNumber)
+                {
+                  variantKey = @"other";
+                }
+              else if (number == 0)
+                {
+                  variantKey = @"zero";
+                }
+              else if (number == 1)
+                {
+                  variantKey = @"one";
+                }
+              else
+                {
+                  variantKey = @"other";
+                }
+    
+              replacement = varDict[variantKey];
+    
+              if (!replacement || ![replacement isKindOfClass: [NSString class]])
+                {
+                  // Fallback to the "other" variant.
+                  replacement = varDict[@"other"];
 
-      if (number == 0)
-        {
-          variantKey = @"zero";
+                  if (![replacement isKindOfClass: [NSString class]])
+                    {
+                        replacement = nil;
+                    }
+                }
+            }
+          else
+            {
+              replacement = nil;
+            }
         }
-      else if (number == 1)
-        {
-          variantKey = @"one";
-        }
-      else
-        {
-          variantKey = @"other";
-        }
-
-      NSString *replacement = varDict[variantKey];
 
       if (!replacement)
         {
-          // Fallback to the "other" variant.
-          replacement = varDict[@"other"];
+            isBadLocalizationString = YES;
+            // Replace it with an escaped version of the variable
+            // this way it shows in the final string after formatting
+            replacement = [NSString stringWithFormat: @"%%%%#@%@@", varKey];
         }
 
-      if (replacement)
-        {
-          [newFormat replaceCharactersInRange: NSMakeRange(match.range.location + offset, match.range.length)
-                                   withString: replacement];
-          offset += (NSInteger) ([replacement length] - match.range.length);
-        }
+      [newFormat replaceCharactersInRange: NSMakeRange(match.range.location + offset, match.range.length)
+                               withString: replacement];
+      offset += (NSInteger) ([replacement length] - match.range.length);
     }
 
   va_end(args);
