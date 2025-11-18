@@ -127,42 +127,42 @@
 static inline unichar
 uni_toupper(unichar ch)
 {
-    unichar result = gs_toupper_map[ch / 256][ch % 256];
-    return result ? result : ch;
+  unichar result = gs_toupper_map[ch / 256][ch % 256];
+  return result ? result : ch;
 }
 static inline unichar
 uni_tolower(unichar ch)
 {
-    unichar result = gs_tolower_map[ch / 256][ch % 256];
-    return result ? result : ch;
+  unichar result = gs_tolower_map[ch / 256][ch % 256];
+  return result ? result : ch;
 }
 
 #import "GNUstepBase/Unicode.h"
 
-@interface NSScanner (Double)
-+ (BOOL)_scanDouble:(double *)value from:(NSString *)str;
+@interface	NSScanner (Double)
++ (BOOL) _scanDouble: (double*)value from: (NSString*)str;
 @end
 
-@class GSString;
-@class GSMutableString;
-@class GSPlaceholderString;
-@interface GSPlaceholderString : NSString // Help the compiler
+@class	GSString;
+@class	GSMutableString;
+@class	GSPlaceholderString;
+@interface GSPlaceholderString : NSString	// Help the compiler
 @end
-@class GSMutableArray;
-@class GSMutableDictionary;
+@class	GSMutableArray;
+@class	GSMutableDictionary;
 
 /*
  * Cache classes and method implementations for speed.
  */
-static Class NSDataClass;
-static Class NSStringClass;
-static Class NSMutableStringClass;
+static Class	NSDataClass;
+static Class	NSStringClass;
+static Class	NSMutableStringClass;
 
-static Class GSStringClass;
-static Class GSMutableStringClass;
-static Class GSPlaceholderStringClass;
+static Class	GSStringClass;
+static Class	GSMutableStringClass;
+static Class	GSPlaceholderStringClass;
 
-static GSPlaceholderString *defaultPlaceholderString;
+static GSPlaceholderString	*defaultPlaceholderString;
 static NSMapTable *placeholderMap;
 static gs_mutex_t placeholderLock = GS_MUTEX_INIT_STATIC;
 
@@ -176,34 +176,42 @@ static BOOL (*nonBaseImp)(id, SEL, unichar) = 0;
  * immutable string, but we don't want to change the parameter from
  * a mutable string to an immutable one.
  */
-#define IMMUTABLE(S) AUTORELEASE([(S) copyWithZone:NSDefaultMallocZone()])
+#define IMMUTABLE(S) AUTORELEASE([(S) copyWithZone: NSDefaultMallocZone()])
 
 static inline BOOL isWhiteSpace(unichar c)
 {
-    /* We can not use whitespaceAndNewlineCharacterSet here as this would lead
-     * to a recursion, as this also reads in a property list.
-     *
-     * Copied whitespace and newline index set from  NSCharacterSetData.h
-     */
-    static const NSRange whitespace[] = {{9, 5}, {32, 1}, {133, 1}, {160, 1}, {5760, 1}, {8192, 12}, {8232, 2}, {8239, 1}, {8287, 1}, {12288, 1}};
-    unsigned upper = sizeof(whitespace) / sizeof(*whitespace);
-    unsigned lower = 0;
-    unsigned pos;
-    NSRange r;
+  /* We can not use whitespaceAndNewlineCharacterSet here as this would lead
+   * to a recursion, as this also reads in a property list.
+   *
+   * Copied whitespace and newline index set from  NSCharacterSetData.h
+   */
+  static const NSRange whitespace[] = {{9,5},{32,1},{133,1},{160,1},{5760,1},{8192,12},{8232,2},{8239,1},{8287,1},{12288,1}};
+  unsigned upper = sizeof(whitespace)/sizeof(*whitespace);
+  unsigned lower = 0;
+  unsigned pos;
+  NSRange r;
 
-    /* Binary search for a range containing the character to be checked
-     */
-    for (pos = upper / 2; upper != lower; pos = (upper + lower) / 2) {
-        r = whitespace[pos];
-        if (c < r.location) {
-            upper = pos;
-        } else if (c >= NSMaxRange(r)) {
-            lower = pos + 1;
-        } else {
-            break;
+  /* Binary search for a range containing the character to be checked
+   */
+  for (pos = upper/2; upper != lower; pos = (upper+lower)/2)
+    {
+      r = whitespace[pos];
+
+      if (c < r.location)
+        {
+          upper = pos;
+        }
+      else if (c >= NSMaxRange(r))
+        {
+          lower = pos + 1;
+        }
+      else
+        {
+          break;
         }
     }
-    return (c >= r.location && c < NSMaxRange(r)) ? YES : NO;
+
+  return (c >= r.location && c < NSMaxRange(r)) ? YES : NO;
 }
 
 #define GS_IS_WHITESPACE(X) isWhiteSpace(X)
@@ -218,32 +226,32 @@ static inline BOOL isWhiteSpace(unichar c)
 inline BOOL
 uni_isnonsp(unichar u)
 {
-    /* Treating upper surrogates as non-spacing is a convenient solution
-     * to a number of issues with UTF-16
-     */
-    if ((u >= 0xdc00) && (u <= 0xdfff))
-        return YES;
+  /* Treating upper surrogates as non-spacing is a convenient solution
+   * to a number of issues with UTF-16
+   */
+  if ((u >= 0xdc00) && (u <= 0xdfff))
+    return YES;
 
-    return (*nonBaseImp)(nonBase, cMemberSel, u);
+  return (*nonBaseImp)(nonBase, cMemberSel, u);
 }
 
 /*
  *	Include sequence handling code with instructions to generate search
  *	and compare functions for NSString objects.
  */
-#define GSEQ_STRCOMP strCompNsNs
-#define GSEQ_STRRANGE strRangeNsNs
-#define GSEQ_O GSEQ_NS
-#define GSEQ_S GSEQ_NS
+#define	GSEQ_STRCOMP	strCompNsNs
+#define	GSEQ_STRRANGE	strRangeNsNs
+#define	GSEQ_O	GSEQ_NS
+#define	GSEQ_S	GSEQ_NS
 #include "GSeq.h"
 
 /*
  * The path handling mode.
  */
 static enum {
-    PH_DO_THE_RIGHT_THING,
-    PH_UNIX,
-    PH_WINDOWS
+  PH_DO_THE_RIGHT_THING,
+  PH_UNIX,
+  PH_WINDOWS
 } pathHandling = PH_DO_THE_RIGHT_THING;
 
 /**
@@ -257,36 +265,38 @@ static enum {
  * Any other none-null string sets do-the-right-thing mode.<br />
  * The function returns a C String describing the old mode.
  */
-GS_DECLARE const char *
+GS_DECLARE const char*
 GSPathHandling(const char *mode)
 {
-    int old = pathHandling;
+  int old = pathHandling;
 
-    if (mode != 0) {
-        if (strcasecmp(mode, "windows") == 0) {
-            pathHandling = PH_WINDOWS;
-        } else if (strcasecmp(mode, "unix") == 0) {
-            pathHandling = PH_UNIX;
-        } else {
-            pathHandling = PH_DO_THE_RIGHT_THING;
+  if (mode != 0)
+    {
+      if (strcasecmp(mode, "windows") == 0)
+        {
+          pathHandling = PH_WINDOWS;
+        }
+      else if (strcasecmp(mode, "unix") == 0)
+        {
+          pathHandling = PH_UNIX;
+        }
+      else
+        {
+          pathHandling = PH_DO_THE_RIGHT_THING;
         }
     }
-    switch (old) {
-        case PH_WINDOWS:
-            return "windows";
-        case PH_UNIX:
-            return "unix";
-        default:
-            return "right";
+
+  switch (old)
+    {
+      case PH_WINDOWS: return "windows";
+      case PH_UNIX: return "unix";
+      default: return "right";
     }
 }
 
-#define GSPathHandlingRight() \
-    ((pathHandling == PH_DO_THE_RIGHT_THING) ? YES : NO)
-#define GSPathHandlingUnix() \
-    ((pathHandling == PH_UNIX) ? YES : NO)
-#define GSPathHandlingWindows() \
-    ((pathHandling == PH_WINDOWS) ? YES : NO)
+#define	GSPathHandlingRight() ((pathHandling == PH_DO_THE_RIGHT_THING) ? YES : NO)
+#define	GSPathHandlingUnix() ((pathHandling == PH_UNIX) ? YES : NO)
+#define	GSPathHandlingWindows() ((pathHandling == PH_WINDOWS) ? YES : NO)
 
 /*
  * The pathSeps character set is used for parsing paths ... it *must*
@@ -296,62 +306,89 @@ GSPathHandling(const char *mode)
  * We can't have a 'pathSeps' variable initialized in the +initialize
  * method because that would cause recursion.
  */
-static NSCharacterSet *
+static NSCharacterSet*
 pathSeps(void)
 {
-    static NSCharacterSet *wPathSeps = nil;
-    static NSCharacterSet *uPathSeps = nil;
-    static NSCharacterSet *rPathSeps = nil;
-    if (GSPathHandlingRight()) {
-        if (rPathSeps == nil) {
-            GS_MUTEX_LOCK(placeholderLock);
-            if (rPathSeps == nil) {
-                rPathSeps = [NSCharacterSet characterSetWithCharactersInString:@"/\\"];
-                rPathSeps = [NSObject leakAt:&rPathSeps];
+  static NSCharacterSet	*wPathSeps = nil;
+  static NSCharacterSet	*uPathSeps = nil;
+  static NSCharacterSet	*rPathSeps = nil;
+
+  if (GSPathHandlingRight())
+    {
+      if (rPathSeps == nil)
+        {
+          GS_MUTEX_LOCK(placeholderLock);
+
+          if (rPathSeps == nil)
+            {
+              rPathSeps = [NSCharacterSet characterSetWithCharactersInString: @"/\\"];
+              rPathSeps = [NSObject leakAt: &rPathSeps];
             }
-            GS_MUTEX_UNLOCK(placeholderLock);
+
+          GS_MUTEX_UNLOCK(placeholderLock);
         }
-        return rPathSeps;
+
+      return rPathSeps;
     }
-    if (GSPathHandlingUnix()) {
-        if (uPathSeps == nil) {
-            GS_MUTEX_LOCK(placeholderLock);
-            if (uPathSeps == nil) {
-                uPathSeps = [NSCharacterSet characterSetWithCharactersInString:@"/"];
-                uPathSeps = [NSObject leakAt:&uPathSeps];
+
+  if (GSPathHandlingUnix())
+    {
+      if (uPathSeps == nil)
+        {
+          GS_MUTEX_LOCK(placeholderLock);
+
+          if (uPathSeps == nil)
+            {
+              uPathSeps = [NSCharacterSet characterSetWithCharactersInString: @"/"];
+              uPathSeps = [NSObject leakAt: &uPathSeps];
             }
-            GS_MUTEX_UNLOCK(placeholderLock);
+
+          GS_MUTEX_UNLOCK(placeholderLock);
         }
-        return uPathSeps;
+      return uPathSeps;
     }
-    if (GSPathHandlingWindows()) {
-        if (wPathSeps == nil) {
-            GS_MUTEX_LOCK(placeholderLock);
-            if (wPathSeps == nil) {
-                wPathSeps = [NSCharacterSet characterSetWithCharactersInString:@"\\"];
-                wPathSeps = [NSObject leakAt:&wPathSeps];
+
+  if (GSPathHandlingWindows())
+    {
+      if (wPathSeps == nil)
+        {
+          GS_MUTEX_LOCK(placeholderLock);
+
+          if (wPathSeps == nil)
+            {
+              wPathSeps = [NSCharacterSet characterSetWithCharactersInString: @"\\"];
+              wPathSeps = [NSObject leakAt: &wPathSeps];
             }
-            GS_MUTEX_UNLOCK(placeholderLock);
+
+          GS_MUTEX_UNLOCK(placeholderLock);
         }
-        return wPathSeps;
+
+      return wPathSeps;
     }
-    pathHandling = PH_DO_THE_RIGHT_THING;
-    return pathSeps();
+
+  pathHandling = PH_DO_THE_RIGHT_THING;
+  return pathSeps();
 }
 
 inline static BOOL
 pathSepMember(unichar c)
 {
-    if (c == (unichar)'/') {
-        if (GSPathHandlingWindows() == NO) {
-            return YES;
-        }
-    } else if (c == (unichar)'\\') {
-        if (GSPathHandlingUnix() == NO) {
-            return YES;
+  if (c == (unichar)'/')
+    {
+      if (GSPathHandlingWindows() == NO)
+        {
+          return YES;
         }
     }
-    return NO;
+  else if (c == (unichar)'\\')
+    {
+      if (GSPathHandlingUnix() == NO)
+        {
+          return YES;
+        }
+    }
+
+  return NO;
 }
 
 /* For cross-platform portability we always use slash as the separator
@@ -364,10 +401,12 @@ pathSepMember(unichar c)
 inline static unichar
 pathSepChar()
 {
-    if (GSPathHandlingWindows() == NO) {
-        return '/';
+  if (GSPathHandlingWindows() == NO)
+    {
+      return '/';
     }
-    return '\\';
+
+  return '\\';
 }
 
 /*
@@ -375,13 +414,15 @@ pathSepChar()
  * when building paths ... unless specific windows path handling is
  * required.
  */
-inline static NSString *
+inline static NSString*
 pathSepString()
 {
-    if (GSPathHandlingWindows() == NO) {
-        return @"/";
+  if (GSPathHandlingWindows() == NO)
+    {
+      return @"/";
     }
-    return @"\\";
+
+  return @"\\";
 }
 
 /*
@@ -417,60 +458,81 @@ pathSepString()
  */
 static unsigned rootOf(NSString *s, unsigned l)
 {
-    unsigned root = 0;
+  unsigned	root = 0;
 
-    if (l > 0) {
-        unichar c = [s characterAtIndex:0];
+  if (l > 0)
+    {
+      unichar	c = [s characterAtIndex: 0];
 
-        if (c == '~') {
-            NSRange range = NSMakeRange(1, l - 1);
+      if (c == '~')
+        {
+          NSRange	range = NSMakeRange(1, l-1);
 
-            range = [s rangeOfCharacterFromSet:pathSeps()
-                                       options:NSLiteralSearch
-                                         range:range];
-            if (range.length == 0) {
-                root = l; // ~ or ~name
-            } else {
-                root = NSMaxRange(range); // ~/... or ~name/...
+          range = [s rangeOfCharacterFromSet: pathSeps()
+                         options: NSLiteralSearch
+                           range: range];
+          if (range.length == 0)
+            {
+              root = l; // ~ or ~name
             }
-        } else {
-            if (pathSepMember(c)) {
-                root++;
+          else
+            {
+              root = NSMaxRange(range); // ~/... or ~name/...
             }
-            if (GSPathHandlingUnix() == NO) {
-                if (root == 0 && l > 1 && ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')) && [s characterAtIndex:1] == ':') {
-                    // Got a drive relative path ... see if it's absolute.
-                    root = 2;
-                    if (l > 2 && pathSepMember([s characterAtIndex:2])) {
-                        root++;
+        }
+      else
+        {
+          if (pathSepMember(c))
+            {
+              root++;
+            }
+
+          if (GSPathHandlingUnix() == NO)
+            {
+              if (root == 0 && l > 1
+                && ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z'))
+                && [s characterAtIndex: 1] == ':')
+                {
+                  // Got a drive relative path ... see if it's absolute.
+                  root = 2;
+                  if (l > 2 && pathSepMember([s characterAtIndex: 2]))
+                    {
+                      root++;
                     }
-                } else if (root == 1 && l > 4 && pathSepMember([s characterAtIndex:1])) {
-                    NSRange range = NSMakeRange(2, l - 2);
+                }
+              else if (root == 1 && l > 4 && pathSepMember([s characterAtIndex: 1]))
+                {
+                  NSRange	range = NSMakeRange(2, l-2);
 
-                    range = [s rangeOfCharacterFromSet:pathSeps()
-                                               options:NSLiteralSearch
-                                                 range:range];
-                    if (range.length > 0 && range.location > 2) {
-                        unsigned pos = NSMaxRange(range);
+                  range = [s rangeOfCharacterFromSet: pathSeps()
+                                            options: NSLiteralSearch
+                                              range: range];
+                  if (range.length > 0 && range.location > 2)
+                    {
+                      unsigned pos = NSMaxRange(range);
 
-                        // Found end of UNC host perhaps ... look for share
-                        if (pos < l) {
-                            range = NSMakeRange(pos, l - pos);
-                            range = [s rangeOfCharacterFromSet:pathSeps()
-                                                       options:NSLiteralSearch
-                                                         range:range];
-                            if (range.length > 0) {
-                                /*
-                                 * Found another slash ...  but if it comes
-                                 * immediately after the last one this can't
-                                 * be a UNC path as it's '//host//' rather
-                                 * than '//host/share'
-                                 */
-                                if (range.location > pos) {
-                                    /* OK ... we have the '//host/share/'
-                                     * format, so this is a valid UNC path.
-                                     */
-                                    root = NSMaxRange(range);
+                      // Found end of UNC host perhaps ... look for share
+                      if (pos < l)
+                        {
+                          range = NSMakeRange(pos, l - pos);
+                          range = [s rangeOfCharacterFromSet: pathSeps()
+                                                     options: NSLiteralSearch
+                                                       range: range];
+
+                          if (range.length > 0)
+                            {
+                              /*
+                               * Found another slash ...  but if it comes
+                               * immediately after the last one this can't
+                               * be a UNC path as it's '//host//' rather
+                               * than '//host/share'
+                               */
+                              if (range.location > pos)
+                                {
+                                  /* OK ... we have the '//host/share/'
+                                   * format, so this is a valid UNC path.
+                                   */
+                                  root = NSMaxRange(range);
                                 }
                             }
                         }
@@ -479,7 +541,8 @@ static unsigned rootOf(NSString *s, unsigned l)
             }
         }
     }
-    return root;
+
+  return root;
 }
 
 
@@ -488,7 +551,7 @@ static unsigned rootOf(NSString *s, unsigned l)
 //  methods to generate objects of unspecified subclasses.
 
 static NSStringEncoding _DefaultStringEncoding;
-static BOOL _ByteEncodingOk;
+static BOOL		_ByteEncodingOk;
 static const unichar byteOrderMark = 0xFEFF;
 static const unichar byteOrderMarkSwapped = 0xFFFE;
 
@@ -503,103 +566,111 @@ static const unichar byteOrderMarkSwapped = 0xFFFE;
    Apparently GNU libc 2.xx needs this to be 0 also, along with Linux
    libc versions 5.2.xx and higher (including libc6, which is just GNU
    libc). -chung */
-#if defined(_LINUX_C_LIB_VERSION_MINOR) && _LINUX_C_LIB_VERSION_MAJOR <= 5 && _LINUX_C_LIB_VERSION_MINOR < 2
-#define PRINTF_ATSIGN_VA_LIST 1
+#if defined(_LINUX_C_LIB_VERSION_MINOR)	\
+  && _LINUX_C_LIB_VERSION_MAJOR <= 5	\
+  && _LINUX_C_LIB_VERSION_MINOR < 2
+#define PRINTF_ATSIGN_VA_LIST	1
 #else
-#define PRINTF_ATSIGN_VA_LIST 0
+#define PRINTF_ATSIGN_VA_LIST	0
 #endif
 
-#if !PRINTF_ATSIGN_VA_LIST
+#if ! PRINTF_ATSIGN_VA_LIST
 static int
-arginfo_func(const struct printf_info *info, size_t n, int *argtypes
-#if defined(HAVE_REGISTER_PRINTF_SPECIFIER)
-             ,
-             int *size
+arginfo_func (const struct printf_info *info, size_t n, int *argtypes
+#if     defined(HAVE_REGISTER_PRINTF_SPECIFIER)
+, int *size
 #endif
 )
 {
-    *argtypes = PA_POINTER;
-    return 1;
+  *argtypes = PA_POINTER;
+  return 1;
 }
 #endif /* !PRINTF_ATSIGN_VA_LIST */
 
 static int
-handle_printf_atsign(FILE *stream,
-                     const struct printf_info *info,
+handle_printf_atsign (FILE *stream,
+              const struct printf_info *info,
 #if PRINTF_ATSIGN_VA_LIST
-                     va_list *ap_pointer)
-#elif defined(_LINUX_C_LIB_VERSION_MAJOR) && _LINUX_C_LIB_VERSION_MAJOR < 6
-                     const void **const args)
+              va_list *ap_pointer)
+#elif defined(_LINUX_C_LIB_VERSION_MAJOR)       \
+     && _LINUX_C_LIB_VERSION_MAJOR < 6
+                      const void **const args)
 #else /* GNU libc needs the following. */
-                     const void *const *args)
+                      const void *const *args)
 #endif
 {
-#if !PRINTF_ATSIGN_VA_LIST
-    const void *ptr = *args;
+#if ! PRINTF_ATSIGN_VA_LIST
+  const void *ptr = *args;
 #endif
-    id string_object;
-    int len;
+  id string_object;
+  int len;
 
-    /* xxx This implementation may not pay pay attention to as much
-       of printf_info as it should. */
+  /* xxx This implementation may not pay pay attention to as much
+     of printf_info as it should. */
 
 #if PRINTF_ATSIGN_VA_LIST
-    string_object = va_arg(*ap_pointer, id);
+  string_object = va_arg (*ap_pointer, id);
 #else
-    string_object = *((id *)ptr);
+  string_object = *((id*) ptr);
 #endif
-    string_object = [string_object description];
+  string_object = [string_object description];
 
 #if HAVE_WIDE_PRINTF_FUNCTION
-    if (info->wide) {
-        if (sizeof(wchar_t) == 4) {
-            unsigned length = [string_object length];
-            wchar_t buf[length + 1];
-            unsigned i;
-
-            for (i = 0; i < length; i++) {
-                buf[i] = [string_object characterAtIndex:i];
-            }
-            buf[i] = 0;
-            len = fwprintf(stream, L"%*ls",
-                           (info->left ? -info->width : info->width), buf);
-        } else {
-            len = fwprintf(stream, L"%*ls",
-                           (info->left ? -info->width : info->width),
-                           [string_object cStringUsingEncoding:NSUnicodeStringEncoding]);
-        }
-    } else
-#endif /* HAVE_WIDE_PRINTF_FUNCTION */
+  if (info->wide)
     {
-        len = fprintf(stream, "%*s",
-                      (info->left ? -info->width : info->width),
-                      [string_object lossyCString]);
+      if (sizeof(wchar_t) == 4)
+        {
+      unsigned	length = [string_object length];
+      wchar_t	buf[length + 1];
+      unsigned	i;
+
+      for (i = 0; i < length; i++)
+        {
+          buf[i] = [string_object characterAtIndex: i];
+        }
+      buf[i] = 0;
+          len = fwprintf(stream, L"%*ls",
+        (info->left ? - info->width : info->width), buf);
+        }
+      else
+        {
+          len = fwprintf(stream, L"%*ls",
+        (info->left ? - info->width : info->width),
+        [string_object cStringUsingEncoding: NSUnicodeStringEncoding]);
     }
-    return len;
+    }
+  else
+#endif	/* HAVE_WIDE_PRINTF_FUNCTION */
+    {
+      len = fprintf(stream, "%*s",
+    (info->left ? - info->width : info->width),
+    [string_object lossyCString]);
+    }
+  return len;
 }
 #endif /* HAVE_REGISTER_PRINTF_FUNCTION */
 
 static void
-register_printf_atsign()
+register_printf_atsign ()
 {
-#if defined(HAVE_REGISTER_PRINTF_SPECIFIER)
-    if (register_printf_specifier('@', handle_printf_atsign,
+#if     defined(HAVE_REGISTER_PRINTF_SPECIFIER)
+      if (register_printf_specifier ('@', handle_printf_atsign,
 #if PRINTF_ATSIGN_VA_LIST
-                                  0))
+                    0))
 #else
-                                  arginfo_func))
+                                arginfo_func))
 #endif
-        [NSException raise:NSGenericException
-                    format:@"register printf handling of %%@ failed"];
-#elif defined(HAVE_REGISTER_PRINTF_FUNCTION)
-    if (register_printf_function('@', handle_printf_atsign,
+    [NSException raise: NSGenericException
+             format: @"register printf handling of %%@ failed"];
+#elif   defined(HAVE_REGISTER_PRINTF_FUNCTION)
+      if (register_printf_function ('@', handle_printf_atsign,
 #if PRINTF_ATSIGN_VA_LIST
-                                 0))
+                    0))
 #else
-                                 arginfo_func))
+                                arginfo_func))
 #endif
-        [NSException raise:NSGenericException
-                    format:@"register printf handling of %%@ failed"];
+    [NSException raise: NSGenericException
+             format: @"register printf handling of %%@ failed"];
 #endif
 }
 
@@ -613,236 +684,279 @@ register_printf_atsign()
 static UCollator *
 GSICUCollatorOpen(NSStringCompareOptions mask, NSLocale *locale)
 {
-    UErrorCode status = U_ZERO_ERROR;
-    const char *localeCString;
-    UCollator *coll;
+  UErrorCode status = U_ZERO_ERROR;
+  const char *localeCString;
+  UCollator *coll;
 
-    if (mask & NSLiteralSearch) {
-        return NULL;
+  if (mask & NSLiteralSearch)
+    {
+      return NULL;
     }
 
-    if (NO == [locale isKindOfClass:[NSLocale class]]) {
-        if (nil == locale) {
-            /* See comments below about the posix locale.
-             * It's bad for case insensitive search, but needed for numeric
-             */
-            if (mask & NSNumericSearch) {
-                locale = [NSLocale systemLocale];
-            } else {
-                /* A nil locale should trigger POSIX collation (i.e. 'A'-'Z' sort
-                 * before 'a'), and support for this was added in ICU 4.6 under the
-                 * locale name en_US_POSIX, but it doesn't fit our requirements
-                 * (e.g. 'e' and 'E' don't compare as equal with case insensitive
-                 * comparison.) - so return NULL to indicate that the GNUstep
-                 * comparison code should be used.
-                 */
-                return NULL;
+  if (NO == [locale isKindOfClass: [NSLocale class]])
+    {
+      if (nil == locale)
+        {
+          /* See comments below about the posix locale.
+           * It's bad for case insensitive search, but needed for numeric
+           */
+          if (mask & NSNumericSearch)
+            {
+              locale = [NSLocale systemLocale];
             }
-        } else {
-            locale = [NSLocale currentLocale];
+          else
+            {
+              /* A nil locale should trigger POSIX collation (i.e. 'A'-'Z' sort
+               * before 'a'), and support for this was added in ICU 4.6 under the
+               * locale name en_US_POSIX, but it doesn't fit our requirements
+               * (e.g. 'e' and 'E' don't compare as equal with case insensitive
+               * comparison.) - so return NULL to indicate that the GNUstep
+               * comparison code should be used.
+               */
+              return NULL;
+            }
+        }
+      else
+        {
+          locale = [NSLocale currentLocale];
         }
     }
 
-    localeCString = [[locale localeIdentifier] UTF8String];
+  localeCString = [[locale localeIdentifier] UTF8String];
 
-    if (localeCString != NULL && strcmp("", localeCString) == 0) {
-        localeCString = NULL;
+  if (localeCString != NULL && strcmp("", localeCString) == 0)
+    {
+      localeCString = NULL;
     }
 
-    coll = ucol_open(localeCString, &status);
+  coll = ucol_open(localeCString, &status);
 
-    if (U_SUCCESS(status)) {
-        if (mask & (NSCaseInsensitiveSearch | NSDiacriticInsensitiveSearch)) {
-            ucol_setStrength(coll, UCOL_PRIMARY);
-        } else if (mask & NSCaseInsensitiveSearch) {
-            ucol_setStrength(coll, UCOL_SECONDARY);
-        } else if (mask & NSDiacriticInsensitiveSearch) {
-            ucol_setStrength(coll, UCOL_PRIMARY);
-            ucol_setAttribute(coll, UCOL_CASE_LEVEL, UCOL_ON, &status);
+  if (U_SUCCESS(status))
+    {
+      if (mask & (NSCaseInsensitiveSearch | NSDiacriticInsensitiveSearch))
+        {
+          ucol_setStrength(coll, UCOL_PRIMARY);
+        }
+      else if (mask & NSCaseInsensitiveSearch)
+        {
+          ucol_setStrength(coll, UCOL_SECONDARY);
+        }
+      else if (mask & NSDiacriticInsensitiveSearch)
+        {
+          ucol_setStrength(coll, UCOL_PRIMARY);
+          ucol_setAttribute(coll, UCOL_CASE_LEVEL, UCOL_ON, &status);
         }
 
-        if (mask & NSNumericSearch) {
-            ucol_setAttribute(coll, UCOL_NUMERIC_COLLATION, UCOL_ON, &status);
+      if (mask & NSNumericSearch)
+        {
+          ucol_setAttribute(coll, UCOL_NUMERIC_COLLATION, UCOL_ON, &status);
         }
 
-        if (U_SUCCESS(status)) {
-            return coll;
+      if (U_SUCCESS(status))
+        {
+          return coll;
         }
     }
 
-    ucol_close(coll);
-    return NULL;
+  ucol_close(coll);
+  return NULL;
 }
 
 #if defined(HAVE_UNICODE_UNORM2_H) || defined(HAVE_ICU_H)
-- (NSString *)_normalizedICUStringOfType:(const char *)normalization
-                                    mode:(UNormalization2Mode)mode
+- (NSString *) _normalizedICUStringOfType: (const char*)normalization
+                                     mode: (UNormalization2Mode)mode
 {
-    UErrorCode err;
-    const UNormalizer2 *normalizer;
-    int32_t length;
-    int32_t newLength;
-    NSString *newString;
+  UErrorCode err;
+  const UNormalizer2 *normalizer;
+  int32_t length;
+  int32_t newLength;
+  NSString *newString;
 
-    length = (uint32_t)[self length];
-    if (0 == length) {
-        return @""; // Simple case ... empty string
+  length = (uint32_t)[self length];
+
+  if (0 == length)
+    {
+      return @"";       // Simple case ... empty string
     }
 
-    err = 0;
-    normalizer = unorm2_getInstance(NULL, normalization, mode, &err);
-    if (U_FAILURE(err)) {
-        [NSException raise:NSCharacterConversionException
-                    format:@"libicu unorm2_getInstance() failed"];
+  err = 0;
+  normalizer = unorm2_getInstance(NULL, normalization, mode, &err);
+
+  if (U_FAILURE(err))
+    {
+      [NSException raise: NSCharacterConversionException
+                  format: @"libicu unorm2_getInstance() failed"];
     }
 
-    if (length < 200) {
-        unichar src[length];
-        unichar dst[length * 3];
+  if (length < 200)
+    {
+      unichar   src[length];
+      unichar   dst[length*3];
 
-        /* For a short string, it's very efficient to just use on-stack
-         * buffers for the libicu work, and then let the standard string
-         * initialiser convert that to an inline string.
-         */
-        [self getCharacters:(unichar *)src range:NSMakeRange(0, length)];
-        err = 0;
-        newLength = unorm2_normalize(normalizer, (UChar *)src, length,
-                                     (UChar *)dst, length * 3, &err);
-        if (U_FAILURE(err)) {
-            [NSException raise:NSCharacterConversionException
-                        format:@"precompose/decompose failed"];
-        }
-        newString = [[NSString alloc] initWithCharacters:dst length:newLength];
-    } else {
-        unichar *src;
-        unichar *dst;
+      /* For a short string, it's very efficient to just use on-stack
+       * buffers for the libicu work, and then let the standard string
+       * initialiser convert that to an inline string.
+       */
+      [self getCharacters: (unichar *)src range: NSMakeRange(0, length)];
+      err = 0;
+      newLength = unorm2_normalize(normalizer, (UChar*)src, length,
+        (UChar*)dst, length*3, &err);
 
-        /* For longer strings, we copy the source into a buffer on the heap
-         * for the libicu operation, determine the length needed for the
-         * output buffer, then do the actual conversion to build the string.
-         */
-        src = (unichar *)malloc(length * sizeof(unichar));
-        [self getCharacters:(unichar *)src range:NSMakeRange(0, length)];
-        err = 0;
-        newLength = unorm2_normalize(normalizer, (UChar *)src, length,
-                                     0, 0, &err);
-        if (U_BUFFER_OVERFLOW_ERROR != err) {
-            free(src);
-            [NSException raise:NSCharacterConversionException
-                        format:@"precompose/decompose length check failed"];
+      if (U_FAILURE(err))
+        {
+          [NSException raise: NSCharacterConversionException
+                      format: @"precompose/decompose failed"];
         }
-        dst = NSZoneMalloc(NSDefaultMallocZone(), newLength * sizeof(unichar));
-        err = 0;
-        unorm2_normalize(normalizer, (UChar *)src, length,
-                         (UChar *)dst, newLength, &err);
-        free(src);
-        if (U_FAILURE(err)) {
-            NSZoneFree(NSDefaultMallocZone(), dst);
-            [NSException raise:NSCharacterConversionException
-                        format:@"precompose/decompose failed"];
+      newString = [[NSString alloc] initWithCharacters: dst length: newLength];
+    }
+  else
+    {
+      unichar   *src;
+      unichar   *dst;
+
+      /* For longer strings, we copy the source into a buffer on the heap
+       * for the libicu operation, determine the length needed for the
+       * output buffer, then do the actual conversion to build the string.
+       */
+      src = (unichar*)malloc(length * sizeof(unichar));
+      [self getCharacters: (unichar*)src range: NSMakeRange(0, length)];
+      err = 0;
+      newLength = unorm2_normalize(normalizer, (UChar*)src, length, 0, 0, &err);
+
+      if (U_BUFFER_OVERFLOW_ERROR != err)
+        {
+          free(src);
+          [NSException raise: NSCharacterConversionException
+                      format: @"precompose/decompose length check failed"];
         }
-        newString = [[NSString alloc] initWithCharactersNoCopy:dst
-                                                        length:newLength
-                                                  freeWhenDone:YES];
+
+      dst = NSZoneMalloc(NSDefaultMallocZone(), newLength * sizeof(unichar));
+      err = 0;
+      unorm2_normalize(normalizer, (UChar*)src, length, (UChar*)dst, newLength, &err);
+      free(src);
+
+      if (U_FAILURE(err))
+        {
+          NSZoneFree(NSDefaultMallocZone(), dst);
+          [NSException raise: NSCharacterConversionException
+                      format: @"precompose/decompose failed"];
+        }
+
+      newString = [[NSString alloc] initWithCharactersNoCopy: dst
+                                                      length: newLength
+                                                freeWhenDone: YES];
     }
 
-    return AUTORELEASE(newString);
+  return AUTORELEASE(newString);
 }
 #endif
 #endif
 
-+ (void)atExit
++ (void) atExit
 {
-    DESTROY(placeholderMap);
+  DESTROY(placeholderMap);
 }
 
-+ (void)initialize
++ (void) initialize
 {
-    /*
-     * Flag required as we call this method explicitly from GSBuildStrings()
-     * to ensure that NSString is initialised properly.
-     */
-    static BOOL beenHere = NO;
+  /*
+   * Flag required as we call this method explicitly from GSBuildStrings()
+   * to ensure that NSString is initialised properly.
+   */
+  static BOOL	beenHere = NO;
 
-    if (self == [NSString class] && beenHere == NO) {
-        beenHere = YES;
-        cMemberSel = @selector(characterIsMember:);
-        caiSel = @selector(characterAtIndex:);
-        gcrSel = @selector(getCharacters:range:);
-        ranSel = @selector(rangeOfComposedCharacterSequenceAtIndex:);
+  if (self == [NSString class] && beenHere == NO)
+    {
+      beenHere = YES;
+      cMemberSel = @selector(characterIsMember:);
+      caiSel = @selector(characterAtIndex:);
+      gcrSel = @selector(getCharacters:range:);
+      ranSel = @selector(rangeOfComposedCharacterSequenceAtIndex:);
 
-        nonBase = [NSCharacterSet nonBaseCharacterSet];
-        nonBase = [NSObject leakAt:&nonBase];
-        nonBaseImp = (BOOL(*)(id, SEL, unichar))[nonBase methodForSelector:cMemberSel];
+      nonBase = [NSCharacterSet nonBaseCharacterSet];
+      nonBase = [NSObject leakAt: &nonBase];
+      nonBaseImp
+        = (BOOL(*)(id,SEL,unichar))[nonBase methodForSelector: cMemberSel];
 
-        _DefaultStringEncoding = GSPrivateDefaultCStringEncoding();
-        _ByteEncodingOk = GSPrivateIsByteEncoding(_DefaultStringEncoding);
+      _DefaultStringEncoding = GSPrivateDefaultCStringEncoding();
+      _ByteEncodingOk = GSPrivateIsByteEncoding(_DefaultStringEncoding);
 
-        NSStringClass = self;
-        [self setVersion:1];
-        NSMutableStringClass = [NSMutableString class];
-        NSDataClass = [NSData class];
-        GSPlaceholderStringClass = [GSPlaceholderString class];
-        GSStringClass = [GSString class];
-        GSMutableStringClass = [GSMutableString class];
+      NSStringClass = self;
+      [self setVersion: 1];
+      NSMutableStringClass = [NSMutableString class];
+      NSDataClass = [NSData class];
+      GSPlaceholderStringClass = [GSPlaceholderString class];
+      GSStringClass = [GSString class];
+      GSMutableStringClass = [GSMutableString class];
 
-        /*
-         * Set up infrastructure for placeholder strings.
-         */
-        defaultPlaceholderString = (GSPlaceholderString *)
-            [GSPlaceholderStringClass allocWithZone:NSDefaultMallocZone()];
-        placeholderMap = NSCreateMapTable(NSNonOwnedPointerMapKeyCallBacks,
-                                          NSNonRetainedObjectMapValueCallBacks, 0);
-        register_printf_atsign();
-        [self registerAtExit];
+      /*
+       * Set up infrastructure for placeholder strings.
+       */
+      defaultPlaceholderString = (GSPlaceholderString*)
+    [GSPlaceholderStringClass allocWithZone: NSDefaultMallocZone()];
+      placeholderMap = NSCreateMapTable(NSNonOwnedPointerMapKeyCallBacks,
+    NSNonRetainedObjectMapValueCallBacks, 0);
+      register_printf_atsign();
+      [self registerAtExit];
     }
 }
 
-+ (id)allocWithZone:(NSZone *)z
++ (id) allocWithZone: (NSZone*)z
 {
-    if (self == NSStringClass) {
-        /*
-         * For a constant string, we return a placeholder object that can
-         * be converted to a real object when its initialisation method
-         * is called.
-         */
-        if (z == NSDefaultMallocZone() || z == 0) {
-            /*
-             * As a special case, we can return a placeholder for a string
-             * in the default zone extremely efficiently.
-             */
-            return defaultPlaceholderString;
-        } else {
-            id obj;
+  if (self == NSStringClass)
+    {
+      /*
+       * For a constant string, we return a placeholder object that can
+       * be converted to a real object when its initialisation method
+       * is called.
+       */
+      if (z == NSDefaultMallocZone() || z == 0)
+        {
+          /*
+           * As a special case, we can return a placeholder for a string
+           * in the default zone extremely efficiently.
+           */
+          return defaultPlaceholderString;
+        }
+      else
+        {
+          id obj;
 
-            /*
-             * For anything other than the default zone, we need to
-             * locate the correct placeholder in the (lock protected)
-             * table of placeholders.
-             */
-            GS_MUTEX_LOCK(placeholderLock);
-            obj = (id)NSMapGet(placeholderMap, (void *)z);
-            if (obj == nil) {
-                /*
-                 * There is no placeholder object for this zone, so we
-                 * create a new one and use that.
-                 */
-                obj = (id)[GSPlaceholderStringClass allocWithZone:z];
-                NSMapInsert(placeholderMap, (void *)z, (void *)obj);
+          /*
+           * For anything other than the default zone, we need to
+           * locate the correct placeholder in the (lock protected)
+           * table of placeholders.
+           */
+          GS_MUTEX_LOCK(placeholderLock);
+          obj = (id)NSMapGet(placeholderMap, (void*)z);
+
+          if (obj == nil)
+            {
+              /*
+               * There is no placeholder object for this zone, so we
+               * create a new one and use that.
+               */
+              obj = (id)[GSPlaceholderStringClass allocWithZone: z];
+              NSMapInsert(placeholderMap, (void*)z, (void*)obj);
             }
-            GS_MUTEX_UNLOCK(placeholderLock);
-            return obj;
+
+          GS_MUTEX_UNLOCK(placeholderLock);
+          return obj;
         }
-    } else if ([self isKindOfClass:GSStringClass] == YES) {
-        [NSException raise:NSInternalInconsistencyException
-                    format:@"Called +allocWithZone: on private string class"];
-        return nil; /* NOT REACHED */
-    } else {
-        /*
-         * For user provided strings, we simply allocate an object of
-         * the given class.
-         */
-        return NSAllocateObject(self, 0, z);
+    }
+  else if ([self isKindOfClass: GSStringClass] == YES)
+    {
+      [NSException raise: NSInternalInconsistencyException
+          format: @"Called +allocWithZone: on private string class"];
+      return nil;	/* NOT REACHED */
+    }
+  else
+    {
+      /*
+       * For user provided strings, we simply allocate an object of
+       * the given class.
+       */
+      return NSAllocateObject (self, 0, z);
     }
 }
 
@@ -855,45 +969,48 @@ GSICUCollatorOpen(NSStringCompareOptions mask, NSLocale *locale)
  * (and will automatically be changed by GNUstep to avoid conflicts
  * with the default implementation in the Objective-C runtime library).
  */
-+ (Class)constantStringClass
++ (Class) constantStringClass
 {
-    return [@"" class];
+  return [@"" class];
 }
 
 /**
  * Create an empty string.
  */
-+ (id)string
++ (id) string
 {
-    return AUTORELEASE([[self allocWithZone:NSDefaultMallocZone()] init]);
+  return AUTORELEASE([[self allocWithZone: NSDefaultMallocZone()] init]);
 }
 
 /**
  * Create a copy of aString.
  */
-+ (id)stringWithString:(NSString *)aString
++ (id) stringWithString: (NSString*)aString
 {
-    NSString *obj;
+  NSString	*obj;
 
-    if (NULL == aString)
-        [NSException raise:NSInvalidArgumentException
-                    format:@"[NSString+stringWithString:]: NULL string"];
-    obj = [self allocWithZone:NSDefaultMallocZone()];
-    obj = [obj initWithString:aString];
-    return AUTORELEASE(obj);
+  if (NULL == aString)
+    {
+      [NSException raise: NSInvalidArgumentException
+                  format: @"[NSString+stringWithString:]: NULL string"];
+    }
+
+  obj = [self allocWithZone: NSDefaultMallocZone()];
+  obj = [obj initWithString: aString];
+  return AUTORELEASE(obj);
 }
 
 /**
  * Create a string of unicode characters.
  */
-+ (id)stringWithCharacters:(const unichar *)chars
-                    length:(NSUInteger)length
++ (id) stringWithCharacters: (const unichar*)chars
+             length: (NSUInteger)length
 {
-    NSString *obj;
+  NSString	*obj;
 
-    obj = [self allocWithZone:NSDefaultMallocZone()];
-    obj = [obj initWithCharacters:chars length:length];
-    return AUTORELEASE(obj);
+  obj = [self allocWithZone: NSDefaultMallocZone()];
+  obj = [obj initWithCharacters: chars length: length];
+  return AUTORELEASE(obj);
 }
 
 /**
@@ -901,16 +1018,19 @@ GSICUCollatorOpen(NSStringCompareOptions mask, NSLocale *locale)
  * null-terminated and encoded in the default C string encoding.  (Characters
  * will be converted to unicode representation internally.)
  */
-+ (id)stringWithCString:(const char *)byteString
++ (id) stringWithCString: (const char*)byteString
 {
-    NSString *obj;
+  NSString	*obj;
 
-    if (NULL == byteString)
-        [NSException raise:NSInvalidArgumentException
-                    format:@"[NSString+stringWithCString:]: NULL cString"];
-    obj = [self allocWithZone:NSDefaultMallocZone()];
-    obj = [obj initWithCString:byteString];
-    return AUTORELEASE(obj);
+  if (NULL == byteString)
+    {
+      [NSException raise: NSInvalidArgumentException
+                  format: @"[NSString+stringWithCString:]: NULL cString"];
+    }
+
+  obj = [self allocWithZone: NSDefaultMallocZone()];
+  obj = [obj initWithCString: byteString];
+  return AUTORELEASE(obj);
 }
 
 /**
@@ -918,17 +1038,20 @@ GSICUCollatorOpen(NSStringCompareOptions mask, NSLocale *locale)
  * null-terminated and encoded in the specified C string encoding.
  * Characters may be converted to unicode representation internally.
  */
-+ (id)stringWithCString:(const char *)byteString
-               encoding:(NSStringEncoding)encoding
++ (id) stringWithCString: (const char*)byteString
+        encoding: (NSStringEncoding)encoding
 {
-    NSString *obj;
+  NSString	*obj;
 
-    if (NULL == byteString)
-        [NSException raise:NSInvalidArgumentException
-                    format:@"[NSString+stringWithCString:encoding:]: NULL cString"];
-    obj = [self allocWithZone:NSDefaultMallocZone()];
-    obj = [obj initWithCString:byteString encoding:encoding];
-    return AUTORELEASE(obj);
+  if (NULL == byteString)
+    {
+      [NSException raise: NSInvalidArgumentException
+                  format: @"[NSString+stringWithCString:encoding:]: NULL cString"];
+    }
+
+  obj = [self allocWithZone: NSDefaultMallocZone()];
+  obj = [obj initWithCString: byteString encoding: encoding];
+  return AUTORELEASE(obj);
 }
 
 /**
@@ -936,34 +1059,41 @@ GSICUCollatorOpen(NSStringCompareOptions mask, NSLocale *locale)
  * null bytes and should be encoded in the default C string encoding.
  * (Characters will be converted to unicode representation internally.)
  */
-+ (id)stringWithCString:(const char *)byteString
-                 length:(NSUInteger)length
++ (id) stringWithCString: (const char*)byteString
+          length: (NSUInteger)length
 {
-    NSString *obj;
+  NSString	*obj;
 
-    obj = [self allocWithZone:NSDefaultMallocZone()];
-    obj = [obj initWithCString:byteString length:length];
-    return AUTORELEASE(obj);
+  obj = [self allocWithZone: NSDefaultMallocZone()];
+  obj = [obj initWithCString: byteString length: length];
+  return AUTORELEASE(obj);
 }
 
 /**
  * Create a string based on the given UTF-8 string, null-terminated.<br />
  * Raises NSInvalidArgumentException if given NULL pointer.
  */
-+ (id)stringWithUTF8String:(const char *)bytes
++ (id) stringWithUTF8String: (const char *)bytes
 {
-    NSString *obj;
+  NSString	*obj;
 
-    if (NULL == bytes)
-        [NSException raise:NSInvalidArgumentException
-                    format:@"[NSString+stringWithUTF8String:]: NULL cString"];
-    if (self == NSStringClass) {
-        obj = defaultPlaceholderString;
-    } else {
-        obj = [self allocWithZone:NSDefaultMallocZone()];
+  if (NULL == bytes)
+    {
+      [NSException raise: NSInvalidArgumentException
+                  format: @"[NSString+stringWithUTF8String:]: NULL cString"];
     }
-    obj = [obj initWithUTF8String:bytes];
-    return AUTORELEASE(obj);
+
+  if (self == NSStringClass)
+    {
+      obj = defaultPlaceholderString;
+    }
+  else
+    {
+      obj = [self allocWithZone: NSDefaultMallocZone()];
+    }
+
+  obj = [obj initWithUTF8String: bytes];
+  return AUTORELEASE(obj);
 }
 
 /**
@@ -971,43 +1101,43 @@ GSICUCollatorOpen(NSStringCompareOptions mask, NSLocale *locale)
  * containing direct unicode if it begins with the unicode byte order mark,
  * else converts to unicode using default C string encoding.
  */
-+ (id)stringWithContentsOfFile:(NSString *)path
++ (id) stringWithContentsOfFile: (NSString *)path
 {
-    NSString *obj;
+  NSString	*obj;
 
-    obj = [self allocWithZone:NSDefaultMallocZone()];
-    obj = [obj initWithContentsOfFile:path];
-    return AUTORELEASE(obj);
+  obj = [self allocWithZone: NSDefaultMallocZone()];
+  obj = [obj initWithContentsOfFile: path];
+  return AUTORELEASE(obj);
 }
 
 /**
  * Load contents of file at path into a new string using the
  * -initWithContentsOfFile:usedEncoding:error: method.
  */
-+ (id)stringWithContentsOfFile:(NSString *)path
-                  usedEncoding:(NSStringEncoding *)enc
-                         error:(NSError **)error
++ (id) stringWithContentsOfFile: (NSString *)path
+                   usedEncoding: (NSStringEncoding*)enc
+                          error: (NSError**)error
 {
-    NSString *obj;
+  NSString	*obj;
 
-    obj = [self allocWithZone:NSDefaultMallocZone()];
-    obj = [obj initWithContentsOfFile:path usedEncoding:enc error:error];
-    return AUTORELEASE(obj);
+  obj = [self allocWithZone: NSDefaultMallocZone()];
+  obj = [obj initWithContentsOfFile: path usedEncoding: enc error: error];
+  return AUTORELEASE(obj);
 }
 
 /**
  * Load contents of file at path into a new string using the
  * -initWithContentsOfFile:encoding:error: method.
  */
-+ (id)stringWithContentsOfFile:(NSString *)path
-                      encoding:(NSStringEncoding)enc
-                         error:(NSError **)error
++ (id) stringWithContentsOfFile: (NSString*)path
+                       encoding: (NSStringEncoding)enc
+                          error: (NSError**)error
 {
-    NSString *obj;
+   NSString	*obj;
 
-    obj = [self allocWithZone:NSDefaultMallocZone()];
-    obj = [obj initWithContentsOfFile:path encoding:enc error:error];
-    return AUTORELEASE(obj);
+  obj = [self allocWithZone: NSDefaultMallocZone()];
+  obj = [obj initWithContentsOfFile: path encoding: enc error: error];
+  return AUTORELEASE(obj);
 }
 
 /**
@@ -1015,35 +1145,35 @@ GSICUCollatorOpen(NSStringCompareOptions mask, NSLocale *locale)
  * containing direct unicode if it begins with the unicode byte order mark,
  * else converts to unicode using default C string encoding.
  */
-+ (id)stringWithContentsOfURL:(NSURL *)url
++ (id) stringWithContentsOfURL: (NSURL *)url
 {
-    NSString *obj;
+  NSString	*obj;
 
-    obj = [self allocWithZone:NSDefaultMallocZone()];
-    obj = [obj initWithContentsOfURL:url];
-    return AUTORELEASE(obj);
+  obj = [self allocWithZone: NSDefaultMallocZone()];
+  obj = [obj initWithContentsOfURL: url];
+  return AUTORELEASE(obj);
 }
 
-+ (id)stringWithContentsOfURL:(NSURL *)url
-                 usedEncoding:(NSStringEncoding *)enc
-                        error:(NSError **)error
++ (id) stringWithContentsOfURL: (NSURL*)url
+                  usedEncoding: (NSStringEncoding*)enc
+                         error: (NSError**)error
 {
-    NSString *obj;
+  NSString	*obj;
 
-    obj = [self allocWithZone:NSDefaultMallocZone()];
-    obj = [obj initWithContentsOfURL:url usedEncoding:enc error:error];
-    return AUTORELEASE(obj);
+  obj = [self allocWithZone: NSDefaultMallocZone()];
+  obj = [obj initWithContentsOfURL: url usedEncoding: enc error: error];
+  return AUTORELEASE(obj);
 }
 
-+ (id)stringWithContentsOfURL:(NSURL *)url
-                     encoding:(NSStringEncoding)enc
-                        error:(NSError **)error
++ (id) stringWithContentsOfURL: (NSURL*)url
+                      encoding: (NSStringEncoding)enc
+                         error: (NSError**)error
 {
-    NSString *obj;
+  NSString	*obj;
 
-    obj = [self allocWithZone:NSDefaultMallocZone()];
-    obj = [obj initWithContentsOfURL:url encoding:enc error:error];
-    return AUTORELEASE(obj);
+  obj = [self allocWithZone: NSDefaultMallocZone()];
+  obj = [obj initWithContentsOfURL: url encoding: enc error: error];
+  return AUTORELEASE(obj);
 }
 
 /**
@@ -1051,19 +1181,22 @@ GSICUCollatorOpen(NSStringCompareOptions mask, NSLocale *locale)
  * be a constant format string, like '<code>@"float val = %f"</code>', remaining
  * arguments should be the variables to print the values of, comma-separated.
  */
-+ (id)stringWithFormat:(NSString *)format, ...
++ (id) stringWithFormat: (NSString*)format,...
 {
-    va_list ap;
-    NSString *obj;
+  va_list ap;
+  NSString	*obj;
 
-    if (NULL == format)
-        [NSException raise:NSInvalidArgumentException
-                    format:@"[NSString+stringWithFormat:]: NULL format"];
-    va_start(ap, format);
-    obj = [self allocWithZone:NSDefaultMallocZone()];
-    obj = [obj initWithFormat:format arguments:ap];
-    va_end(ap);
-    return AUTORELEASE(obj);
+  if (NULL == format)
+    {
+      [NSException raise: NSInvalidArgumentException
+                  format: @"[NSString+stringWithFormat:]: NULL format"];
+    }
+
+  va_start(ap, format);
+  obj = [self allocWithZone: NSDefaultMallocZone()];
+  obj = [obj initWithFormat: format arguments: ap];
+  va_end(ap);
+  return AUTORELEASE(obj);
 }
 
 
@@ -1096,10 +1229,10 @@ GSICUCollatorOpen(NSStringCompareOptions mask, NSLocale *locale)
  * subclassing NSString will need to be updated.
  * </p>
  */
-- (id)init
+- (id) init
 {
-    self = [super init];
-    return self;
+  self = [super init];
+  return self;
 }
 
 /**
@@ -1110,24 +1243,27 @@ GSICUCollatorOpen(NSStringCompareOptions mask, NSLocale *locale)
  * If the data can not be interpreted using the encoding, the receiver
  * is released and nil is returned.
  */
-- (id)initWithBytes:(const void *)bytes
-             length:(NSUInteger)length
-           encoding:(NSStringEncoding)encoding
+- (id) initWithBytes: (const void*)bytes
+          length: (NSUInteger)length
+        encoding: (NSStringEncoding)encoding
 {
-    if (length == 0) {
-        return [self initWithBytesNoCopy:(void *)0
-                                  length:0
-                                encoding:encoding
-                            freeWhenDone:NO];
-    } else {
-        void *buf;
+  if (length == 0)
+    {
+      return [self initWithBytesNoCopy: (void *)0
+                                length: 0
+                              encoding: encoding
+                          freeWhenDone: NO];
+    }
+  else
+    {
+      void	*buf;
 
-        buf = NSZoneMalloc([self zone], length);
-        memcpy(buf, bytes, length);
-        return [self initWithBytesNoCopy:buf
-                                  length:length
-                                encoding:encoding
-                            freeWhenDone:YES];
+      buf = NSZoneMalloc([self zone], length);
+      memcpy(buf, bytes, length);
+      return [self initWithBytesNoCopy: buf
+                                length: length
+                              encoding: encoding
+                          freeWhenDone: YES];
     }
 }
 
@@ -1149,13 +1285,13 @@ GSICUCollatorOpen(NSStringCompareOptions mask, NSLocale *locale)
  * In the GNUstep implementation, your subclasses may override
  * this initialiser in order to have all other functionality.</p>
  */
-- (id)initWithBytesNoCopy:(void *)bytes
-                   length:(NSUInteger)length
-                 encoding:(NSStringEncoding)encoding
-             freeWhenDone:(BOOL)flag
+- (id) initWithBytesNoCopy: (void*)bytes
+                    length: (NSUInteger)length
+                  encoding: (NSStringEncoding)encoding
+              freeWhenDone: (BOOL)flag
 {
-    self = [self init];
-    return self;
+  self = [self init];
+  return self;
 }
 
 /**
@@ -1164,26 +1300,26 @@ GSICUCollatorOpen(NSStringCompareOptions mask, NSLocale *locale)
  *  this instance is deallocated.</p>
  * See -initWithBytesNoCopy:length:encoding:freeWhenDone: for more details.
  */
-- (id)initWithCharactersNoCopy:(unichar *)chars
-                        length:(NSUInteger)length
-                  freeWhenDone:(BOOL)flag
+- (id) initWithCharactersNoCopy: (unichar*)chars
+                         length: (NSUInteger)length
+                   freeWhenDone: (BOOL)flag
 {
-    return [self initWithBytesNoCopy:chars
-                              length:length * sizeof(unichar)
-                            encoding:NSUnicodeStringEncoding
-                        freeWhenDone:flag];
+  return [self initWithBytesNoCopy: chars
+                            length: length * sizeof(unichar)
+                          encoding: NSUnicodeStringEncoding
+                      freeWhenDone: flag];
 }
 
 /**
  * <p>Initialize with given unicode chars up to length, regardless of presence
  *  of null bytes.  Copies the string and frees copy when deallocated.</p>
  */
-- (id)initWithCharacters:(const unichar *)chars
-                  length:(NSUInteger)length
+- (id) initWithCharacters: (const unichar*)chars
+           length: (NSUInteger)length
 {
-    return [self initWithBytes:chars
-                        length:length * sizeof(unichar)
-                      encoding:NSUnicodeStringEncoding];
+  return [self initWithBytes: chars
+                      length: length * sizeof(unichar)
+                    encoding: NSUnicodeStringEncoding];
 }
 
 /**
@@ -1193,14 +1329,14 @@ GSICUCollatorOpen(NSStringCompareOptions mask, NSLocale *locale)
  *  when this instance is deallocated.</p>
  * See -initWithBytesNoCopy:length:encoding:freeWhenDone: for more details.
  */
-- (id)initWithCStringNoCopy:(char *)byteString
-                     length:(NSUInteger)length
-               freeWhenDone:(BOOL)flag
+- (id) initWithCStringNoCopy: (char*)byteString
+                      length: (NSUInteger)length
+                freeWhenDone: (BOOL)flag
 {
-    return [self initWithBytesNoCopy:byteString
-                              length:length
-                            encoding:_DefaultStringEncoding
-                        freeWhenDone:flag];
+  return [self initWithBytesNoCopy: byteString
+                            length: length
+                          encoding: _DefaultStringEncoding
+                      freeWhenDone: flag];
 }
 
 /**
@@ -1208,15 +1344,18 @@ GSICUCollatorOpen(NSStringCompareOptions mask, NSLocale *locale)
  * Characters converted to unicode based on the specified C encoding.
  * Copies the string.</p>
  */
-- (id)initWithCString:(const char *)byteString
-             encoding:(NSStringEncoding)encoding
+- (id) initWithCString: (const char*)byteString
+          encoding: (NSStringEncoding)encoding
 {
-    if (NULL == byteString)
-        [NSException raise:NSInvalidArgumentException
-                    format:@"[NSString-initWithCString:encoding:]: NULL cString"];
-    return [self initWithBytes:byteString
-                        length:strlen(byteString)
-                      encoding:encoding];
+  if (NULL == byteString)
+    {
+      [NSException raise: NSInvalidArgumentException
+                  format: @"[NSString-initWithCString:encoding:]: NULL cString"];
+    }
+
+  return [self initWithBytes: byteString
+                      length: strlen(byteString)
+                    encoding: encoding];
 }
 
 /**
@@ -1224,11 +1363,11 @@ GSICUCollatorOpen(NSStringCompareOptions mask, NSLocale *locale)
  *  presence of null bytes.  Characters converted to unicode based on the
  *  default C encoding.  Copies the string.</p>
  */
-- (id)initWithCString:(const char *)byteString length:(NSUInteger)length
+- (id) initWithCString: (const char*)byteString  length: (NSUInteger)length
 {
-    return [self initWithBytes:byteString
-                        length:length
-                      encoding:_DefaultStringEncoding];
+  return [self initWithBytes: byteString
+                      length: length
+                    encoding: _DefaultStringEncoding];
 }
 
 /**
@@ -1236,166 +1375,189 @@ GSICUCollatorOpen(NSStringCompareOptions mask, NSLocale *locale)
  * null-terminated.  Characters are converted to unicode based on the default
  * C encoding.  Copies the string.</p>
  */
-- (id)initWithCString:(const char *)byteString
+- (id) initWithCString: (const char*)byteString
 {
-    if (NULL == byteString)
-        [NSException raise:NSInvalidArgumentException
-                    format:@"[NSString-initWithCString:]: NULL cString"];
-    return [self initWithBytes:byteString
-                        length:strlen(byteString)
-                      encoding:_DefaultStringEncoding];
+  if (NULL == byteString)
+    {
+      [NSException raise: NSInvalidArgumentException
+                  format: @"[NSString-initWithCString:]: NULL cString"];
+    }
+
+  return [self initWithBytes: byteString
+                      length: strlen(byteString)
+                    encoding: _DefaultStringEncoding];
 }
 
 /**
  * Initialize to be a copy of the given string.
  */
-- (id)initWithString:(NSString *)string
+- (id) initWithString: (NSString*)string
 {
-    unsigned length = [string length];
+  unsigned	length = [string length];
 
-    if (NULL == string)
-        [NSException raise:NSInvalidArgumentException
-                    format:@"[NSString-initWithString:]: NULL string"];
-    if (length > 0) {
-        unichar *s = NSZoneMalloc([self zone], sizeof(unichar) * length);
-
-        [string getCharacters:s range:((NSRange){0, length})];
-        self = [self initWithCharactersNoCopy:s
-                                       length:length
-                                 freeWhenDone:YES];
-    } else {
-        self = [self initWithCharactersNoCopy:(unichar *)0
-                                       length:0
-                                 freeWhenDone:NO];
+  if (NULL == string)
+    {
+      [NSException raise: NSInvalidArgumentException
+                  format: @"[NSString-initWithString:]: NULL string"];
     }
-    return self;
+
+  if (length > 0)
+    {
+      unichar *s = NSZoneMalloc([self zone], sizeof(unichar)*length);
+
+      [string getCharacters: s range: ((NSRange){0, length})];
+      self = [self initWithCharactersNoCopy: s
+                                     length: length
+                               freeWhenDone: YES];
+    }
+  else
+    {
+      self = [self initWithCharactersNoCopy: (unichar*)0
+                     length: 0
+                   freeWhenDone: NO];
+    }
+  return self;
 }
 
 /**
  * Initialize based on given null-terminated UTF-8 string bytes.
  */
-- (id)initWithUTF8String:(const char *)bytes
+- (id) initWithUTF8String: (const char *)bytes
 {
-    if (NULL == bytes)
-        [NSException raise:NSInvalidArgumentException
-                    format:@"[NSString-initWithUTF8String:]: NULL cString"];
-    return [self initWithBytes:bytes
-                        length:strlen(bytes)
-                      encoding:NSUTF8StringEncoding];
+  if (NULL == bytes)
+    {
+      [NSException raise: NSInvalidArgumentException
+                  format: @"[NSString-initWithUTF8String:]: NULL cString"];
+    }
+
+  return [self initWithBytes: bytes
+                      length: strlen(bytes)
+                    encoding: NSUTF8StringEncoding];
 }
 
 /**
  * Invokes -initWithFormat:locale:arguments: with a nil locale.
  */
-- (id)initWithFormat:(NSString *)format, ...
+- (id) initWithFormat: (NSString*)format,...
 {
-    va_list ap;
-    va_start(ap, format);
-    self = [self initWithFormat:format locale:nil arguments:ap];
-    va_end(ap);
-    return self;
+  va_list ap;
+  va_start(ap, format);
+  self = [self initWithFormat: format locale: nil arguments: ap];
+  va_end(ap);
+  return self;
 }
 
 /**
  * Invokes -initWithFormat:locale:arguments:
  */
-- (id)initWithFormat:(NSString *)format
-              locale:(NSDictionary *)locale, ...
+- (id) initWithFormat: (NSString*)format
+               locale: (NSDictionary*)locale, ...
 {
-    va_list ap;
-    va_start(ap, locale);
-    self = [self initWithFormat:format locale:locale arguments:ap];
-    va_end(ap);
-    return self;
+  va_list ap;
+  va_start(ap, locale);
+  self = [self initWithFormat: format locale: locale arguments: ap];
+  va_end(ap);
+  return self;
 }
 
 /**
  * Invokes -initWithFormat:locale:arguments: with a nil locale.
  */
-- (id)initWithFormat:(NSString *)format
-           arguments:(va_list)argList
+- (id) initWithFormat: (NSString*)format
+            arguments: (va_list)argList
 {
-    return [self initWithFormat:format locale:nil arguments:argList];
+  return [self initWithFormat: format locale: nil arguments: argList];
 }
 
 /**
  * Initialises the string using the specified format and locale
  * to format the following arguments.
  */
-- (id)initWithFormat:(NSString *)format
-              locale:(NSDictionary *)locale
-           arguments:(va_list)argList
+- (id) initWithFormat: (NSString*)format
+               locale: (NSDictionary*)locale
+            arguments: (va_list)argList
 {
-    unsigned char buf[2048];
-    GSStr f;
-    unichar fbuf[1024];
-    unichar *fmt = fbuf;
-    size_t len;
+  unsigned char	buf[2048];
+  GSStr f;
+  unichar fbuf[1024];
+  unichar *fmt = fbuf;
+  size_t len;
 
-    if (NULL == format)
-        [NSException raise:NSInvalidArgumentException
-                    format:@"[NSString-initWithFormat:locale:arguments:]: NULL format"];
-
-    if ([format isKindOfClass:[GSLocalizedString class]]) {
-        // Get the appropriate format according to the pluralization rules.
-        format = [(GSLocalizedString *)format getPluralizedFormat:argList];
+  if (NULL == format)
+    {
+      [NSException raise: NSInvalidArgumentException
+                  format: @"[NSString-initWithFormat:locale:arguments:]: NULL format"];
     }
 
-    /*
-     * First we provide an array of unichar characters containing the
-     * format string.  For performance reasons we try to use an on-stack
-     * buffer if the format string is small enough ... it almost always
-     * will be.
-     */
-    len = [format length];
-    if (len >= 1024) {
-        fmt = NSZoneMalloc(NSDefaultMallocZone(), (len + 1) * sizeof(unichar));
-    }
-    [format getCharacters:fmt range:((NSRange){0, len})];
-    fmt[len] = '\0';
-
-    /*
-     * Now set up 'f' as a GSMutableString object whose initial buffer is
-     * allocated on the stack.  The GSPrivateFormat function can write into it.
-     */
-    f = (GSStr)alloca(class_getInstanceSize(GSMutableStringClass));
-    object_setClass(f, GSMutableStringClass);
-    f->_zone = NSDefaultMallocZone();
-    f->_contents.c = buf;
-    f->_capacity = sizeof(buf);
-    f->_count = 0;
-    f->_flags.wide = 0;
-    f->_flags.owned = 0;
-    f->_flags.unused = 0;
-    f->_flags.hash = 0;
-    GSPrivateFormat(f, fmt, argList, locale);
-    GSPrivateStrExternalize(f);
-    if (fmt != fbuf) {
-        NSZoneFree(NSDefaultMallocZone(), fmt);
+  if ([format isKindOfClass:[GSLocalizedString class]])
+    {
+      // Get the appropriate format according to the pluralization rules.
+      format = [(GSLocalizedString *) format getPluralizedFormat:argList];
     }
 
-    /*
-     * Don't use noCopy because f->_contents.u may be memory on the stack,
-     * and even if it wasn't f->_capacity may be greater than f->_count so
-     * we could be wasting quite a bit of space.  Better to accept a
-     * performance hit due to copying data (and allocating/deallocating
-     * the temporary buffer) for large strings.  For most strings, the
-     * on-stack memory will have been used, so we will get better performance.
-     */
-    if (f->_flags.wide == 1) {
-        self = [self initWithCharacters:f->_contents.u length:f->_count];
-    } else {
-        self = [self initWithCString:(char *)f->_contents.c length:f->_count];
+  /*
+   * First we provide an array of unichar characters containing the
+   * format string.  For performance reasons we try to use an on-stack
+   * buffer if the format string is small enough ... it almost always
+   * will be.
+   */
+  len = [format length];
+
+  if (len >= 1024)
+    {
+      fmt = NSZoneMalloc(NSDefaultMallocZone(), (len+1)*sizeof(unichar));
     }
 
-    /*
-     * If the string had to grow beyond the initial buffer size, we must
-     * release any allocated memory.
-     */
-    if (f->_flags.owned == 1) {
-        NSZoneFree(f->_zone, f->_contents.c);
+  [format getCharacters: fmt range: ((NSRange){0, len})];
+  fmt[len] = '\0';
+
+  /*
+   * Now set up 'f' as a GSMutableString object whose initial buffer is
+   * allocated on the stack.  The GSPrivateFormat function can write into it.
+   */
+  f = (GSStr)alloca(class_getInstanceSize(GSMutableStringClass));
+  object_setClass(f, GSMutableStringClass);
+  f->_zone = NSDefaultMallocZone();
+  f->_contents.c = buf;
+  f->_capacity = sizeof(buf);
+  f->_count = 0;
+  f->_flags.wide = 0;
+  f->_flags.owned = 0;
+  f->_flags.unused = 0;
+  f->_flags.hash = 0;
+  GSPrivateFormat(f, fmt, argList, locale);
+  GSPrivateStrExternalize(f);
+  if (fmt != fbuf)
+    {
+      NSZoneFree(NSDefaultMallocZone(), fmt);
     }
-    return self;
+
+  /*
+   * Don't use noCopy because f->_contents.u may be memory on the stack,
+   * and even if it wasn't f->_capacity may be greater than f->_count so
+   * we could be wasting quite a bit of space.  Better to accept a
+   * performance hit due to copying data (and allocating/deallocating
+   * the temporary buffer) for large strings.  For most strings, the
+   * on-stack memory will have been used, so we will get better performance.
+   */
+  if (f->_flags.wide == 1)
+    {
+      self = [self initWithCharacters: f->_contents.u length: f->_count];
+    }
+  else
+    {
+      self = [self initWithCString: (char*)f->_contents.c length: f->_count];
+    }
+
+  /*
+   * If the string had to grow beyond the initial buffer size, we must
+   * release any allocated memory.
+   */
+  if (f->_flags.owned == 1)
+    {
+      NSZoneFree(f->_zone, f->_contents.c);
+    }
+  return self;
 }
 
 /**
@@ -1406,12 +1568,12 @@ GSICUCollatorOpen(NSStringCompareOptions mask, NSLocale *locale)
  * If the data can not be interpreted using the encoding, the receiver
  * is released and nil is returned.
  */
-- (id)initWithData:(NSData *)data
-          encoding:(NSStringEncoding)encoding
+- (id) initWithData: (NSData*)data
+           encoding: (NSStringEncoding)encoding
 {
-    return [self initWithBytes:[data bytes]
-                        length:[data length]
-                      encoding:encoding];
+  return [self initWithBytes: [data bytes]
+                      length: [data length]
+                    encoding: encoding];
 }
 
 /**
@@ -1432,43 +1594,62 @@ GSICUCollatorOpen(NSStringCompareOptions mask, NSLocale *locale)
  * and converted to a string.
  * </p>
  */
-- (id)initWithContentsOfFile:(NSString *)path
+- (id) initWithContentsOfFile: (NSString*)path
 {
-    NSStringEncoding enc = _DefaultStringEncoding;
-    NSData *d;
-    unsigned int len;
-    const unsigned char *data_bytes;
+  NSStringEncoding enc = _DefaultStringEncoding;
+  NSData *d;
+  unsigned int len;
+  const unsigned char *data_bytes;
 
-    d = [[NSDataClass alloc] initWithContentsOfFile:path];
-    if (d == nil) {
-        DESTROY(self);
-        return nil;
+  d = [[NSDataClass alloc] initWithContentsOfFile: path];
+
+  if (d == nil)
+    {
+      DESTROY(self);
+      return nil;
     }
-    len = [d length];
-    if (len == 0) {
-        RELEASE(d);
-        return [self initWithBytesNoCopy:(char *)""
-                                  length:0
-                                encoding:NSASCIIStringEncoding
-                            freeWhenDone:NO];
+
+  len = [d length];
+
+  if (len == 0)
+    {
+      RELEASE(d);
+      return [self initWithBytesNoCopy: (char *)""
+                                length: 0
+                              encoding: NSASCIIStringEncoding
+                          freeWhenDone: NO];
     }
-    data_bytes = [d bytes];
-    if ((data_bytes != NULL) && (len >= 2)) {
-        const unichar *data_ucs2chars = (const unichar *)(void *)data_bytes;
-        if ((data_ucs2chars[0] == byteOrderMark) || (data_ucs2chars[0] == byteOrderMarkSwapped)) {
-            /* somebody set up us the BOM! */
-            enc = NSUnicodeStringEncoding;
-        } else if (len >= 3 && data_bytes[0] == 0xEF && data_bytes[1] == 0xBB && data_bytes[2] == 0xBF) {
-            enc = NSUTF8StringEncoding;
+
+  data_bytes = [d bytes];
+
+  if ((data_bytes != NULL) && (len >= 2))
+    {
+      const unichar *data_ucs2chars = (const unichar *)(void*) data_bytes;
+
+      if ((data_ucs2chars[0] == byteOrderMark) || (data_ucs2chars[0] == byteOrderMarkSwapped))
+        {
+          /* somebody set up us the BOM! */
+          enc = NSUnicodeStringEncoding;
+        }
+      else if (len >= 3
+               && data_bytes[0] == 0xEF
+               && data_bytes[1] == 0xBB
+               && data_bytes[2] == 0xBF)
+        {
+          enc = NSUTF8StringEncoding;
         }
     }
-    self = [self initWithData:d encoding:enc];
-    RELEASE(d);
-    if (self == nil) {
-        NSWarnMLog(@"Contents of file '%@' are not string data using %@",
-                   path, [NSString localizedNameOfStringEncoding:enc]);
+
+  self = [self initWithData: d encoding: enc];
+  RELEASE(d);
+
+  if (self == nil)
+    {
+      NSWarnMLog(@"Contents of file '%@' are not string data using %@",
+        path, [NSString localizedNameOfStringEncoding: enc]);
     }
-    return self;
+
+  return self;
 }
 
 /**
@@ -1489,85 +1670,113 @@ GSICUCollatorOpen(NSStringCompareOptions mask, NSLocale *locale)
  * and converted to a string.
  * </p>
  */
-- (id)initWithContentsOfFile:(NSString *)path
-                usedEncoding:(NSStringEncoding *)enc
-                       error:(NSError **)error
+- (id) initWithContentsOfFile: (NSString*)path
+                 usedEncoding: (NSStringEncoding*)enc
+                        error: (NSError**)error
 {
-    NSData *d;
-    unsigned int len;
-    const unsigned char *data_bytes;
+  NSData		*d;
+  unsigned int		len;
+  const unsigned char	*data_bytes;
 
-    d = [[NSDataClass alloc] initWithContentsOfFile:path];
-    if (nil == d) {
-        DESTROY(self);
-        if (error != 0) {
-            *error = [NSError errorWithDomain:NSCocoaErrorDomain
-                                         code:NSFileReadUnknownError
-                                     userInfo:nil];
+  d = [[NSDataClass alloc] initWithContentsOfFile: path];
+
+  if (nil == d)
+    {
+      DESTROY(self);
+
+      if (error != 0)
+        {
+          *error = [NSError errorWithDomain: NSCocoaErrorDomain
+                                       code: NSFileReadUnknownError
+                                   userInfo: nil];
         }
-        return nil;
+      return nil;
     }
-    *enc = _DefaultStringEncoding;
-    len = [d length];
-    if (len == 0) {
-        RELEASE(d);
-        return [self initWithBytesNoCopy:(char *)""
-                                  length:0
-                                encoding:NSASCIIStringEncoding
-                            freeWhenDone:NO];
+
+  *enc = _DefaultStringEncoding;
+  len = [d length];
+
+  if (len == 0)
+    {
+      RELEASE(d);
+      return [self initWithBytesNoCopy: (char *)""
+                                length: 0
+                              encoding: NSASCIIStringEncoding
+                          freeWhenDone: NO];
     }
-    data_bytes = [d bytes];
-    if ((data_bytes != NULL) && (len >= 2)) {
-        const unichar *data_ucs2chars = (const unichar *)(void *)data_bytes;
-        if ((data_ucs2chars[0] == byteOrderMark) || (data_ucs2chars[0] == byteOrderMarkSwapped)) {
-            /* somebody set up us the BOM! */
-            *enc = NSUnicodeStringEncoding;
-        } else if (len >= 3 && data_bytes[0] == 0xEF && data_bytes[1] == 0xBB && data_bytes[2] == 0xBF) {
-            *enc = NSUTF8StringEncoding;
+
+  data_bytes = [d bytes];
+  if ((data_bytes != NULL) && (len >= 2))
+    {
+      const unichar *data_ucs2chars = (const unichar *)(void*) data_bytes;
+      if ((data_ucs2chars[0] == byteOrderMark) || (data_ucs2chars[0] == byteOrderMarkSwapped))
+        {
+          /* somebody set up us the BOM! */
+          *enc = NSUnicodeStringEncoding;
+        }
+      else if (len >= 3
+               && data_bytes[0] == 0xEF
+               && data_bytes[1] == 0xBB
+               && data_bytes[2] == 0xBF)
+        {
+          *enc = NSUTF8StringEncoding;
         }
     }
-    self = [self initWithData:d encoding:*enc];
-    RELEASE(d);
-    if (nil == self) {
-        if (error != 0) {
-            *error = [NSError errorWithDomain:NSCocoaErrorDomain
-                                         code:NSFileReadCorruptFileError
-                                     userInfo:nil];
+
+  self = [self initWithData: d encoding: *enc];
+  RELEASE(d);
+
+  if (nil == self)
+    {
+      if (error != 0)
+        {
+          *error = [NSError errorWithDomain: NSCocoaErrorDomain
+                                       code: NSFileReadCorruptFileError
+                                   userInfo: nil];
         }
     }
-    return self;
+  return self;
 }
 
-- (id)initWithContentsOfFile:(NSString *)path
-                    encoding:(NSStringEncoding)enc
-                       error:(NSError **)error
+- (id) initWithContentsOfFile: (NSString*)path
+                     encoding: (NSStringEncoding)enc
+                        error: (NSError**)error
 {
-    NSData *d;
-    unsigned int len;
+  NSData *d;
+  unsigned int len;
 
-    d = [[NSDataClass alloc] initWithContentsOfFile:path];
-    if (d == nil) {
-        DESTROY(self);
-        return nil;
+  d = [[NSDataClass alloc] initWithContentsOfFile: path];
+
+  if (d == nil)
+    {
+      DESTROY(self);
+      return nil;
     }
-    len = [d length];
-    if (len == 0) {
-        RELEASE(d);
-        return [self initWithBytesNoCopy:(char *)""
-                                  length:0
-                                encoding:NSASCIIStringEncoding
-                            freeWhenDone:NO];
+
+  len = [d length];
+
+  if (len == 0)
+    {
+      RELEASE(d);
+      return [self initWithBytesNoCopy: (char *)""
+                                length: 0
+                              encoding: NSASCIIStringEncoding
+                          freeWhenDone: NO];
     }
-    self = [self initWithData:d encoding:enc];
-    RELEASE(d);
-    if (self == nil) {
-        if (error != 0) {
-            *error = [NSError errorWithDomain:NSCocoaErrorDomain
-                                         code:NSFileReadCorruptFileError
-                                     userInfo:nil];
+
+  self = [self initWithData: d encoding: enc];
+  RELEASE(d);
+
+  if (self == nil)
+    {
+      if (error != 0)
+        {
+          *error = [NSError errorWithDomain: NSCocoaErrorDomain
+                                       code: NSFileReadCorruptFileError
+                                   userInfo: nil];
         }
     }
-    return self;
+  return self;
 }
 
 /**
@@ -1588,124 +1797,171 @@ GSICUCollatorOpen(NSStringCompareOptions mask, NSLocale *locale)
  * read and converted to a string.
  * </p>
  */
-- (id)initWithContentsOfURL:(NSURL *)url
+- (id) initWithContentsOfURL: (NSURL*)url
 {
-    NSStringEncoding enc = _DefaultStringEncoding;
-    NSData *d = [NSDataClass dataWithContentsOfURL:url];
-    unsigned int len = [d length];
-    const unsigned char *data_bytes;
+  NSStringEncoding enc = _DefaultStringEncoding;
+  NSData *d = [NSDataClass dataWithContentsOfURL: url];
+  unsigned int len = [d length];
+  const unsigned char *data_bytes;
 
-    if (d == nil) {
-        NSWarnMLog(@"Contents of URL '%@' are not readable", url);
-        DESTROY(self);
-        return nil;
+  if (d == nil)
+    {
+      NSWarnMLog(@"Contents of URL '%@' are not readable", url);
+      DESTROY(self);
+      return nil;
     }
-    if (len == 0) {
-        DESTROY(self);
-        return [self initWithBytesNoCopy:(char *)""
-                                  length:0
-                                encoding:NSASCIIStringEncoding
-                            freeWhenDone:NO];
+
+  if (len == 0)
+    {
+      DESTROY(self);
+      return [self initWithBytesNoCopy: (char *)""
+                                length: 0
+                              encoding: NSASCIIStringEncoding
+                          freeWhenDone: NO];
     }
-    data_bytes = [d bytes];
-    if ((data_bytes != NULL) && (len >= 2)) {
-        const unichar *data_ucs2chars = (const unichar *)(void *)data_bytes;
-        if ((data_ucs2chars[0] == byteOrderMark) || (data_ucs2chars[0] == byteOrderMarkSwapped)) {
-            enc = NSUnicodeStringEncoding;
-        } else if (len >= 3 && data_bytes[0] == 0xEF && data_bytes[1] == 0xBB && data_bytes[2] == 0xBF) {
-            enc = NSUTF8StringEncoding;
+
+  data_bytes = [d bytes];
+
+  if ((data_bytes != NULL) && (len >= 2))
+    {
+      const unichar *data_ucs2chars = (const unichar *)(void*) data_bytes;
+
+      if ((data_ucs2chars[0] == byteOrderMark) || (data_ucs2chars[0] == byteOrderMarkSwapped))
+        {
+          enc = NSUnicodeStringEncoding;
+        }
+      else if (len >= 3
+               && data_bytes[0] == 0xEF
+               && data_bytes[1] == 0xBB
+               && data_bytes[2] == 0xBF)
+        {
+          enc = NSUTF8StringEncoding;
         }
     }
-    self = [self initWithData:d encoding:enc];
-    if (self == nil) {
-        NSWarnMLog(@"Contents of URL '%@' are not string data using %@",
-                   url, [NSString localizedNameOfStringEncoding:enc]);
+
+  self = [self initWithData: d encoding: enc];
+
+  if (self == nil)
+    {
+      NSWarnMLog(@"Contents of URL '%@' are not string data using %@",
+        url, [NSString localizedNameOfStringEncoding: enc]);
     }
-    return self;
+
+  return self;
 }
 
-- (id)initWithContentsOfURL:(NSURL *)url
-               usedEncoding:(NSStringEncoding *)enc
-                      error:(NSError **)error
+- (id) initWithContentsOfURL: (NSURL*)url
+                usedEncoding: (NSStringEncoding*)enc
+                       error: (NSError**)error
 {
-    NSData *d;
-    unsigned int len;
-    const unsigned char *data_bytes;
+  NSData *d;
+  unsigned int len;
+  const unsigned char *data_bytes;
 
-    d = [NSDataClass dataWithContentsOfURL:url];
-    if (d == nil) {
-        DESTROY(self);
-        return nil;
+  d = [NSDataClass dataWithContentsOfURL: url];
+
+  if (d == nil)
+    {
+      DESTROY(self);
+      return nil;
     }
-    *enc = _DefaultStringEncoding;
-    len = [d length];
-    if (len == 0) {
-        DESTROY(self);
-        return [self initWithBytesNoCopy:(char *)""
-                                  length:0
-                                encoding:NSASCIIStringEncoding
-                            freeWhenDone:NO];
+
+  *enc = _DefaultStringEncoding;
+  len = [d length];
+
+  if (len == 0)
+    {
+      DESTROY(self);
+      return [self initWithBytesNoCopy: (char *)""
+                                length: 0
+                              encoding: NSASCIIStringEncoding
+                          freeWhenDone: NO];
     }
-    data_bytes = [d bytes];
-    if ((data_bytes != NULL) && (len >= 2)) {
-        const unichar *data_ucs2chars = (const unichar *)(void *)data_bytes;
-        if ((data_ucs2chars[0] == byteOrderMark) || (data_ucs2chars[0] == byteOrderMarkSwapped)) {
-            /* somebody set up us the BOM! */
-            *enc = NSUnicodeStringEncoding;
-        } else if (len >= 3 && data_bytes[0] == 0xEF && data_bytes[1] == 0xBB && data_bytes[2] == 0xBF) {
-            *enc = NSUTF8StringEncoding;
+
+  data_bytes = [d bytes];
+
+  if ((data_bytes != NULL) && (len >= 2))
+    {
+      const unichar *data_ucs2chars = (const unichar *)(void*) data_bytes;
+
+      if ((data_ucs2chars[0] == byteOrderMark) || (data_ucs2chars[0] == byteOrderMarkSwapped))
+        {
+          /* somebody set up us the BOM! */
+          *enc = NSUnicodeStringEncoding;
+        }
+      else if (len >= 3
+               && data_bytes[0] == 0xEF
+               && data_bytes[1] == 0xBB
+               && data_bytes[2] == 0xBF)
+        {
+          *enc = NSUTF8StringEncoding;
         }
     }
-    self = [self initWithData:d encoding:*enc];
-    if (self == nil) {
-        if (error != 0) {
-            *error = [NSError errorWithDomain:NSCocoaErrorDomain
-                                         code:NSFileReadCorruptFileError
-                                     userInfo:nil];
+
+  self = [self initWithData: d encoding: *enc];
+
+  if (self == nil)
+    {
+      if (error != 0)
+        {
+          *error = [NSError errorWithDomain: NSCocoaErrorDomain
+                                       code: NSFileReadCorruptFileError
+                                   userInfo: nil];
         }
     }
-    return self;
+
+  return self;
 }
 
-- (id)initWithContentsOfURL:(NSURL *)url
-                   encoding:(NSStringEncoding)enc
-                      error:(NSError **)error
+- (id) initWithContentsOfURL: (NSURL*)url
+                    encoding: (NSStringEncoding)enc
+                       error: (NSError**)error
 {
-    NSData *d;
-    unsigned int len;
+  NSData *d;
+  unsigned int len;
 
-    d = [NSDataClass dataWithContentsOfURL:url];
-    if (d == nil) {
-        DESTROY(self);
-        return nil;
+  d = [NSDataClass dataWithContentsOfURL: url];
+
+  if (d == nil)
+    {
+      DESTROY(self);
+      return nil;
     }
-    len = [d length];
-    if (len == 0) {
-        DESTROY(self);
-        return [self initWithBytesNoCopy:(char *)""
-                                  length:0
-                                encoding:NSASCIIStringEncoding
-                            freeWhenDone:NO];
+
+  len = [d length];
+
+  if (len == 0)
+    {
+      DESTROY(self);
+      return [self initWithBytesNoCopy: (char *)""
+                                length: 0
+                              encoding: NSASCIIStringEncoding
+                           freeWhenDone: NO];
     }
-    self = [self initWithData:d encoding:enc];
-    if (self == nil) {
-        if (error != 0) {
-            *error = [NSError errorWithDomain:NSCocoaErrorDomain
-                                         code:NSFileReadCorruptFileError
-                                     userInfo:nil];
+
+  self = [self initWithData: d encoding: enc];
+
+  if (self == nil)
+    {
+      if (error != 0)
+        {
+          *error = [NSError errorWithDomain: NSCocoaErrorDomain
+                                       code: NSFileReadCorruptFileError
+                                   userInfo: nil];
         }
     }
-    return self;
+
+  return self;
 }
 
 /**
  * Returns the number of Unicode characters in this string, including the
  * individual characters of composed character sequences,
  */
-- (NSUInteger)length
+- (NSUInteger) length
 {
-    [self subclassResponsibility:_cmd];
-    return 0;
+  [self subclassResponsibility: _cmd];
+  return 0;
 }
 
 // Accessing Characters
@@ -1714,27 +1970,27 @@ GSICUCollatorOpen(NSStringCompareOptions mask, NSLocale *locale)
  * Returns unicode character at index.  <code>unichar</code> is an unsigned
  * short.  Thus, a 16-bit character is returned.
  */
-- (unichar)characterAtIndex:(NSUInteger)index
+- (unichar) characterAtIndex: (NSUInteger)index
 {
-    [self subclassResponsibility:_cmd];
-    return (unichar)0;
+  [self subclassResponsibility: _cmd];
+  return (unichar)0;
 }
 
-- (NSString *)decomposedStringWithCompatibilityMapping
+- (NSString *) decomposedStringWithCompatibilityMapping
 {
 #if (GS_USE_ICU == 1) && (defined(HAVE_UNICODE_UNORM2_H) || defined(HAVE_ICU_H))
-    return [self _normalizedICUStringOfType:"nfkc" mode:UNORM2_DECOMPOSE];
+  return [self _normalizedICUStringOfType: "nfkc" mode: UNORM2_DECOMPOSE];
 #else
-    return [self notImplemented:_cmd];
+  return [self notImplemented: _cmd];
 #endif
 }
 
-- (NSString *)decomposedStringWithCanonicalMapping
+- (NSString *) decomposedStringWithCanonicalMapping
 {
 #if (GS_USE_ICU == 1) && (defined(HAVE_UNICODE_UNORM2_H) || defined(HAVE_ICU_H))
-    return [self _normalizedICUStringOfType:"nfc" mode:UNORM2_DECOMPOSE];
+  return [self _normalizedICUStringOfType: "nfc" mode: UNORM2_DECOMPOSE];
 #else
-    return [self notImplemented:_cmd];
+  return [self notImplemented: _cmd];
 #endif
 }
 
@@ -1744,10 +2000,10 @@ GSICUCollatorOpen(NSStringCompareOptions mask, NSLocale *locale)
  * holding -length shorts.
  */
 // Inefficient.  Should be overridden
-- (void)getCharacters:(unichar *)buffer
+- (void) getCharacters: (unichar*)buffer
 {
-    [self getCharacters:buffer range:((NSRange){0, [self length]})];
-    return;
+  [self getCharacters: buffer range: ((NSRange){0, [self length]})];
+  return;
 }
 
 /**
@@ -1756,110 +2012,134 @@ GSICUCollatorOpen(NSStringCompareOptions mask, NSLocale *locale)
  * of holding a sufficient number of shorts.
  */
 // Inefficient.  Should be overridden
-- (void)getCharacters:(unichar *)buffer
-                range:(NSRange)aRange
+- (void) getCharacters: (unichar*)buffer
+                 range: (NSRange)aRange
 {
-    unsigned l = [self length];
-    unsigned i;
-    unichar (*caiImp)(NSString *, SEL, NSUInteger);
+  unsigned	l = [self length];
+  unsigned	i;
+  unichar	(*caiImp)(NSString*, SEL, NSUInteger);
 
-    GS_RANGE_CHECK(aRange, l);
+  GS_RANGE_CHECK(aRange, l);
 
-    caiImp = (unichar(*)(NSString *, SEL, NSUInteger))
-        [self methodForSelector:caiSel];
+  caiImp = (unichar (*)(NSString*,SEL,NSUInteger))[self methodForSelector: caiSel];
 
-    for (i = 0; i < aRange.length; i++) {
-        buffer[i] = (*caiImp)(self, caiSel, aRange.location + i);
+  for (i = 0; i < aRange.length; i++)
+    {
+      buffer[i] = (*caiImp)(self, caiSel, aRange.location + i);
     }
 }
 
-- (NSString *)stringByAddingPercentEncodingWithAllowedCharacters:
-    (NSCharacterSet *)aSet
+- (NSString *) stringByAddingPercentEncodingWithAllowedCharacters:
+  (NSCharacterSet *)aSet
 {
-    NSData *data = [self dataUsingEncoding:NSUTF8StringEncoding];
-    NSString *s = nil;
+  NSData	*data = [self dataUsingEncoding: NSUTF8StringEncoding];
+  NSString	*s = nil;
 
-    if (data != nil) {
-        unsigned char *src = (unsigned char *)[data bytes];
-        unsigned int slen = [data length];
-        unsigned char *dst;
-        unsigned int spos = 0;
-        unsigned int dpos = 0;
+  if (data != nil)
+    {
+      unsigned char	*src = (unsigned char*)[data bytes];
+      unsigned int	slen = [data length];
+      unsigned char	*dst;
+      unsigned int	spos = 0;
+      unsigned int	dpos = 0;
 
-        dst = (unsigned char *)NSZoneMalloc(NSDefaultMallocZone(), slen * 3);
-        while (spos < slen) {
-            unichar c = src[spos++];
-            unsigned int hi;
-            unsigned int lo;
+      dst = (unsigned char*)NSZoneMalloc(NSDefaultMallocZone(), slen * 3);
 
-            /* If the character is in the allowed set *and* is in the
-             * 7-bit ASCII range, it can be added unchanged.
-             */
-            if (c < 128 && [aSet characterIsMember:c]) {
-                dst[dpos++] = c;
-            } else // if not, then encode it...
+      while (spos < slen)
+        {
+          unichar c = src[spos++];
+          unsigned int hi;
+          unsigned int lo;
+
+          /* If the character is in the allowed set *and* is in the
+           * 7-bit ASCII range, it can be added unchanged.
+           */
+          if (c < 128 && [aSet characterIsMember: c])
             {
-                dst[dpos++] = '%';
-                hi = (c & 0xf0) >> 4;
-                dst[dpos++] = (hi > 9) ? 'A' + hi - 10 : '0' + hi;
-                lo = (c & 0x0f);
-                dst[dpos++] = (lo > 9) ? 'A' + lo - 10 : '0' + lo;
+              dst[dpos++] = c;
+            }
+          else // if not, then encode it...
+            {
+              dst[dpos++] = '%';
+              hi = (c & 0xf0) >> 4;
+              dst[dpos++] = (hi > 9) ? 'A' + hi - 10 : '0' + hi;
+              lo = (c & 0x0f);
+              dst[dpos++] = (lo > 9) ? 'A' + lo - 10 : '0' + lo;
             }
         }
-        s = [[NSString alloc] initWithBytes:dst
-                                     length:dpos
-                                   encoding:NSASCIIStringEncoding];
-        NSZoneFree(NSDefaultMallocZone(), dst);
-        IF_NO_ARC([s autorelease];)
+
+      s = [[NSString alloc] initWithBytes: dst
+                                   length: dpos
+                                 encoding: NSASCIIStringEncoding];
+      NSZoneFree(NSDefaultMallocZone(), dst);
+      IF_NO_ARC([s autorelease];)
     }
-    return s;
+
+  return s;
 }
 
-- (NSString *)stringByRemovingPercentEncoding
+- (NSString *) stringByRemovingPercentEncoding
 {
-    NSData *data = [self dataUsingEncoding:NSUTF8StringEncoding];
-    const uint8_t *s = [data bytes];
-    NSUInteger length = [data length];
-    NSUInteger lastPercent = length - 3;
-    char *o = (char *)NSZoneMalloc(NSDefaultMallocZone(), length + 1);
-    char *next = o;
-    NSUInteger index;
-    NSString *result;
+  NSData *data = [self dataUsingEncoding: NSUTF8StringEncoding];
+  const uint8_t	*s = [data bytes];
+  NSUInteger length = [data length];
+  NSUInteger lastPercent = length - 3;
+  char *o = (char *)NSZoneMalloc(NSDefaultMallocZone(), length + 1);
+  char *next = o;
+  NSUInteger index;
+  NSString *result;
 
-    for (index = 0; index < length; index++) {
-        char c = s[index];
+  for (index = 0; index < length; index++)
+    {
+      char	c = s[index];
 
-        if ('%' == c && index <= lastPercent) {
-            uint8_t hi = s[index + 1];
-            uint8_t lo = s[index + 2];
+      if ('%' == c && index <= lastPercent)
+        {
+          uint8_t hi = s[index+1];
+          uint8_t lo = s[index+2];
 
-            if (isxdigit(hi) && isxdigit(lo)) {
-                index += 2;
-                if (hi <= '9') {
-                    c = hi - '0';
-                } else if (hi <= 'F') {
-                    c = hi - 'A' + 10;
-                } else {
-                    c = hi - 'a' + 10;
-                }
-                c <<= 4;
-                if (lo <= '9') {
-                    c += lo - '0';
-                } else if (lo <= 'F') {
-                    c += lo - 'A' + 10;
-                } else {
-                    c += lo - 'a' + 10;
-                }
+          if (isxdigit(hi) && isxdigit(lo))
+            {
+              index += 2;
+                  if (hi <= '9')
+                    {
+                      c = hi - '0';
+                    }
+                  else if (hi <= 'F')
+                    {
+                      c = hi - 'A' + 10;
+                    }
+                  else
+                    {
+                      c = hi - 'a' + 10;
+                    }
+
+                  c <<= 4;
+
+                  if (lo <= '9')
+                    {
+                      c += lo - '0';
+                    }
+                  else if (lo <= 'F')
+                    {
+                      c += lo - 'A' + 10;
+                    }
+                  else
+                    {
+                      c += lo - 'a' + 10;
+                    }
             }
         }
-        *next++ = c;
+
+      *next++ = c;
     }
-    *next = '\0';
 
-    result = [NSString stringWithUTF8String:o];
-    NSZoneFree(NSDefaultMallocZone(), o);
+  *next = '\0';
 
-    return result;
+  result = [NSString stringWithUTF8String: o];
+  NSZoneFree(NSDefaultMallocZone(), o);
+
+  return result;
 }
 
 /**
@@ -1881,77 +2161,83 @@ GSICUCollatorOpen(NSStringCompareOptions mask, NSLocale *locale)
  * add a string as a form field value (or name) you must add percent
  * escapes for those characters yourself.
  */
-- (NSString *)stringByAddingPercentEscapesUsingEncoding:(NSStringEncoding)e
+- (NSString*) stringByAddingPercentEscapesUsingEncoding: (NSStringEncoding)e
 {
-    NSData *data = [self dataUsingEncoding:e];
-    NSString *s = nil;
+  NSData *data = [self dataUsingEncoding: e];
+  NSString *s = nil;
 
-    if (data != nil) {
-        unsigned char *src = (unsigned char *)[data bytes];
-        unsigned int slen = [data length];
-        unsigned char *dst;
-        unsigned int spos = 0;
-        unsigned int dpos = 0;
+  if (data != nil)
+    {
+      unsigned char	*src = (unsigned char*)[data bytes];
+      unsigned int	slen = [data length];
+      unsigned char	*dst;
+      unsigned int	spos = 0;
+      unsigned int	dpos = 0;
 
-        dst = (unsigned char *)NSZoneMalloc(NSDefaultMallocZone(), slen * 3);
-        while (spos < slen) {
-            unsigned char c = src[spos++];
-            unsigned int hi;
-            unsigned int lo;
+      dst = (unsigned char*)NSZoneMalloc(NSDefaultMallocZone(), slen * 3);
 
-            if (c <= 32 || c > 126 || c == 34 || c == 35 || c == 37 || c == 60 || c == 62 || c == 91 || c == 92 || c == 93 || c == 94 || c == 96 || c == 123 || c == 124 || c == 125) {
-                dst[dpos++] = '%';
-                hi = (c & 0xf0) >> 4;
-                dst[dpos++] = (hi > 9) ? 'A' + hi - 10 : '0' + hi;
-                lo = (c & 0x0f);
-                dst[dpos++] = (lo > 9) ? 'A' + lo - 10 : '0' + lo;
-            } else {
-                dst[dpos++] = c;
+      while (spos < slen)
+        {
+          unsigned char c = src[spos++];
+          unsigned int hi;
+          unsigned int lo;
+
+          if (c <= 32 || c > 126 || c == 34 || c == 35 || c == 37
+            || c == 60 || c == 62 || c == 91 || c == 92 || c == 93
+            || c == 94 || c == 96 || c == 123 || c == 124 || c == 125)
+            {
+              dst[dpos++] = '%';
+              hi = (c & 0xf0) >> 4;
+              dst[dpos++] = (hi > 9) ? 'A' + hi - 10 : '0' + hi;
+              lo = (c & 0x0f);
+              dst[dpos++] = (lo > 9) ? 'A' + lo - 10 : '0' + lo;
+            }
+          else
+            {
+              dst[dpos++] = c;
             }
         }
-        s = [[NSString alloc] initWithBytes:dst
-                                     length:dpos
-                                   encoding:NSASCIIStringEncoding];
-        NSZoneFree(NSDefaultMallocZone(), dst);
-        IF_NO_ARC([s autorelease];)
+
+      s = [[NSString alloc] initWithBytes: dst
+                                   length: dpos
+                                 encoding: NSASCIIStringEncoding];
+      NSZoneFree(NSDefaultMallocZone(), dst);
+      IF_NO_ARC([s autorelease];)
     }
-    return s;
+
+  return s;
 }
 
 /**
  * Constructs a new string consisting of this instance followed by the string
  * specified by format.
  */
-- (NSString *)stringByAppendingFormat:(NSString *)format, ...
+- (NSString*) stringByAppendingFormat: (NSString*)format,...
 {
-    va_list ap;
-    id ret;
+  va_list ap;
+  id ret;
 
-    va_start(ap, format);
-    ret = [self stringByAppendingString:
-                    [NSString stringWithFormat:format
-                                     arguments:ap]];
-    va_end(ap);
-    return ret;
+  va_start(ap, format);
+  ret = [self stringByAppendingString: [NSString stringWithFormat: format arguments: ap]];
+  va_end(ap);
+  return ret;
 }
 
 /**
  * Constructs a new string consisting of this instance followed by the aString.
  */
-- (NSString *)stringByAppendingString:(NSString *)aString
+- (NSString*) stringByAppendingString: (NSString*)aString
 {
-    unsigned len = [self length];
-    unsigned otherLength = [aString length];
-    NSZone *z = [self zone];
-    unichar *s = NSZoneMalloc(z, (len + otherLength) * sizeof(unichar));
-    NSString *tmp;
+  unsigned len = [self length];
+  unsigned otherLength = [aString length];
+  NSZone *z = [self zone];
+  unichar *s = NSZoneMalloc(z, (len+otherLength)*sizeof(unichar));
+  NSString *tmp;
 
-    [self getCharacters:s range:((NSRange){0, len})];
-    [aString getCharacters:s + len range:((NSRange){0, otherLength})];
-    tmp = [[NSStringClass allocWithZone:z] initWithCharactersNoCopy:s
-                                                             length:len + otherLength
-                                                       freeWhenDone:YES];
-    return AUTORELEASE(tmp);
+  [self getCharacters: s range: ((NSRange){0, len})];
+  [aString getCharacters: s + len range: ((NSRange){0, otherLength})];
+  tmp = [[NSStringClass allocWithZone: z] initWithCharactersNoCopy: s length: len + otherLength freeWhenDone: YES];
+  return AUTORELEASE(tmp);
 }
 
 // Dividing Strings into Substrings
@@ -1963,41 +2249,44 @@ GSICUCollatorOpen(NSStringCompareOptions mask, NSLocale *locale)
  * returned.  If string begins or ends with separator, empty strings will
  * be returned for those positions.</p>
  */
-- (NSArray *)componentsSeparatedByCharactersInSet:(NSCharacterSet *)separator
+- (NSArray *) componentsSeparatedByCharactersInSet: (NSCharacterSet *)separator
 {
-    NSRange search;
-    NSRange complete;
-    NSRange found;
-    NSMutableArray *array;
-    IF_NO_ARC(NSAutoreleasePool * pool; NSUInteger count;)
+  NSRange search;
+  NSRange complete;
+  NSRange found;
+  NSMutableArray *array;
+  IF_NO_ARC(NSAutoreleasePool *pool; NSUInteger count;)
 
-    if (separator == nil)
-        [NSException raise:NSInvalidArgumentException format:@"separator is nil"];
-
-    array = [NSMutableArray array];
-    IF_NO_ARC(pool = [NSAutoreleasePool new]; count = 0;)
-    search = NSMakeRange(0, [self length]);
-    complete = search;
-    found = [self rangeOfCharacterFromSet:separator];
-    while (found.length != 0) {
-        NSRange current;
-
-        current = NSMakeRange(search.location,
-                              found.location - search.location);
-        [array addObject:[self substringWithRange:current]];
-
-        search = NSMakeRange(found.location + found.length,
-                             complete.length - found.location - found.length);
-        found = [self rangeOfCharacterFromSet:separator
-                                      options:0
-                                        range:search];
-        IF_NO_ARC(if (0 == count % 200)[pool emptyPool];)
+  if (separator == nil)
+    {
+      [NSException raise: NSInvalidArgumentException format: @"separator is nil"];
     }
-    // Add the last search string range
-    [array addObject:[self substringWithRange:search]];
-    IF_NO_ARC([pool release];)
-    // FIXME: Need to make mutable array into non-mutable array?
-    return array;
+
+  array = [NSMutableArray array];
+  IF_NO_ARC(pool = [NSAutoreleasePool new]; count = 0;)
+  search = NSMakeRange (0, [self length]);
+  complete = search;
+  found = [self rangeOfCharacterFromSet: separator];
+
+  while (found.length != 0)
+    {
+      NSRange current;
+
+      current = NSMakeRange (search.location, found.location - search.location);
+      [array addObject: [self substringWithRange: current]];
+
+      search = NSMakeRange (found.location + found.length, complete.length - found.location - found.length);
+      found = [self rangeOfCharacterFromSet: separator
+                                    options: 0
+                                      range: search];
+      IF_NO_ARC(if (0 == count % 200) [pool emptyPool];)
+    }
+
+  // Add the last search string range
+  [array addObject: [self substringWithRange: search]];
+  IF_NO_ARC([pool release];)
+  // FIXME: Need to make mutable array into non-mutable array?
+  return array;
 }
 
 /**
@@ -2008,79 +2297,79 @@ GSICUCollatorOpen(NSStringCompareOptions mask, NSLocale *locale)
  * be returned for those positions.</p>
  * <p>Note, use an [NSScanner] if you need more sophisticated parsing.</p>
  */
-- (NSArray *)componentsSeparatedByString:(NSString *)separator
+- (NSArray*) componentsSeparatedByString: (NSString*)separator
 {
-    NSRange search;
-    NSRange complete;
-    NSRange found;
-    NSMutableArray *array = [NSMutableArray array];
+  NSRange search;
+  NSRange complete;
+  NSRange found;
+  NSMutableArray *array = [NSMutableArray array];
 
-    search = NSMakeRange(0, [self length]);
-    complete = search;
-    found = [self rangeOfString:separator
-                        options:0
-                          range:search
-                         locale:nil];
-    while (found.length != 0) {
-        NSRange current;
+  search = NSMakeRange (0, [self length]);
+  complete = search;
+  found = [self rangeOfString: separator
+                      options: 0
+                        range: search
+                       locale: nil];
 
-        current = NSMakeRange(search.location,
-                              found.location - search.location);
-        [array addObject:[self substringWithRange:current]];
+  while (found.length != 0)
+    {
+      NSRange current;
 
-        search = NSMakeRange(found.location + found.length,
-                             complete.length - found.location - found.length);
-        found = [self rangeOfString:separator
-                            options:0
-                              range:search
-                             locale:nil];
+      current = NSMakeRange (search.location, found.location - search.location);
+      [array addObject: [self substringWithRange: current]];
+
+      search = NSMakeRange (found.location + found.length, complete.length - found.location - found.length);
+      found = [self rangeOfString: separator
+                          options: 0
+                            range: search
+                           locale: nil];
     }
-    // Add the last search string range
-    [array addObject:[self substringWithRange:search]];
 
-    // FIXME: Need to make mutable array into non-mutable array?
-    return array;
+  // Add the last search string range
+  [array addObject: [self substringWithRange: search]];
+
+  // FIXME: Need to make mutable array into non-mutable array?
+  return array;
 }
 
-- (NSString *)stringByReplacingOccurrencesOfString:(NSString *)replace
-                                        withString:(NSString *)by
-                                           options:(NSStringCompareOptions)opts
-                                             range:(NSRange)searchRange
+- (NSString*) stringByReplacingOccurrencesOfString: (NSString*)replace
+                                        withString: (NSString*)by
+                                           options: (NSStringCompareOptions)opts
+                                             range: (NSRange)searchRange
 {
-    id copy;
+  id copy;
 
-    copy = [[[GSMutableStringClass allocWithZone:NSDefaultMallocZone()]
-        initWithString:self] autorelease];
-    [copy replaceOccurrencesOfString:replace
-                          withString:by
-                             options:opts
-                               range:searchRange];
-    return GS_IMMUTABLE(copy);
+  copy = [[[GSMutableStringClass allocWithZone: NSDefaultMallocZone()] initWithString: self] autorelease];
+
+  [copy replaceOccurrencesOfString: replace
+                        withString: by
+                           options: opts
+                             range: searchRange];
+
+  return GS_IMMUTABLE(copy);
 }
 
-- (NSString *)stringByReplacingOccurrencesOfString:(NSString *)replace
-                                        withString:(NSString *)by
+- (NSString*) stringByReplacingOccurrencesOfString: (NSString*)replace
+                                        withString: (NSString*)by
 {
-    return [self
-        stringByReplacingOccurrencesOfString:replace
-                                  withString:by
-                                     options:0
-                                       range:NSMakeRange(0, [self length])];
+  return [self stringByReplacingOccurrencesOfString: replace
+                                         withString: by
+                                            options: 0
+                                              range: NSMakeRange(0, [self length])];
 }
 
 /**
  * Returns a new string where the substring in the given range is replaced by
  * the passed string.
  */
-- (NSString *)stringByReplacingCharactersInRange:(NSRange)aRange
-                                      withString:(NSString *)by
+- (NSString*) stringByReplacingCharactersInRange: (NSRange)aRange
+                                      withString: (NSString*)by
 {
-    id copy;
+  id copy;
 
-    copy = [[[GSMutableStringClass allocWithZone:NSDefaultMallocZone()]
-        initWithString:self] autorelease];
-    [copy replaceCharactersInRange:aRange withString:by];
-    return GS_IMMUTABLE(copy);
+  copy = [[[GSMutableStringClass allocWithZone: NSDefaultMallocZone()] initWithString: self] autorelease];
+  [copy replaceCharactersInRange: aRange withString: by];
+  return GS_IMMUTABLE(copy);
 }
 
 /**
@@ -2092,9 +2381,9 @@ GSICUCollatorOpen(NSStringCompareOptions mask, NSLocale *locale)
  * If the supplied index is greater than or equal to the length of the
  * receiver an exception is raised.
  */
-- (NSString *)substringFromIndex:(NSUInteger)index
+- (NSString*) substringFromIndex: (NSUInteger)index
 {
-    return [self substringWithRange:((NSRange){index, [self length] - index})];
+  return [self substringWithRange: ((NSRange){index, [self length]-index})];
 }
 
 /**
@@ -2105,17 +2394,17 @@ GSICUCollatorOpen(NSStringCompareOptions mask, NSLocale *locale)
  * If the supplied index is greater than the length of the receiver
  * an exception is raised.
  */
-- (NSString *)substringToIndex:(NSUInteger)index
+- (NSString*) substringToIndex: (NSUInteger)index
 {
-    return [self substringWithRange:((NSRange){0, index})];
+  return [self substringWithRange: ((NSRange){0,index})];
 }
 
 /**
  * An obsolete name for -substringWithRange: ... deprecated.
  */
-- (NSString *)substringFromRange:(NSRange)aRange
+- (NSString*) substringFromRange: (NSRange)aRange
 {
-    return [self substringWithRange:aRange];
+  return [self substringWithRange: aRange];
 }
 
 /**
@@ -2125,23 +2414,23 @@ GSICUCollatorOpen(NSStringCompareOptions mask, NSLocale *locale)
  * present in the receiver, an exception is raised.<br />
  * If aRange has a length of zero, an empty string is returned.
  */
-- (NSString *)substringWithRange:(NSRange)aRange
+- (NSString*) substringWithRange: (NSRange)aRange
 {
-    unichar *buf;
-    id ret;
-    unsigned len = [self length];
+  unichar *buf;
+  id ret;
+  unsigned len = [self length];
 
-    GS_RANGE_CHECK(aRange, len);
+  GS_RANGE_CHECK(aRange, len);
 
-    if (aRange.length == 0)
-        return @"";
-    buf = NSZoneMalloc([self zone], sizeof(unichar) * aRange.length);
-    [self getCharacters:buf range:aRange];
-    ret = [[NSStringClass allocWithZone:NSDefaultMallocZone()]
-        initWithCharactersNoCopy:buf
-                          length:aRange.length
-                    freeWhenDone:YES];
-    return AUTORELEASE(ret);
+  if (aRange.length == 0)
+    {
+      return @"";
+    }
+
+  buf = NSZoneMalloc([self zone], sizeof(unichar)*aRange.length);
+  [self getCharacters: buf range: aRange];
+  ret = [[NSStringClass allocWithZone: NSDefaultMallocZone()] initWithCharactersNoCopy: buf length: aRange.length freeWhenDone: YES];
+  return AUTORELEASE(ret);
 }
 
 // Finding Ranges of Characters and Substrings
@@ -2152,13 +2441,13 @@ GSICUCollatorOpen(NSStringCompareOptions mask, NSLocale *locale)
  * the range returned will contain the whole sequence, else just the character
  * itself.
  */
-- (NSRange)rangeOfCharacterFromSet:(NSCharacterSet *)aSet
+- (NSRange) rangeOfCharacterFromSet: (NSCharacterSet*)aSet
 {
-    NSRange all = NSMakeRange(0, [self length]);
+  NSRange all = NSMakeRange(0, [self length]);
 
-    return [self rangeOfCharacterFromSet:aSet
-                                 options:0
-                                   range:all];
+  return [self rangeOfCharacterFromSet: aSet
+                               options: 0
+                                 range: all];
 }
 
 /**
@@ -2170,14 +2459,14 @@ GSICUCollatorOpen(NSStringCompareOptions mask, NSLocale *locale)
  * characters equal), or <code>NSBackwardsSearch</code> (search from end of
  * string).
  */
-- (NSRange)rangeOfCharacterFromSet:(NSCharacterSet *)aSet
-                           options:(NSUInteger)mask
+- (NSRange) rangeOfCharacterFromSet: (NSCharacterSet*)aSet
+                options: (NSUInteger)mask
 {
-    NSRange all = NSMakeRange(0, [self length]);
+  NSRange all = NSMakeRange(0, [self length]);
 
-    return [self rangeOfCharacterFromSet:aSet
-                                 options:mask
-                                   range:all];
+  return [self rangeOfCharacterFromSet: aSet
+                   options: mask
+                 range: all];
 }
 
 /**
@@ -2189,77 +2478,76 @@ GSICUCollatorOpen(NSStringCompareOptions mask, NSLocale *locale)
  * characters equal), or <code>NSBackwardsSearch</code> (search from end of
  * string).  Search only carried out within aRange.
  */
-- (NSRange)rangeOfCharacterFromSet:(NSCharacterSet *)aSet
-                           options:(NSUInteger)mask
-                             range:(NSRange)aRange
+- (NSRange) rangeOfCharacterFromSet: (NSCharacterSet*)aSet
+                options: (NSUInteger)mask
+                  range: (NSRange)aRange
 {
-    unsigned int i;
-    unsigned int start;
-    unsigned int stop;
-    int step;
-    NSRange range;
-    unichar (*cImp)(id, SEL, NSUInteger);
-    BOOL (*mImp)
-    (id, SEL, unichar);
+  unsigned int i;
+  unsigned int start;
+  unsigned int stop;
+  int step;
+  NSRange range;
+  unichar (*cImp)(id, SEL, NSUInteger);
+  BOOL (*mImp)(id, SEL, unichar);
 
-    i = [self length];
-    GS_RANGE_CHECK(aRange, i);
+  i = [self length];
+  GS_RANGE_CHECK(aRange, i);
 
-    if ((mask & NSBackwardsSearch) == NSBackwardsSearch) {
-        start = NSMaxRange(aRange) - 1;
-        stop = aRange.location - 1;
-        step = -1;
-    } else {
-        start = aRange.location;
-        stop = NSMaxRange(aRange);
-        step = 1;
+  if ((mask & NSBackwardsSearch) == NSBackwardsSearch)
+    {
+      start = NSMaxRange(aRange)-1; stop = aRange.location-1; step = -1;
     }
-    range.location = NSNotFound;
-    range.length = 0;
+  else
+    {
+      start = aRange.location; stop = NSMaxRange(aRange); step = 1;
+    }
 
-    cImp = (unichar(*)(id, SEL, NSUInteger))
-        [self methodForSelector:caiSel];
-    mImp = (BOOL(*)(id, SEL, unichar))
-        [aSet methodForSelector:cMemberSel];
+  range.location = NSNotFound;
+  range.length = 0;
 
-    for (i = start; i != stop; i += step) {
-        unichar letter = (unichar)(*cImp)(self, caiSel, i);
+  cImp = (unichar(*)(id,SEL,NSUInteger)) [self methodForSelector: caiSel];
+  mImp = (BOOL(*)(id,SEL,unichar)) [aSet methodForSelector: cMemberSel];
 
-        if ((*mImp)(aSet, cMemberSel, letter)) {
-            range = NSMakeRange(i, 1);
-            break;
+  for (i = start; i != stop; i += step)
+    {
+      unichar letter = (unichar)(*cImp)(self, caiSel, i);
+
+      if ((*mImp)(aSet, cMemberSel, letter))
+        {
+          range = NSMakeRange(i, 1);
+          break;
         }
     }
 
-    return range;
+  return range;
 }
 
 /**
  * Invokes -rangeOfString:options: with no options.
  */
-- (NSRange)rangeOfString:(NSString *)string
+- (NSRange) rangeOfString: (NSString*)string
 {
-    NSRange all = NSMakeRange(0, [self length]);
+  NSRange all = NSMakeRange(0, [self length]);
 
-    return [self rangeOfString:string
-                       options:0
-                         range:all
-                        locale:nil];
+  return [self rangeOfString: string
+                     options: 0
+                       range: all
+                      locale: nil];
 }
 
 /**
  * Invokes -rangeOfString:options:range: with the range set
  * set to the range of the whole of the receiver.
  */
-- (NSRange)rangeOfString:(NSString *)string
-                 options:(NSUInteger)mask
+- (NSRange) rangeOfString: (NSString*)string
+                  options: (NSUInteger)mask
 {
-    NSRange all = NSMakeRange(0, [self length]);
+  NSRange all = NSMakeRange(0, [self length]);
 
-    return [self rangeOfString:string
-                       options:mask
-                         range:all
-                        locale:nil];
+  return [self rangeOfString: string
+                     options: mask
+                       range: all
+                      locale: nil];
 }
 
 /**
@@ -2286,368 +2574,507 @@ GSICUCollatorOpen(NSStringCompareOptions mask, NSLocale *locale)
  * beginning (or end, if <code>NSBackwardsSearch</code> is also given) of the
  * string.  Options should be OR'd together using <code>'|'</code>.
  */
-- (NSRange)rangeOfString:(NSString *)aString
-                 options:(NSUInteger)mask
-                   range:(NSRange)aRange
+- (NSRange) rangeOfString: (NSString *)aString
+                  options: (NSUInteger)mask
+                    range: (NSRange)aRange
 {
-    return [self rangeOfString:aString
-                       options:mask
-                         range:aRange
-                        locale:nil];
+  return [self rangeOfString: aString
+                     options: mask
+                       range: aRange
+                      locale: nil];
 }
 
-- (NSRange)rangeOfString:(NSString *)aString
-                 options:(NSStringCompareOptions)mask
-                   range:(NSRange)searchRange
-                  locale:(NSLocale *)locale
+- (NSRange) rangeOfString: (NSString *)aString
+                  options: (NSStringCompareOptions)mask
+                    range: (NSRange)searchRange
+                   locale: (NSLocale *)locale
 {
-    NSUInteger length = [self length];
-    NSUInteger countOther;
+  NSUInteger length = [self length];
+  NSUInteger countOther;
 
-    GS_RANGE_CHECK(searchRange, length);
-    if (aString == nil)
-        [NSException raise:NSInvalidArgumentException format:@"range of nil"];
+  GS_RANGE_CHECK(searchRange, length);
 
-    if ((mask & NSRegularExpressionSearch) == NSRegularExpressionSearch) {
-        NSRange r = {NSNotFound, 0};
-        NSError *e = nil;
-        NSUInteger options = 0;
-        NSRegularExpression *regex = [NSRegularExpression alloc];
-
-        if ((mask & NSCaseInsensitiveSearch) == NSCaseInsensitiveSearch) {
-            options |= NSRegularExpressionCaseInsensitive;
-        }
-        regex = [regex initWithPattern:aString options:options error:&e];
-        if (nil == e) {
-            options = ((mask & NSAnchoredSearch) == NSAnchoredSearch) ? NSMatchingAnchored : 0;
-            r = [regex rangeOfFirstMatchInString:self
-                                         options:options
-                                           range:searchRange];
-        }
-        [regex release];
-        return r;
+  if (aString == nil)
+    {
+      [NSException raise: NSInvalidArgumentException format: @"range of nil"];
     }
 
-    countOther = [aString length];
+  if ((mask & NSRegularExpressionSearch) == NSRegularExpressionSearch)
+    {
+      NSRange r = {NSNotFound, 0};
+      NSError *e = nil;
+      NSUInteger options = 0;
+      NSRegularExpression *regex = [NSRegularExpression alloc];
 
-    /* A zero length string is always found at the start of the given range.
-     */
-    if (0 == countOther) {
-        if ((mask & NSBackwardsSearch) == NSBackwardsSearch) {
-            searchRange.location += searchRange.length;
+      if ((mask & NSCaseInsensitiveSearch) == NSCaseInsensitiveSearch)
+        {
+          options |= NSRegularExpressionCaseInsensitive;
         }
-        searchRange.length = 0;
-        return searchRange;
+
+      regex = [regex initWithPattern: aString options: options error: &e];
+
+      if (nil == e)
+        {
+          options = ((mask & NSAnchoredSearch) == NSAnchoredSearch) ? NSMatchingAnchored : 0;
+          r = [regex rangeOfFirstMatchInString: self
+                                       options: options
+                                         range: searchRange];
+        }
+
+      [regex release];
+      return r;
     }
 
-    /* If the string to search for is a single codepoint which is not
-     * decomposable to a sequence, then it can only match the identical
-     * codepoint, so we can perform the much cheaper literal search.
-     */
-    if (1 == countOther) {
-        unichar u = [aString characterAtIndex:0];
+  countOther = [aString length];
 
-        if ((mask & NSLiteralSearch) == NSLiteralSearch || uni_is_decomp(u)) {
-            NSRange result;
+  /* A zero length string is always found at the start of the given range.
+   */
+  if (0 == countOther)
+    {
+      if ((mask & NSBackwardsSearch) == NSBackwardsSearch)
+        {
+          searchRange.location += searchRange.length;
+        }
 
-            if (searchRange.length < countOther) {
-                /* Range to search is smaller than string to look for.
-                 */
-                result = NSMakeRange(NSNotFound, 0);
-            } else if ((mask & NSAnchoredSearch) == NSAnchoredSearch || searchRange.length == 1) {
-                /* Range to search is a single character.
-                 */
-                if ((mask & NSBackwardsSearch) == NSBackwardsSearch) {
-                    searchRange.location = NSMaxRange(searchRange) - 1;
+      searchRange.length = 0;
+      return searchRange;
+    }
+
+  /* If the string to search for is a single codepoint which is not
+   * decomposable to a sequence, then it can only match the identical
+   * codepoint, so we can perform the much cheaper literal search.
+   */
+  if (1 == countOther)
+    {
+      unichar   u = [aString characterAtIndex: 0];
+
+      if ((mask & NSLiteralSearch) == NSLiteralSearch || uni_is_decomp(u))
+        {
+          NSRange   result;
+
+          if (searchRange.length < countOther)
+            {
+              /* Range to search is smaller than string to look for.
+               */
+              result = NSMakeRange(NSNotFound, 0);
+            }
+          else if ((mask & NSAnchoredSearch) == NSAnchoredSearch || searchRange.length == 1)
+            {
+              /* Range to search is a single character.
+               */
+              if ((mask & NSBackwardsSearch) == NSBackwardsSearch)
+                {
+                  searchRange.location = NSMaxRange(searchRange) - 1;
                 }
-                if ((mask & NSCaseInsensitiveSearch) == NSCaseInsensitiveSearch) {
-                    u = uni_toupper(u);
-                    if (uni_toupper([self characterAtIndex:searchRange.location]) == u) {
-                        result = searchRange;
-                    } else {
-                        result = NSMakeRange(NSNotFound, 0);
-                    }
-                } else {
-                    if ([self characterAtIndex:searchRange.location] == u) {
-                        result = searchRange;
-                    } else {
-                        result = NSMakeRange(NSNotFound, 0);
-                    }
-                }
-            } else {
-                NSUInteger pos;
-                NSUInteger end;
 
-                /* Range to search is bigger than string to look for.
-                 */
-                GS_BEGINITEMBUF2(charsSelf, (searchRange.length * sizeof(unichar)),
-                                 unichar)
-                [self getCharacters:charsSelf range:searchRange];
-                end = searchRange.length;
-                if ((mask & NSCaseInsensitiveSearch) == NSCaseInsensitiveSearch) {
-                    u = uni_toupper(u);
-                    if ((mask & NSBackwardsSearch) == NSBackwardsSearch) {
-                        pos = end;
-                        while (pos-- > 0) {
-                            if (uni_toupper(charsSelf[pos]) == u) {
-                                break;
-                            }
-                        }
-                    } else {
-                        pos = 0;
-                        while (pos < end) {
-                            if (uni_toupper(charsSelf[pos]) == u) {
-                                break;
-                            }
-                            pos++;
-                        }
+              if ((mask & NSCaseInsensitiveSearch) == NSCaseInsensitiveSearch)
+                {
+                  u = uni_toupper(u);
+
+                  if (uni_toupper([self characterAtIndex: searchRange.location])
+                     == u)
+                    {
+                      result = searchRange;
                     }
-                } else {
-                    if ((mask & NSBackwardsSearch) == NSBackwardsSearch) {
-                        pos = end;
-                        while (pos-- > 0) {
-                            if (charsSelf[pos] == u) {
-                                break;
-                            }
-                        }
-                    } else {
-                        pos = 0;
-                        while (pos < end) {
-                            if (charsSelf[pos] == u) {
-                                break;
-                            }
-                            pos++;
-                        }
+                  else
+                    {
+                      result = NSMakeRange(NSNotFound, 0);
                     }
                 }
-                GS_ENDITEMBUF2()
-
-                if (pos >= end) {
-                    result = NSMakeRange(NSNotFound, 0);
-                } else {
-                    result = NSMakeRange(searchRange.location + pos, countOther);
+              else
+                {
+                  if ([self characterAtIndex: searchRange.location] == u)
+                    {
+                      result = searchRange;
+                    }
+                  else
+                    {
+                      result = NSMakeRange(NSNotFound, 0);
+                    }
                 }
             }
-            return result;
+          else
+            {
+              NSUInteger pos;
+              NSUInteger end;
+
+              /* Range to search is bigger than string to look for.
+               */
+              GS_BEGINITEMBUF2(charsSelf, (searchRange.length*sizeof(unichar)), unichar)
+              [self getCharacters: charsSelf range: searchRange];
+              end = searchRange.length;
+
+              if ((mask & NSCaseInsensitiveSearch) == NSCaseInsensitiveSearch)
+                {
+                  u = uni_toupper(u);
+
+                  if ((mask & NSBackwardsSearch) == NSBackwardsSearch)
+                    {
+                      pos = end;
+
+                      while (pos-- > 0)
+                        {
+                          if (uni_toupper(charsSelf[pos]) == u)
+                            {
+                              break;
+                            }
+                        }
+                    }
+                  else
+                    {
+                      pos = 0;
+
+                      while (pos < end)
+                        {
+                          if (uni_toupper(charsSelf[pos]) == u)
+                            {
+                              break;
+                            }
+
+                          ++pos;
+                        }
+                    }
+                }
+              else
+                {
+                  if ((mask & NSBackwardsSearch) == NSBackwardsSearch)
+                    {
+                      pos = end;
+
+                      while (pos-- > 0)
+                        {
+                          if (charsSelf[pos] == u)
+                            {
+                              break;
+                            }
+                        }
+                    }
+                  else
+                    {
+                      pos = 0;
+
+                      while (pos < end)
+                        {
+                          if (charsSelf[pos] == u)
+                            {
+                              break;
+                            }
+
+                          ++pos;
+                        }
+                    }
+                }
+
+              GS_ENDITEMBUF2()
+
+              if (pos >= end)
+                {
+                  result = NSMakeRange(NSNotFound, 0);
+                }
+              else
+                {
+                  result = NSMakeRange(searchRange.location + pos, countOther);
+                }
+            }
+
+          return result;
         }
     }
 
-    if ((mask & NSLiteralSearch) == NSLiteralSearch) {
-        NSRange result;
-        BOOL insensitive;
+  if ((mask & NSLiteralSearch) == NSLiteralSearch)
+    {
+      NSRange   result;
+      BOOL      insensitive;
 
-        if ((mask & NSCaseInsensitiveSearch) == NSCaseInsensitiveSearch) {
-            insensitive = YES;
-        } else {
-            insensitive = NO;
+      if ((mask & NSCaseInsensitiveSearch) == NSCaseInsensitiveSearch)
+        {
+          insensitive = YES;
+        }
+      else
+        {
+          insensitive = NO;
         }
 
-        if (searchRange.length < countOther) {
-            /* Range to search is smaller than string to look for.
-             */
-            result = NSMakeRange(NSNotFound, 0);
-        } else {
-            GS_BEGINITEMBUF(charsOther, (countOther * sizeof(unichar)), unichar)
-
-            [aString getCharacters:charsOther range:NSMakeRange(0, countOther)];
-            if (YES == insensitive) {
-                NSUInteger index;
-
-                /* Make the substring we are searching for be uppercase.
-                 */
-                for (index = 0; index < countOther; index++) {
-                    charsOther[index] = uni_toupper(charsOther[index]);
-                }
-            }
-            if ((mask & NSAnchoredSearch) == NSAnchoredSearch || searchRange.length == countOther) {
-                /* Range to search is same size as string to look for.
-                 */
-                GS_BEGINITEMBUF2(charsSelf, (countOther * sizeof(unichar)), unichar)
-                if ((mask & NSBackwardsSearch) == NSBackwardsSearch) {
-                    searchRange.location = NSMaxRange(searchRange) - countOther;
-                    searchRange.length = countOther;
-                } else {
-                    searchRange.length = countOther;
-                }
-                [self getCharacters:charsSelf range:searchRange];
-                if (YES == insensitive) {
-                    NSUInteger index;
-
-                    for (index = 0; index < countOther; index++) {
-                        if (uni_toupper(charsSelf[index]) != charsOther[index]) {
-                            break;
-                        }
-                    }
-                    if (index < countOther) {
-                        result = NSMakeRange(NSNotFound, 0);
-                    } else {
-                        result = searchRange;
-                    }
-                } else {
-                    if (memcmp(&charsSelf[0], &charsOther[0],
-                               countOther * sizeof(unichar)) == 0) {
-                        result = searchRange;
-                    } else {
-                        result = NSMakeRange(NSNotFound, 0);
-                    }
-                }
-                GS_ENDITEMBUF2()
-            } else {
-                NSUInteger pos;
-                NSUInteger end;
-
-                end = searchRange.length - countOther + 1;
-                if ((mask & NSBackwardsSearch) == NSBackwardsSearch) {
-                    pos = end;
-                } else {
-                    pos = 0;
-                }
-                /* Range to search is bigger than string to look for.
-                 */
-                GS_BEGINITEMBUF2(charsSelf, (searchRange.length * sizeof(unichar)),
-                                 unichar)
-                [self getCharacters:charsSelf range:searchRange];
-
-                if (YES == insensitive) {
-                    NSUInteger count;
-                    NSUInteger index;
-
-                    /* Make things uppercase in the string being searched
-                     * Start with all but one of the characters in a substring
-                     * and we'll uppercase one more character each time we do
-                     * a comparison.
-                     */
-                    index = pos;
-                    for (count = 1; count < countOther; count++) {
-                        charsSelf[index] = uni_toupper(charsSelf[index]);
-                        index++;
-                    }
-                }
-
-                if ((mask & NSBackwardsSearch) == NSBackwardsSearch) {
-                    if (YES == insensitive) {
-                        while (pos-- > 0) {
-                            charsSelf[pos] = uni_toupper(charsSelf[pos]);
-                            if (memcmp(&charsSelf[pos], charsOther,
-                                       countOther * sizeof(unichar)) == 0) {
-                                break;
-                            }
-                        }
-                    } else {
-                        while (pos-- > 0) {
-                            if (memcmp(&charsSelf[pos], charsOther,
-                                       countOther * sizeof(unichar)) == 0) {
-                                break;
-                            }
-                        }
-                    }
-                } else {
-                    if (YES == insensitive) {
-                        while (pos < end) {
-                            charsSelf[pos + countOther - 1] = uni_toupper(charsSelf[pos + countOther - 1]);
-                            if (memcmp(&charsSelf[pos], charsOther,
-                                       countOther * sizeof(unichar)) == 0) {
-                                break;
-                            }
-                            pos++;
-                        }
-                    } else {
-                        while (pos < end) {
-                            if (memcmp(&charsSelf[pos], charsOther,
-                                       countOther * sizeof(unichar)) == 0) {
-                                break;
-                            }
-                            pos++;
-                        }
-                    }
-                }
-
-                if (pos >= end) {
-                    result = NSMakeRange(NSNotFound, 0);
-                } else {
-                    result = NSMakeRange(searchRange.location + pos, countOther);
-                }
-                GS_ENDITEMBUF2()
-            }
-            GS_ENDITEMBUF()
+      if (searchRange.length < countOther)
+        {
+          /* Range to search is smaller than string to look for.
+           */
+          result = NSMakeRange(NSNotFound, 0);
         }
-        return result;
+      else
+        {
+          GS_BEGINITEMBUF(charsOther, (countOther*sizeof(unichar)), unichar)
+
+          [aString getCharacters: charsOther range: NSMakeRange(0, countOther)];
+          if (YES == insensitive)
+            {
+              NSUInteger        index;
+
+              /* Make the substring we are searching for be uppercase.
+               */
+              for (index = 0; index < countOther; index++)
+                {
+                  charsOther[index] = uni_toupper(charsOther[index]);
+                }
+            }
+
+          if ((mask & NSAnchoredSearch) == NSAnchoredSearch
+            || searchRange.length == countOther)
+            {
+              /* Range to search is same size as string to look for.
+               */
+              GS_BEGINITEMBUF2(charsSelf, (countOther*sizeof(unichar)), unichar)
+
+              if ((mask & NSBackwardsSearch) == NSBackwardsSearch)
+                {
+                  searchRange.location = NSMaxRange(searchRange) - countOther;
+                  searchRange.length = countOther;
+                }
+              else
+                {
+                  searchRange.length = countOther;
+                }
+
+              [self getCharacters: charsSelf range: searchRange];
+
+              if (YES == insensitive)
+                {
+                  NSUInteger    index;
+
+                  for (index = 0; index < countOther; index++)
+                    {
+                      if (uni_toupper(charsSelf[index]) != charsOther[index])
+                        {
+                          break;
+                        }
+                    }
+
+                  if (index < countOther)
+                    {
+                      result = NSMakeRange(NSNotFound, 0);
+                    }
+                  else
+                    {
+                      result = searchRange;
+                    }
+                }
+              else
+                {
+                  if (memcmp(&charsSelf[0], &charsOther[0],
+                    countOther * sizeof(unichar)) == 0)
+                    {
+                      result = searchRange;
+                    }
+                  else
+                    {
+                      result = NSMakeRange(NSNotFound, 0);
+                    }
+                }
+
+              GS_ENDITEMBUF2()
+            }
+          else
+            {
+              NSUInteger pos;
+              NSUInteger end;
+
+              end = searchRange.length - countOther + 1;
+
+              if ((mask & NSBackwardsSearch) == NSBackwardsSearch)
+                {
+                  pos = end;
+                }
+              else
+                {
+                  pos = 0;
+                }
+
+              /* Range to search is bigger than string to look for.
+               */
+              GS_BEGINITEMBUF2(charsSelf, (searchRange.length*sizeof(unichar)), unichar)
+              [self getCharacters: charsSelf range: searchRange];
+
+              if (YES == insensitive)
+                {
+                  NSUInteger count;
+                  NSUInteger index;
+
+                  /* Make things uppercase in the string being searched
+                   * Start with all but one of the characters in a substring
+                   * and we'll uppercase one more character each time we do
+                   * a comparison.
+                   */
+                  index = pos;
+
+                  for (count = 1; count < countOther; count++)
+                    {
+                      charsSelf[index] = uni_toupper(charsSelf[index]);
+                      index++;
+                    }
+                }
+
+              if ((mask & NSBackwardsSearch) == NSBackwardsSearch)
+                {
+                  if (YES == insensitive)
+                    {
+                      while (pos-- > 0)
+                        {
+                          charsSelf[pos] = uni_toupper(charsSelf[pos]);
+                          if (memcmp(&charsSelf[pos], charsOther, countOther * sizeof(unichar)) == 0)
+                            {
+                              break;
+                            }
+                        }
+                    }
+                  else
+                    {
+                      while (pos-- > 0)
+                        {
+                          if (memcmp(&charsSelf[pos], charsOther, countOther * sizeof(unichar)) == 0)
+                            {
+                              break;
+                            }
+                        }
+                    }
+                }
+              else
+                {
+                  if (YES == insensitive)
+                    {
+                      while (pos < end)
+                        {
+                          charsSelf[pos + countOther - 1] = uni_toupper(charsSelf[pos + countOther - 1]);
+
+                          if (memcmp(&charsSelf[pos], charsOther, countOther * sizeof(unichar)) == 0)
+                            {
+                              break;
+                            }
+
+                          ++pos;
+                        }
+                    }
+                  else
+                    {
+                      while (pos < end)
+                        {
+                          if (memcmp(&charsSelf[pos], charsOther, countOther * sizeof(unichar)) == 0)
+                            {
+                              break;
+                            }
+
+                          ++pos;
+                        }
+                    }
+                }
+
+              if (pos >= end)
+                {
+                  result = NSMakeRange(NSNotFound, 0);
+                }
+              else
+                {
+                  result = NSMakeRange(searchRange.location + pos, countOther);
+                }
+
+              GS_ENDITEMBUF2()
+            }
+
+          GS_ENDITEMBUF()
+        }
+
+      return result;
     }
 
 #if GS_USE_ICU == 1
     {
-        UCollator *coll = GSICUCollatorOpen(mask, locale);
+      UCollator *coll = GSICUCollatorOpen(mask, locale);
 
-        if (NULL != coll) {
-            NSRange result = NSMakeRange(NSNotFound, 0);
-            UErrorCode status = U_ZERO_ERROR;
-            NSUInteger countSelf = searchRange.length;
-            UStringSearch *search = NULL;
-            GS_BEGINITEMBUF(charsSelf, (countSelf * sizeof(unichar)), unichar)
-            GS_BEGINITEMBUF2(charsOther, (countOther * sizeof(unichar)), unichar)
+      if (NULL != coll)
+        {
+          NSRange result = NSMakeRange(NSNotFound, 0);
+          UErrorCode status = U_ZERO_ERROR;
+          NSUInteger countSelf = searchRange.length;
+          UStringSearch *search = NULL;
 
-            // Copy to buffer
+          GS_BEGINITEMBUF(charsSelf, (countSelf * sizeof(unichar)), unichar)
+          GS_BEGINITEMBUF2(charsOther, (countOther * sizeof(unichar)), unichar)
 
-            [self getCharacters:charsSelf range:searchRange];
-            [aString getCharacters:charsOther range:NSMakeRange(0, countOther)];
+          // Copy to buffer
+          [self getCharacters: charsSelf range: searchRange];
+          [aString getCharacters: charsOther range: NSMakeRange(0, countOther)];
 
-            search = usearch_openFromCollator(charsOther, countOther,
-                                              charsSelf, countSelf,
-                                              coll, NULL, &status);
-            if (search != NULL && U_SUCCESS(status)) {
-                int32_t matchLocation;
-                int32_t matchLength;
+          search = usearch_openFromCollator(charsOther, countOther,
+                            charsSelf, countSelf,
+                            coll, NULL, &status);
+          if (search != NULL && U_SUCCESS(status))
+            {
+              int32_t matchLocation;
+              int32_t matchLength;
 
-                if ((mask & NSBackwardsSearch) == NSBackwardsSearch) {
-                    matchLocation = usearch_last(search, &status);
-                } else {
-                    matchLocation = usearch_first(search, &status);
+              if ((mask & NSBackwardsSearch) == NSBackwardsSearch)
+                {
+                  matchLocation = usearch_last(search, &status);
                 }
-                matchLength = usearch_getMatchedLength(search);
+              else
+                {
+                  matchLocation = usearch_first(search, &status);
+                }
 
-                if (matchLocation != USEARCH_DONE && matchLength != 0) {
-                    if ((mask & NSAnchoredSearch) == NSAnchoredSearch) {
-                        if ((mask & NSBackwardsSearch) == NSBackwardsSearch) {
-                            if (matchLocation + matchLength == NSMaxRange(searchRange)) {
-                                result = NSMakeRange(searchRange.location + matchLocation, matchLength);
-                            }
-                        } else {
-                            if (matchLocation == 0) {
-                                result = NSMakeRange(searchRange.location + matchLocation, matchLength);
+              matchLength = usearch_getMatchedLength(search);
+
+              if (matchLocation != USEARCH_DONE && matchLength != 0)
+                {
+                  if ((mask & NSAnchoredSearch) == NSAnchoredSearch)
+                    {
+                      if ((mask & NSBackwardsSearch) == NSBackwardsSearch)
+                        {
+                          if (matchLocation + matchLength == NSMaxRange(searchRange))
+                            {
+                              result = NSMakeRange(searchRange.location + matchLocation, matchLength);
                             }
                         }
-                    } else {
-                        result = NSMakeRange(searchRange.location + matchLocation, matchLength);
+                      else
+                        {
+                          if (matchLocation == 0)
+                            {
+                              result = NSMakeRange(searchRange.location + matchLocation, matchLength);
+                            }
+                        }
+                    }
+                  else
+                    {
+                      result = NSMakeRange(searchRange.location + matchLocation, matchLength);
                     }
                 }
             }
-            GS_ENDITEMBUF2()
-            GS_ENDITEMBUF()
-            usearch_close(search);
-            ucol_close(coll);
-            return result;
+
+          GS_ENDITEMBUF2()
+          GS_ENDITEMBUF()
+          usearch_close(search);
+          ucol_close(coll);
+          return result;
         }
     }
 #endif
 
-    return strRangeNsNs(self, aString, mask, searchRange);
+  return strRangeNsNs(self, aString, mask, searchRange);
 }
 
-- (NSUInteger)indexOfString:(NSString *)substring
+- (NSUInteger) indexOfString: (NSString *)substring
 {
-    NSRange range = {0, [self length]};
+  NSRange range = {0, [self length]};
 
-    range = [self rangeOfString:substring options:0 range:range locale:nil];
-    return range.length ? range.location : NSNotFound;
+  range = [self rangeOfString: substring options: 0 range: range locale: nil];
+  return range.length ? range.location : NSNotFound;
 }
 
-- (NSUInteger)indexOfString:(NSString *)substring
-                  fromIndex:(NSUInteger)index
+- (NSUInteger) indexOfString: (NSString*)substring
+                   fromIndex: (NSUInteger)index
 {
-    NSRange range = {index, [self length] - index};
+  NSRange range = {index, [self length] - index};
 
-    range = [self rangeOfString:substring options:0 range:range locale:nil];
-    return range.length ? range.location : NSNotFound;
+  range = [self rangeOfString: substring options: 0 range: range locale: nil];
+  return range.length ? range.location : NSNotFound;
 }
 
 // Determining Composed Character Sequences
@@ -2657,48 +3084,61 @@ GSICUCollatorOpen(NSStringCompareOptions mask, NSLocale *locale)
  * character sequence anIndex (note indices start from 0), returns the full
  * range of this sequence.
  */
-- (NSRange)rangeOfComposedCharacterSequenceAtIndex:(NSUInteger)anIndex
+- (NSRange) rangeOfComposedCharacterSequenceAtIndex: (NSUInteger)anIndex
 {
-    unsigned start;
-    unsigned end;
-    unsigned length = [self length];
-    unichar ch;
-    unichar (*caiImp)(NSString *, SEL, NSUInteger);
+  unsigned start;
+  unsigned end;
+  unsigned length = [self length];
+  unichar ch;
+  unichar (*caiImp)(NSString*, SEL, NSUInteger);
 
-    if (anIndex >= length)
-        [NSException raise:NSRangeException format:@"Invalid location."];
-    caiImp = (unichar(*)(NSString *, SEL, NSUInteger))
-        [self methodForSelector:caiSel];
-
-    for (start = anIndex; start > 0; start--) {
-        ch = (*caiImp)(self, caiSel, start);
-        if (uni_isnonsp(ch) == NO)
-            break;
-    }
-    for (end = start + 1; end < length; end++) {
-        ch = (*caiImp)(self, caiSel, end);
-        if (uni_isnonsp(ch) == NO)
-            break;
+  if (anIndex >= length)
+    {
+      [NSException raise: NSRangeException format:@"Invalid location."];
     }
 
-    return NSMakeRange(start, end - start);
+  caiImp = (unichar (*)(NSString*,SEL,NSUInteger))[self methodForSelector: caiSel];
+
+  for (start = anIndex; start > 0; start--)
+    {
+      ch = (*caiImp)(self, caiSel, start);
+      if (uni_isnonsp(ch) == NO)
+        {
+          break;
+        }
+    }
+
+  for (end = start+1; end < length; end++)
+    {
+      ch = (*caiImp)(self, caiSel, end);
+
+      if (uni_isnonsp(ch) == NO)
+        {
+          break;
+        }
+    }
+
+  return NSMakeRange(start, end-start);
 }
 
-- (NSRange)rangeOfComposedCharacterSequencesForRange:(NSRange)range
+- (NSRange) rangeOfComposedCharacterSequencesForRange: (NSRange)range
 {
-    NSRange startRange;
+  NSRange	startRange;
 
-    startRange = [self rangeOfComposedCharacterSequenceAtIndex:range.location];
-    if (NSMaxRange(startRange) >= NSMaxRange(range)) {
-        return startRange;
-    } else {
-        NSUInteger index;
-        NSRange endRange;
+  startRange = [self rangeOfComposedCharacterSequenceAtIndex: range.location];
+  if (NSMaxRange(startRange) >= NSMaxRange(range))
+    {
+      return startRange;
+    }
+  else
+    {
+      NSUInteger index;
+      NSRange endRange;
 
-        index = NSMaxRange(range) - 1;
-        endRange = [self rangeOfComposedCharacterSequenceAtIndex:index];
+      index = NSMaxRange(range) - 1;
+      endRange = [self rangeOfComposedCharacterSequenceAtIndex: index];
 
-        return NSUnionRange(startRange, endRange);
+      return NSUnionRange(startRange, endRange);
     }
 }
 
@@ -2710,9 +3150,9 @@ GSICUCollatorOpen(NSStringCompareOptions mask, NSLocale *locale)
  * <code>NSOrderedSame</code>, depending on whether this instance occurs
  * before or after string in lexical order, or is equal to it.</p>
  */
-- (NSComparisonResult)compare:(NSString *)aString
+- (NSComparisonResult) compare: (NSString*)aString
 {
-    return [self compare:aString options:0];
+  return [self compare: aString options: 0];
 }
 
 /**
@@ -2722,12 +3162,10 @@ GSICUCollatorOpen(NSStringCompareOptions mask, NSLocale *locale)
  * return inaccurate results in cases where two different composed character
  * sequences may be used to express the same character.</p>
  */
-- (NSComparisonResult)compare:(NSString *)aString
-                      options:(NSUInteger)mask
+- (NSComparisonResult) compare: (NSString*)aString
+               options: (NSUInteger)mask
 {
-    return [self compare:aString
-                 options:mask
-                   range:((NSRange){0, [self length]})];
+  return [self compare: aString options: mask range: ((NSRange){0, [self length]})];
 }
 
 /**
@@ -2740,77 +3178,88 @@ GSICUCollatorOpen(NSStringCompareOptions mask, NSLocale *locale)
  * string.</p>
  */
 // xxx Should implement full POSIX.2 collate
-- (NSComparisonResult)compare:(NSString *)aString
-                      options:(NSUInteger)mask
-                        range:(NSRange)aRange
+- (NSComparisonResult) compare: (NSString*)aString
+               options: (NSUInteger)mask
+             range: (NSRange)aRange
 {
-    return [self compare:aString
-                 options:mask
-                   range:aRange
-                  locale:nil];
+  return [self compare: aString
+               options: mask
+                 range: aRange
+                locale: nil];
 }
 
 /**
  *  Returns whether this string starts with aString.
  */
-- (BOOL)hasPrefix:(NSString *)aString
+- (BOOL) hasPrefix: (NSString*)aString
 {
-    NSRange range = NSMakeRange(0, [self length]);
-    NSUInteger mask = NSLiteralSearch | NSAnchoredSearch;
+  NSRange	range = NSMakeRange(0, [self length]);
+  NSUInteger    mask = NSLiteralSearch | NSAnchoredSearch;
 
-    range = [self rangeOfString:aString
-                        options:mask
-                          range:range
-                         locale:nil];
-    return (range.length > 0) ? YES : NO;
+  range = [self rangeOfString: aString
+                      options: mask
+                        range: range
+                       locale: nil];
+  return (range.length > 0) ? YES : NO;
 }
 
 /**
  *  Returns whether this string ends with aString.
  */
-- (BOOL)hasSuffix:(NSString *)aString
+- (BOOL) hasSuffix: (NSString*)aString
 {
-    NSRange range = NSMakeRange(0, [self length]);
-    NSUInteger mask = NSLiteralSearch | NSAnchoredSearch | NSBackwardsSearch;
+  NSRange	range = NSMakeRange(0, [self length]);
+  NSUInteger    mask = NSLiteralSearch | NSAnchoredSearch | NSBackwardsSearch;
 
-    range = [self rangeOfString:aString
-                        options:mask
-                          range:range
-                         locale:nil];
-    return (range.length > 0) ? YES : NO;
+  range = [self rangeOfString: aString
+                      options: mask
+                        range: range
+                       locale: nil];
+  return (range.length > 0) ? YES : NO;
 }
 
 /**
  *  Returns whether the receiver and an anObject are equals as strings.
  *  If anObject isn't an NSString, returns NO.
  */
-- (BOOL)isEqual:(id)anObject
+- (BOOL) isEqual: (id)anObject
 {
-    if (anObject == self) {
-        return YES;
+  if (anObject == self)
+    {
+      return YES;
     }
-    if (anObject != nil && [anObject isKindOfClass:NSStringClass]) {
-        return [self isEqualToString:anObject];
+
+  if (anObject != nil && [anObject isKindOfClass: NSStringClass])
+    {
+      return [self isEqualToString: anObject];
     }
-    return NO;
+
+  return NO;
 }
 
 /**
  *  Returns whether this instance is equal as a string to aString.  See also
  *  -compare: and related methods.
  */
-- (BOOL)isEqualToString:(NSString *)aString
+- (BOOL) isEqualToString: (NSString*)aString
 {
-    if (aString == self) {
-        return YES;
+  if (aString == self)
+    {
+      return YES;
     }
-    if (nil == aString || [self hash] != [aString hash]) {
-        return NO;
+
+  if (nil == aString || [self hash] != [aString hash])
+    {
+      return NO;
     }
-    if (strCompNsNs(self, aString, 0, (NSRange){0, [self length]}) == NSOrderedSame) {
-        return YES;
+
+  if (strCompNsNs(self, aString, 0, (NSRange){0, [self length]})
+    == NSOrderedSame)
+    {
+      return YES;
     }
-    return NO;
+
+  return NO;
 }
 
 /**
@@ -2818,38 +3267,44 @@ GSICUCollatorOpen(NSStringCompareOptions mask, NSLocale *locale)
  * for other purposes in a bitfield in the concrete string subclasses, so we
  * must not use the full unsigned integer.
  */
-- (NSUInteger)hash
+- (NSUInteger) hash
 {
-    uint32_t ret = 0;
-    int len = (int)[self length];
+  uint32_t ret = 0;
+  int len = (int)[self length];
 
-    if (len > 0) {
-        static const int buf_size = 64;
-        unichar buf[buf_size];
-        int idx = 0;
-        uint32_t s0 = 0;
-        uint32_t s1 = 0;
+  if (len > 0)
+    {
+      static const int buf_size = 64;
+      unichar buf[buf_size];
+      int idx = 0;
+      uint32_t s0 = 0;
+      uint32_t s1 = 0;
 
-        while (idx < len) {
-            int l = MIN(len - idx, buf_size);
-            [self getCharacters:buf range:NSMakeRange(idx, l)];
-            GSPrivateIncrementalHash(&s0, &s1, buf, l * sizeof(unichar));
-            idx += l;
+      while (idx < len)
+        {
+          int l = MIN(len-idx, buf_size);
+          [self getCharacters: buf range: NSMakeRange(idx,l)];
+          GSPrivateIncrementalHash(&s0, &s1, buf, l * sizeof(unichar));
+          idx += l;
         }
 
-        ret = GSPrivateFinishHash(s0, s1, len * sizeof(unichar));
+      ret = GSPrivateFinishHash(s0, s1, len * sizeof(unichar));
 
-        /*
-         * The hash caching in our concrete string classes uses zero to denote
-         * an empty cache value, so we MUST NOT return a hash of zero.
-         */
-        ret &= 0x0fffffff;
-        if (ret == 0) {
-            ret = 0x0fffffff;
+      /*
+       * The hash caching in our concrete string classes uses zero to denote
+       * an empty cache value, so we MUST NOT return a hash of zero.
+       */
+      ret &= 0x0fffffff;
+      if (ret == 0)
+        {
+          ret = 0x0fffffff;
         }
-        return ret;
-    } else {
-        return 0x0ffffffe; /* Hash for an empty string.	*/
+
+      return ret;
+    }
+  else
+    {
+      return 0x0ffffffe;	/* Hash for an empty string.	*/
     }
 }
 
@@ -2863,115 +3318,152 @@ GSICUCollatorOpen(NSStringCompareOptions mask, NSLocale *locale)
  *  where two different composed character sequences may be used to express
  *  the same character.
  */
-- (NSString *)commonPrefixWithString:(NSString *)aString
-                             options:(NSUInteger)mask
+- (NSString*) commonPrefixWithString: (NSString*)aString
+                             options: (NSUInteger)mask
 {
-    if (mask & NSLiteralSearch) {
-        int prefix_len = 0;
-        unsigned length = [self length];
-        unsigned aLength = [aString length];
-        unichar *u;
-        unichar a1[length + 1];
-        unichar *s1 = a1;
-        unichar a2[aLength + 1];
-        unichar *s2 = a2;
+  if (mask & NSLiteralSearch)
+    {
+      int prefix_len = 0;
+      unsigned	length = [self length];
+      unsigned	aLength = [aString length];
+      unichar *u;
+      unichar a1[length+1];
+      unichar *s1 = a1;
+      unichar a2[aLength+1];
+      unichar *s2 = a2;
 
-        [self getCharacters:s1 range:((NSRange){0, length})];
-        s1[length] = (unichar)0;
-        [aString getCharacters:s2 range:((NSRange){0, aLength})];
-        s2[aLength] = (unichar)0;
-        u = s1;
+      [self getCharacters: s1 range: ((NSRange){0, length})];
+      s1[length] = (unichar)0;
+      [aString getCharacters: s2 range: ((NSRange){0, aLength})];
+      s2[aLength] = (unichar)0;
+      u = s1;
 
-        if (mask & NSCaseInsensitiveSearch) {
-            while (*s1 && *s2 && (uni_tolower(*s1) == uni_tolower(*s2))) {
-                s1++;
-                s2++;
-                prefix_len++;
-            }
-        } else {
-            while (*s1 && *s2 && (*s1 == *s2)) {
-                s1++;
-                s2++;
-                prefix_len++;
+      if (mask & NSCaseInsensitiveSearch)
+        {
+          while (*s1 && *s2 && (uni_tolower(*s1) == uni_tolower(*s2)))
+            {
+              s1++;
+              s2++;
+              prefix_len++;
             }
         }
-        return [NSStringClass stringWithCharacters:u length:prefix_len];
-    } else {
-        unichar (*scImp)(NSString *, SEL, NSUInteger);
-        unichar (*ocImp)(NSString *, SEL, NSUInteger);
-        void (*sgImp)(NSString *, SEL, unichar *, NSRange) = 0;
-        void (*ogImp)(NSString *, SEL, unichar *, NSRange) = 0;
-        NSRange (*srImp)(NSString *, SEL, NSUInteger) = 0;
-        NSRange (*orImp)(NSString *, SEL, NSUInteger) = 0;
-        BOOL gotRangeImps = NO;
-        BOOL gotFetchImps = NO;
-        NSRange sRange;
-        NSRange oRange;
-        unsigned sLength = [self length];
-        unsigned oLength = [aString length];
-        unsigned sIndex = 0;
-        unsigned oIndex = 0;
+      else
+        {
+          while (*s1 && *s2 && (*s1 == *s2))
+            {
+              s1++;
+              s2++;
+              prefix_len++;
+            }
+        }
 
-        if (!sLength)
-            return IMMUTABLE(self);
-        if (!oLength)
-            return IMMUTABLE(aString);
+      return [NSStringClass stringWithCharacters: u length: prefix_len];
+    }
+  else
+    {
+      unichar (*scImp)(NSString*, SEL, NSUInteger);
+      unichar (*ocImp)(NSString*, SEL, NSUInteger);
+      void (*sgImp)(NSString*, SEL, unichar*, NSRange) = 0;
+      void (*ogImp)(NSString*, SEL, unichar*, NSRange) = 0;
+      NSRange (*srImp)(NSString*, SEL, NSUInteger) = 0;
+      NSRange (*orImp)(NSString*, SEL, NSUInteger) = 0;
+      BOOL gotRangeImps = NO;
+      BOOL gotFetchImps = NO;
+      NSRange sRange;
+      NSRange oRange;
+      unsigned sLength = [self length];
+      unsigned oLength = [aString length];
+      unsigned sIndex = 0;
+      unsigned oIndex = 0;
 
-        scImp = (unichar(*)(NSString *, SEL, NSUInteger))
-            [self methodForSelector:caiSel];
-        ocImp = (unichar(*)(NSString *, SEL, NSUInteger))
-            [aString methodForSelector:caiSel];
+      if (!sLength)
+        {
+          return IMMUTABLE(self);
+        }
 
-        while ((sIndex < sLength) && (oIndex < oLength)) {
-            unichar sc = (*scImp)(self, caiSel, sIndex);
-            unichar oc = (*ocImp)(aString, caiSel, oIndex);
+      if (!oLength)
+        {
+          return IMMUTABLE(aString);
+        }
 
-            if (sc == oc) {
-                sIndex++;
-                oIndex++;
-            } else if ((mask & NSCaseInsensitiveSearch) && (uni_tolower(sc) == uni_tolower(oc))) {
-                sIndex++;
-                oIndex++;
-            } else {
-                if (gotRangeImps == NO) {
-                    gotRangeImps = YES;
-                    srImp = (NSRange(*)())[self methodForSelector:ranSel];
-                    orImp = (NSRange(*)())[aString methodForSelector:ranSel];
+      scImp = (unichar (*)(NSString*,SEL,NSUInteger))[self methodForSelector: caiSel];
+      ocImp = (unichar (*)(NSString*,SEL,NSUInteger))[aString methodForSelector: caiSel];
+
+      while ((sIndex < sLength) && (oIndex < oLength))
+        {
+          unichar sc = (*scImp)(self, caiSel, sIndex);
+          unichar oc = (*ocImp)(aString, caiSel, oIndex);
+
+          if (sc == oc)
+            {
+              sIndex++;
+              oIndex++;
+            }
+          else if ((mask & NSCaseInsensitiveSearch)
+            && (uni_tolower(sc) == uni_tolower(oc)))
+            {
+              sIndex++;
+              oIndex++;
+            }
+          else
+            {
+              if (gotRangeImps == NO)
+                {
+                  gotRangeImps = YES;
+                  srImp=(NSRange (*)())[self methodForSelector: ranSel];
+                  orImp=(NSRange (*)())[aString methodForSelector: ranSel];
                 }
-                sRange = (*srImp)(self, ranSel, sIndex);
-                oRange = (*orImp)(aString, ranSel, oIndex);
 
-                if ((sRange.length < 2) || (oRange.length < 2))
-                    return [self substringWithRange:NSMakeRange(0, sIndex)];
-                else {
-                    GSEQ_MAKE(sBuf, sSeq, sRange.length);
-                    GSEQ_MAKE(oBuf, oSeq, oRange.length);
+              sRange = (*srImp)(self, ranSel, sIndex);
+              oRange = (*orImp)(aString, ranSel, oIndex);
 
-                    if (gotFetchImps == NO) {
-                        gotFetchImps = YES;
-                        sgImp = (void (*)())[self methodForSelector:gcrSel];
-                        ogImp = (void (*)())[aString methodForSelector:gcrSel];
+              if ((sRange.length < 2) || (oRange.length < 2))
+                {
+                  return [self substringWithRange: NSMakeRange(0, sIndex)];
+                }
+              else
+                {
+                  GSEQ_MAKE(sBuf, sSeq, sRange.length);
+                  GSEQ_MAKE(oBuf, oSeq, oRange.length);
+
+                  if (gotFetchImps == NO)
+                    {
+                      gotFetchImps = YES;
+                      sgImp=(void (*)())[self methodForSelector: gcrSel];
+                      ogImp=(void (*)())[aString methodForSelector: gcrSel];
                     }
-                    (*sgImp)(self, gcrSel, sBuf, sRange);
-                    (*ogImp)(aString, gcrSel, oBuf, oRange);
 
-                    if (GSeq_compare(&sSeq, &oSeq) == NSOrderedSame) {
-                        sIndex += sRange.length;
-                        oIndex += oRange.length;
-                    } else if (mask & NSCaseInsensitiveSearch) {
-                        GSeq_lowercase(&sSeq);
-                        GSeq_lowercase(&oSeq);
-                        if (GSeq_compare(&sSeq, &oSeq) == NSOrderedSame) {
-                            sIndex += sRange.length;
-                            oIndex += oRange.length;
-                        } else
-                            return [self substringWithRange:NSMakeRange(0, sIndex)];
-                    } else
-                        return [self substringWithRange:NSMakeRange(0, sIndex)];
+                  (*sgImp)(self, gcrSel, sBuf, sRange);
+                  (*ogImp)(aString, gcrSel, oBuf, oRange);
+
+                  if (GSeq_compare(&sSeq, &oSeq) == NSOrderedSame)
+                    {
+                      sIndex += sRange.length;
+                      oIndex += oRange.length;
+                    }
+                  else if (mask & NSCaseInsensitiveSearch)
+                    {
+                      GSeq_lowercase(&sSeq);
+                      GSeq_lowercase(&oSeq);
+
+                      if (GSeq_compare(&sSeq, &oSeq) == NSOrderedSame)
+                        {
+                          sIndex += sRange.length;
+                          oIndex += oRange.length;
+                        }
+                      else
+                        {
+                          return [self substringWithRange: NSMakeRange(0,sIndex)];
+                        }
+                    }
+                  else
+                    {
+                      return [self substringWithRange: NSMakeRange(0,sIndex)];
+                    }
                 }
             }
         }
-        return [self substringWithRange:NSMakeRange(0, sIndex)];
+      return [self substringWithRange: NSMakeRange(0, sIndex)];
     }
 }
 
@@ -2980,130 +3472,177 @@ GSICUCollatorOpen(NSStringCompareOptions mask, NSLocale *locale)
  * the information as a range.<br />
  * Calls -getLineStart:end:contentsEnd:forRange: to do the work.
  */
-- (NSRange)lineRangeForRange:(NSRange)aRange
+- (NSRange) lineRangeForRange: (NSRange)aRange
 {
-    NSUInteger startIndex;
-    NSUInteger lineEndIndex;
+  NSUInteger startIndex;
+  NSUInteger lineEndIndex;
 
-    [self getLineStart:&startIndex
-                   end:&lineEndIndex
-           contentsEnd:NULL
-              forRange:aRange];
-    return NSMakeRange(startIndex, lineEndIndex - startIndex);
+  [self getLineStart: &startIndex
+                 end: &lineEndIndex
+         contentsEnd: NULL
+            forRange: aRange];
+  return NSMakeRange(startIndex, lineEndIndex - startIndex);
 }
 
-- (void)_getStart:(NSUInteger *)startIndex
-              end:(NSUInteger *)lineEndIndex
-      contentsEnd:(NSUInteger *)contentsEndIndex
-         forRange:(NSRange)aRange
-          lineSep:(BOOL)flag
+- (void) _getStart: (NSUInteger*)startIndex
+           end: (NSUInteger*)lineEndIndex
+       contentsEnd: (NSUInteger*)contentsEndIndex
+      forRange: (NSRange)aRange
+       lineSep: (BOOL)flag
 {
-    unichar thischar;
-    unsigned start, end, len, termlen;
-    unichar (*caiImp)(NSString *, SEL, NSUInteger);
+  unichar	thischar;
+  unsigned	start, end, len, termlen;
+  unichar	(*caiImp)(NSString*, SEL, NSUInteger);
 
-    len = [self length];
-    GS_RANGE_CHECK(aRange, len);
+  len = [self length];
+  GS_RANGE_CHECK(aRange, len);
 
-    caiImp = (unichar(*)())[self methodForSelector:caiSel];
-    /* Place aRange.location at the beginning of a CR-LF sequence */
-    if (aRange.location > 0 && aRange.location < len && (*caiImp)(self, caiSel, aRange.location - 1) == (unichar)'\r' && (*caiImp)(self, caiSel, aRange.location) == (unichar)'\n') {
-        aRange.location--;
-    }
-    start = aRange.location;
-
-    if (startIndex) {
-        if (start == 0) {
-            *startIndex = 0;
-        } else {
-            start--;
-            while (start > 0) {
-                BOOL done = NO;
-
-                thischar = (*caiImp)(self, caiSel, start);
-                switch (thischar) {
-                    case (unichar)0x000A:
-                    case (unichar)0x000D:
-                    case (unichar)0x2029:
-                        done = YES;
-                        break;
-                    case (unichar)0x2028:
-                        if (flag) {
-                            done = YES;
-                            break;
-                        }
-                    default:
-                        start--;
-                        break;
-                }
-                if (done)
-                    break;
-            }
-            if (start == 0) {
-                thischar = (*caiImp)(self, caiSel, start);
-                switch (thischar) {
-                    case (unichar)0x000A:
-                    case (unichar)0x000D:
-                    case (unichar)0x2029:
-                        start++;
-                        break;
-                    case (unichar)0x2028:
-                        if (flag) {
-                            start++;
-                            break;
-                        }
-                    default:
-                        break;
-                }
-            } else {
-                start++;
-            }
-            *startIndex = start;
-        }
+  caiImp = (unichar (*)())[self methodForSelector: caiSel];
+  /* Place aRange.location at the beginning of a CR-LF sequence */
+  if (aRange.location > 0 && aRange.location < len
+    && (*caiImp)(self, caiSel, aRange.location - 1) == (unichar)'\r'
+    && (*caiImp)(self, caiSel, aRange.location) == (unichar)'\n')
+    {
+      aRange.location--;
     }
 
-    if (lineEndIndex || contentsEndIndex) {
-        BOOL found = NO;
-        end = aRange.location;
-        if (aRange.length) {
-            end += (aRange.length - 1);
+  start = aRange.location;
+
+  if (startIndex)
+    {
+      if (start == 0)
+        {
+          *startIndex = 0;
         }
-        while (end < len) {
-            thischar = (*caiImp)(self, caiSel, end);
-            switch (thischar) {
-                case (unichar)0x000A:
-                case (unichar)0x000D:
-                case (unichar)0x2029:
-                    found = YES;
+      else
+        {
+          start--;
+          while (start > 0)
+            {
+              BOOL done = NO;
+
+              thischar = (*caiImp)(self, caiSel, start);
+              switch (thischar)
+                {
+                  case (unichar)0x000A:
+                  case (unichar)0x000D:
+                  case (unichar)0x2029:
+                    done = YES;
                     break;
-                case (unichar)0x2028:
-                    if (flag) {
-                        found = YES;
+                  case (unichar)0x2028:
+                    if (flag)
+                      {
+                    done = YES;
+                    break;
+                      }
+                  default:
+                    start--;
+                    break;
+                }
+
+              if (done)
+                {
+                  break;
+                }
+            }
+
+          if (start == 0)
+            {
+              thischar = (*caiImp)(self, caiSel, start);
+
+              switch (thischar)
+                {
+                  case (unichar)0x000A:
+                  case (unichar)0x000D:
+                  case (unichar)0x2029:
+                    ++start;
+                    break;
+                  case (unichar)0x2028:
+                    if (flag)
+                      {
+                        ++start;
                         break;
-                    }
-                default:
+                      }
+                  default:
                     break;
+                }
             }
-            end++;
-            if (found)
-                break;
+          else
+            {
+              ++start;
+            }
+
+          *startIndex = start;
         }
-        termlen = 1;
-        if (lineEndIndex) {
-            if (end < len && ((*caiImp)(self, caiSel, end - 1) == (unichar)0x000D) && ((*caiImp)(self, caiSel, end) == (unichar)0x000A)) {
-                *lineEndIndex = ++end;
-                termlen = 2;
-            } else {
-                *lineEndIndex = end;
+    }
+
+  if (lineEndIndex || contentsEndIndex)
+    {
+      BOOL found = NO;
+      end = aRange.location;
+
+      if (aRange.length)
+        {
+          end += (aRange.length - 1);
+        }
+
+      while (end < len)
+        {
+           thischar = (*caiImp)(self, caiSel, end);
+
+           switch (thischar)
+             {
+               case (unichar)0x000A:
+               case (unichar)0x000D:
+               case (unichar)0x2029:
+                 found = YES;
+                 break;
+               case (unichar)0x2028:
+                 if (flag)
+                   {
+                     found = YES;
+                     break;
+                   }
+               default:
+                 break;
+             }
+
+           ++end;
+
+           if (found)
+             {
+               break;
+             }
+        }
+
+      termlen = 1;
+
+      if (lineEndIndex)
+        {
+          if (end < len
+            && ((*caiImp)(self, caiSel, end-1) == (unichar)0x000D)
+            && ((*caiImp)(self, caiSel, end) == (unichar)0x000A))
+            {
+              *lineEndIndex = ++end;
+              termlen = 2;
+            }
+          else
+            {
+              *lineEndIndex = end;
             }
         }
-        if (contentsEndIndex) {
-            if (found) {
-                *contentsEndIndex = end - termlen;
-            } else {
-                /* xxx OPENSTEP documentation does not say what to do if last
-                   line is not terminated. Assume this */
-                *contentsEndIndex = end;
+
+      if (contentsEndIndex)
+        {
+          if (found)
+            {
+              *contentsEndIndex = end-termlen;
+            }
+          else
+            {
+              /* xxx OPENSTEP documentation does not say what to do if last
+             line is not terminated. Assume this */
+              *contentsEndIndex = end;
             }
         }
     }
@@ -3131,28 +3670,28 @@ GSICUCollatorOpen(NSStringCompareOptions mask, NSLocale *locale)
  * arguments to be null pointers (in which case no value is returned in that
  * argument).
  */
-- (void)getLineStart:(NSUInteger *)startIndex
-                 end:(NSUInteger *)lineEndIndex
-         contentsEnd:(NSUInteger *)contentsEndIndex
-            forRange:(NSRange)aRange
+- (void) getLineStart: (NSUInteger *)startIndex
+                  end: (NSUInteger *)lineEndIndex
+          contentsEnd: (NSUInteger *)contentsEndIndex
+         forRange: (NSRange)aRange
 {
-    [self _getStart:startIndex
-                end:lineEndIndex
-        contentsEnd:contentsEndIndex
-           forRange:aRange
-            lineSep:YES];
+  [self _getStart: startIndex
+              end: lineEndIndex
+      contentsEnd: contentsEndIndex
+         forRange: aRange
+          lineSep: YES];
 }
 
-- (void)getParagraphStart:(NSUInteger *)startIndex
-                      end:(NSUInteger *)parEndIndex
-              contentsEnd:(NSUInteger *)contentsEndIndex
-                 forRange:(NSRange)range
+- (void) getParagraphStart: (NSUInteger *)startIndex
+                       end: (NSUInteger *)parEndIndex
+               contentsEnd: (NSUInteger *)contentsEndIndex
+                  forRange: (NSRange)range
 {
-    [self _getStart:startIndex
-                end:parEndIndex
-        contentsEnd:contentsEndIndex
-           forRange:range
-            lineSep:NO];
+  [self _getStart: startIndex
+              end: parEndIndex
+      contentsEnd: contentsEndIndex
+         forRange: range
+          lineSep: NO];
 }
 
 // Changing Case
@@ -3165,121 +3704,145 @@ GSICUCollatorOpen(NSStringCompareOptions mask, NSLocale *locale)
  */
 // xxx There is more than this in word capitalization in Unicode,
 // but this will work in most cases
-- (NSString *)capitalizedString
+- (NSString*) capitalizedString
 {
-    unichar *s;
-    unsigned count = 0;
-    BOOL found = YES;
-    unsigned len = [self length];
+  unichar *s;
+  unsigned count = 0;
+  BOOL found = YES;
+  unsigned	len = [self length];
 
-    if (len == 0)
-        return IMMUTABLE(self);
+  if (len == 0)
+    return IMMUTABLE(self);
 
-    s = NSZoneMalloc([self zone], sizeof(unichar) * len);
-    [self getCharacters:s range:((NSRange){0, len})];
-    while (count < len) {
-        if (GS_IS_WHITESPACE(s[count])) {
-            count++;
-            found = YES;
-            while (count < len && GS_IS_WHITESPACE(s[count])) {
-                count++;
+  s = NSZoneMalloc([self zone], sizeof(unichar)*len);
+  [self getCharacters: s range: ((NSRange){0, len})];
+
+  while (count < len)
+    {
+      if (GS_IS_WHITESPACE(s[count]))
+        {
+          count++;
+          found = YES;
+          while (count < len
+            && GS_IS_WHITESPACE(s[count]))
+            {
+              count++;
             }
         }
-        if (count < len) {
-            if (found) {
-                s[count] = uni_toupper(s[count]);
-                count++;
-            } else {
-                while (count < len && !GS_IS_WHITESPACE(s[count])) {
-                    s[count] = uni_tolower(s[count]);
-                    count++;
+
+      if (count < len)
+        {
+          if (found)
+            {
+              s[count] = uni_toupper(s[count]);
+              ++count;
+            }
+          else
+            {
+              while (count < len && !GS_IS_WHITESPACE(s[count]))
+                {
+                  s[count] = uni_tolower(s[count]);
+                  count++;
                 }
             }
         }
-        found = NO;
+
+      found = NO;
     }
-    return AUTORELEASE([[NSString allocWithZone:NSDefaultMallocZone()]
-        initWithCharactersNoCopy:s
-                          length:len
-                    freeWhenDone:YES]);
+
+  return AUTORELEASE([[NSString allocWithZone: NSDefaultMallocZone()] initWithCharactersNoCopy: s length: len freeWhenDone: YES]);
 }
 
 /**
  * Returns a copy of the receiver with all characters converted
  * to lowercase.
  */
-- (NSString *)lowercaseString
+- (NSString*) lowercaseString
 {
-    static NSCharacterSet *uc = nil;
-    unichar *s;
-    unsigned count;
-    NSRange start;
-    unsigned len = [self length];
+  static NSCharacterSet	*uc = nil;
+  unichar	*s;
+  unsigned	count;
+  NSRange	start;
+  unsigned	len = [self length];
 
-    if (len == 0) {
-        return IMMUTABLE(self);
+  if (len == 0)
+    {
+      return IMMUTABLE(self);
     }
-    if (uc == nil) {
-        uc = RETAIN([NSCharacterSet uppercaseLetterCharacterSet]);
+
+  if (uc == nil)
+    {
+      uc = RETAIN([NSCharacterSet uppercaseLetterCharacterSet]);
     }
-    start = [self rangeOfCharacterFromSet:uc
-                                  options:NSLiteralSearch
-                                    range:((NSRange){0, len})];
-    if (start.length == 0) {
-        return IMMUTABLE(self);
+
+  start = [self rangeOfCharacterFromSet: uc
+                options: NSLiteralSearch
+                  range: ((NSRange){0, len})];
+
+  if (start.length == 0)
+    {
+      return IMMUTABLE(self);
     }
-    s = NSZoneMalloc([self zone], sizeof(unichar) * len);
-    [self getCharacters:s range:((NSRange){0, len})];
-    for (count = start.location; count < len; count++) {
-        s[count] = uni_tolower(s[count]);
+
+  s = NSZoneMalloc([self zone], sizeof(unichar)*len);
+  [self getCharacters: s range: ((NSRange){0, len})];
+
+  for (count = start.location; count < len; count++)
+    {
+      s[count] = uni_tolower(s[count]);
     }
-    return AUTORELEASE([[NSStringClass allocWithZone:NSDefaultMallocZone()]
-        initWithCharactersNoCopy:s
-                          length:len
-                    freeWhenDone:YES]);
+
+  return AUTORELEASE([[NSStringClass allocWithZone: NSDefaultMallocZone()] initWithCharactersNoCopy: s length: len freeWhenDone: YES]);
 }
 
 /**
  * Returns a copy of the receiver with all characters converted
  * to uppercase.
  */
-- (NSString *)uppercaseString
+- (NSString*) uppercaseString
 {
-    static NSCharacterSet *lc = nil;
-    unichar *s;
-    unsigned count;
-    NSRange start;
-    unsigned len = [self length];
+  static NSCharacterSet	*lc = nil;
+  unichar	*s;
+  unsigned	count;
+  NSRange	start;
+  unsigned	len = [self length];
 
-    if (len == 0) {
-        return IMMUTABLE(self);
+  if (len == 0)
+    {
+      return IMMUTABLE(self);
     }
-    if (lc == nil) {
-        lc = RETAIN([NSCharacterSet lowercaseLetterCharacterSet]);
+
+  if (lc == nil)
+    {
+      lc = RETAIN([NSCharacterSet lowercaseLetterCharacterSet]);
     }
-    start = [self rangeOfCharacterFromSet:lc
-                                  options:NSLiteralSearch
-                                    range:((NSRange){0, len})];
-    if (start.length == 0) {
-        return IMMUTABLE(self);
+
+  start = [self rangeOfCharacterFromSet: lc
+                options: NSLiteralSearch
+                  range: ((NSRange){0, len})];
+
+  if (start.length == 0)
+    {
+      return IMMUTABLE(self);
     }
-    s = NSZoneMalloc([self zone], sizeof(unichar) * len);
-    [self getCharacters:s range:((NSRange){0, len})];
-    for (count = start.location; count < len; count++) {
-        s[count] = uni_toupper(s[count]);
+
+  s = NSZoneMalloc([self zone], sizeof(unichar)*len);
+  [self getCharacters: s range: ((NSRange){0, len})];
+
+  for (count = start.location; count < len; count++)
+    {
+      s[count] = uni_toupper(s[count]);
     }
-    return AUTORELEASE([[NSStringClass allocWithZone:NSDefaultMallocZone()]
-        initWithCharactersNoCopy:s
-                          length:len
-                    freeWhenDone:YES]);
+
+  return AUTORELEASE([[NSStringClass allocWithZone: NSDefaultMallocZone()] initWithCharactersNoCopy: s length: len freeWhenDone: YES]);
 }
 
 // Storing the String
 
 /** Returns <code>self</code>. */
-- (NSString *)description
+- (NSString*) description
 {
-    return self;
+  return self;
 }
 
 
@@ -3290,19 +3853,22 @@ GSICUCollatorOpen(NSStringCompareOptions mask, NSLocale *locale)
  * The memory pointed to is not owned by the caller, so the
  * caller must copy its contents to keep it.
  */
-- (const unichar *)unicharString
+- (const unichar*) unicharString
 {
-    NSMutableData *data;
-    unichar *uniStr;
+  NSMutableData	*data;
+  unichar	*uniStr;
 
-    GSOnceMLog(@"deprecated ... use cStringUsingEncoding:");
+  GSOnceMLog(@"deprecated ... use cStringUsingEncoding:");
 
-    data = [NSMutableData dataWithLength:([self length] + 1) * sizeof(unichar)];
-    uniStr = (unichar *)[data mutableBytes];
-    if (uniStr != 0) {
-        [self getCharacters:uniStr];
+  data = [NSMutableData dataWithLength: ([self length] + 1) * sizeof(unichar)];
+  uniStr = (unichar*)[data mutableBytes];
+
+  if (uniStr != 0)
+    {
+      [self getCharacters: uniStr];
     }
-    return uniStr;
+
+  return uniStr;
 }
 
 /**
@@ -3312,21 +3878,23 @@ GSICUCollatorOpen(NSStringCompareOptions mask, NSLocale *locale)
  * <code>NSCharacterConversionException</code> if loss of information would
  * occur during conversion.  (See -canBeConvertedToEncoding: .)
  */
-- (const char *)cString
+- (const char*) cString
 {
-    NSData *d;
-    NSMutableData *m;
+  NSData *d;
+  NSMutableData *m;
 
-    d = [self dataUsingEncoding:_DefaultStringEncoding
-           allowLossyConversion:NO];
-    if (d == nil) {
-        [NSException raise:NSCharacterConversionException
-                    format:@"unable to convert to cString"];
+  d = [self dataUsingEncoding: _DefaultStringEncoding allowLossyConversion: NO];
+
+  if (d == nil)
+    {
+      [NSException raise: NSCharacterConversionException
+          format: @"unable to convert to cString"];
     }
-    m = [d mutableCopy];
-    [m appendBytes:"" length:1];
-    IF_NO_ARC([m autorelease];)
-    return (const char *)[m bytes];
+
+  m = [d mutableCopy];
+  [m appendBytes: "" length: 1];
+  IF_NO_ARC([m autorelease];)
+  return (const char*)[m bytes];
 }
 
 /**
@@ -3339,31 +3907,37 @@ GSICUCollatorOpen(NSStringCompareOptions mask, NSLocale *locale)
  * Raises an <code>NSCharacterConversionException</code> if loss of
  * information would occur during conversion.
  */
-- (const char *)cStringUsingEncoding:(NSStringEncoding)encoding
+- (const char*) cStringUsingEncoding: (NSStringEncoding)encoding
 {
-    NSMutableData *m;
+  NSMutableData	*m;
 
-    if (NSUnicodeStringEncoding == encoding) {
-        unichar *u;
-        unsigned l;
+  if (NSUnicodeStringEncoding == encoding)
+    {
+      unichar	*u;
+      unsigned	l;
 
-        l = [self length];
-        m = [NSMutableData dataWithLength:(l + 1) * sizeof(unichar)];
-        u = (unichar *)[m mutableBytes];
-        [self getCharacters:u];
-        u[l] = 0;
-    } else {
-        NSData *d;
-
-        d = [self dataUsingEncoding:encoding allowLossyConversion:NO];
-        if (d == nil) {
-            [NSException raise:NSCharacterConversionException
-                        format:@"unable to convert to cString"];
-        }
-        m = [[d mutableCopy] autorelease];
-        [m appendBytes:"" length:1];
+      l = [self length];
+      m = [NSMutableData dataWithLength: (l + 1) * sizeof(unichar)];
+      u = (unichar*)[m mutableBytes];
+      [self getCharacters: u];
+      u[l] = 0;
     }
-    return (const char *)[m bytes];
+  else
+    {
+      NSData *d;
+
+      d = [self dataUsingEncoding: encoding allowLossyConversion: NO];
+
+      if (d == nil)
+        {
+          [NSException raise: NSCharacterConversionException
+                      format: @"unable to convert to cString"];
+        }
+
+      m = [[d mutableCopy] autorelease];
+      [m appendBytes: "" length: 1];
+    }
+  return (const char*)[m bytes];
 }
 
 /**
@@ -3371,12 +3945,12 @@ GSICUCollatorOpen(NSStringCompareOptions mask, NSLocale *locale)
  * specified encoding (without adding a nul character terminator).<br />
  * Returns 0 if the conversion is not possible.
  */
-- (NSUInteger)lengthOfBytesUsingEncoding:(NSStringEncoding)encoding
+- (NSUInteger) lengthOfBytesUsingEncoding: (NSStringEncoding)encoding
 {
-    NSData *d;
+  NSData *d;
 
-    d = [self dataUsingEncoding:encoding allowLossyConversion:NO];
-    return [d length];
+  d = [self dataUsingEncoding: encoding allowLossyConversion: NO];
+  return [d length];
 }
 
 /**
@@ -3384,15 +3958,24 @@ GSICUCollatorOpen(NSStringCompareOptions mask, NSLocale *locale)
  * specified encoding (without adding a nul character terminator).  This may
  * be larger than the actual number of bytes needed.
  */
-- (NSUInteger)maximumLengthOfBytesUsingEncoding:(NSStringEncoding)encoding
+- (NSUInteger) maximumLengthOfBytesUsingEncoding: (NSStringEncoding)encoding
 {
-    if (encoding == NSUnicodeStringEncoding)
-        return [self length] * 2;
-    if (encoding == NSUTF8StringEncoding)
-        return [self length] * 6;
-    if (encoding == NSUTF7StringEncoding)
-        return [self length] * 8;
-    return [self length]; // Assume single byte/char
+  if (encoding == NSUnicodeStringEncoding)
+    {
+      return [self length] * 2;
+    }
+
+  if (encoding == NSUTF8StringEncoding)
+    {
+      return [self length] * 6;
+    }
+
+  if (encoding == NSUTF7StringEncoding)
+    {
+      return [self length] * 8;
+    }
+
+  return [self length]; // Assume single byte/char
 }
 
 /**
@@ -3400,17 +3983,17 @@ GSICUCollatorOpen(NSStringCompareOptions mask, NSLocale *locale)
  * result in information loss.  The memory pointed to is not owned by the
  * caller, so the caller must copy its contents to keep it.
  */
-- (const char *)lossyCString
+- (const char*) lossyCString
 {
-    NSData *d;
-    NSMutableData *m;
+  NSData *d;
+  NSMutableData	*m;
 
-    d = [self dataUsingEncoding:_DefaultStringEncoding
-           allowLossyConversion:YES];
-    m = [d mutableCopy];
-    [m appendBytes:"" length:1];
-    IF_NO_ARC([m autorelease];)
-    return (const char *)[m bytes];
+  d = [self dataUsingEncoding: _DefaultStringEncoding
+         allowLossyConversion: YES];
+  m = [d mutableCopy];
+  [m appendBytes: "" length: 1];
+  IF_NO_ARC([m autorelease];)
+  return (const char*)[m bytes];
 }
 
 /**
@@ -3418,17 +4001,17 @@ GSICUCollatorOpen(NSStringCompareOptions mask, NSLocale *locale)
  * memory comes from an autoreleased object, so it will eventually go out of
  * scope.
  */
-- (const char *)UTF8String
+- (const char *) UTF8String
 {
-    NSData *d;
-    NSMutableData *m;
+  NSData *d;
+  NSMutableData *m;
 
-    d = [self dataUsingEncoding:NSUTF8StringEncoding
-           allowLossyConversion:NO];
-    m = [d mutableCopy];
-    [m appendBytes:"" length:1];
-    IF_NO_ARC([m autorelease];)
-    return (const char *)[m bytes];
+  d = [self dataUsingEncoding: NSUTF8StringEncoding
+         allowLossyConversion: NO];
+  m = [d mutableCopy];
+  [m appendBytes: "" length: 1];
+  IF_NO_ARC([m autorelease];)
+  return (const char*)[m bytes];
 }
 
 /**
@@ -3437,38 +4020,36 @@ GSICUCollatorOpen(NSStringCompareOptions mask, NSLocale *locale)
  *  information loss, the results are unpredictable.  Check
  *  -canBeConvertedToEncoding: first.
  */
-- (NSUInteger)cStringLength
+- (NSUInteger) cStringLength
 {
-    NSData *d;
+  NSData *d;
 
-    d = [self dataUsingEncoding:_DefaultStringEncoding
-           allowLossyConversion:NO];
-    return [d length];
+  d = [self dataUsingEncoding: _DefaultStringEncoding
+         allowLossyConversion: NO];
+  return [d length];
 }
 
 /**
  * Deprecated ... do not use.<br />.
  * Use -getCString:maxLength:encoding: instead.
  */
-- (void)getCString:(char *)buffer
+- (void) getCString: (char*)buffer
 {
-    [self getCString:buffer
-           maxLength:NSMaximumStringLength
-               range:((NSRange){0, [self length]})
-               remainingRange:NULL];
+  [self getCString: buffer maxLength: NSMaximumStringLength
+             range: ((NSRange){0, [self length]})
+    remainingRange: NULL];
 }
 
 /**
  * Deprecated ... do not use.<br />.
  * Use -getCString:maxLength:encoding: instead.
  */
-- (void)getCString:(char *)buffer
-         maxLength:(NSUInteger)maxLength
+- (void) getCString: (char*)buffer
+      maxLength: (NSUInteger)maxLength
 {
-    [self getCString:buffer
-           maxLength:maxLength
-               range:((NSRange){0, [self length]})
-               remainingRange:NULL];
+  [self getCString: buffer maxLength: maxLength
+             range: ((NSRange){0, [self length]})
+    remainingRange: NULL];
 }
 
 // GNUStep doesn't provide any hook for getting the character width of
@@ -3517,61 +4098,75 @@ inline static int HACK_GetCharacterWidth(NSStringEncoding encoding)
  * six if NSASCIIStringEncoding is requested, but they must be at least
  * twelve if NSUnicodeStringEncoding is requested.
  */
-- (BOOL)getCString:(char *)buffer
-         maxLength:(NSUInteger)maxLength
-          encoding:(NSStringEncoding)encoding
+- (BOOL) getCString: (char*)buffer
+          maxLength: (NSUInteger)maxLength
+           encoding: (NSStringEncoding)encoding
 {
-    // Rename the argument to make it clear that we're talking about *bytes* here,
-    // not UTF-16 characters!
-    NSUInteger maxBytes = maxLength;
+  // Rename the argument to make it clear that we're talking about *bytes* here,
+  // not UTF-16 characters!
+  NSUInteger maxBytes = maxLength;
 
-    if (maxBytes == 0 || buffer == 0) {
-        return NO;
+  if (maxBytes == 0 || buffer == 0)
+    {
+      return NO;
     }
 
-    if (encoding == NSUnicodeStringEncoding) {
-        NSUInteger totalStringBytes = ([self length] + 1) * sizeof(unichar); // account for the null terminator
-        NSUInteger stringLengthInChars = [self length];
+  if (encoding == NSUnicodeStringEncoding)
+    {
+      NSUInteger totalStringBytes = ([self length] + 1) * sizeof(unichar); // account for the null terminator
+      NSUInteger stringLengthInChars = [self length];
 
-        if (totalStringBytes > maxBytes) {
-            return NO;
+      if (totalStringBytes > maxBytes)
+        {
+          return NO;
         }
 
-        unichar *bufferChars = (unichar *)buffer;
+      unichar *bufferChars = (unichar *)buffer;
 
-        [self getCharacters:bufferChars range:NSMakeRange(0, stringLengthInChars)];
+      [self getCharacters: bufferChars range: NSMakeRange(0, stringLengthInChars)];
 
-        bufferChars[stringLengthInChars] = L'\0';
-        return YES;
-    } else {
-        NSData *data = [self dataUsingEncoding:encoding];
-        if (data == nil) {
-            [NSException raise:NSCharacterConversionException
-                        format:@"Can't convert to C string."];
+      bufferChars[stringLengthInChars] = L'\0';
+      return YES;
+    }
+  else
+    {
+      NSData *data = [self dataUsingEncoding: encoding];
+      if (data == nil)
+        {
+          [NSException raise: NSCharacterConversionException
+                      format: @"Can't convert to C string."];
         }
 
-        NSUInteger stringBytesWithoutTerminator = [data length];
+      NSUInteger stringBytesWithoutTerminator = [data length];
 
-        // HACK: get size of null terminator for this encoding
-        int characterWidth = HACK_GetCharacterWidth(encoding);
-        NSUInteger totalStringBytes = stringBytesWithoutTerminator + characterWidth;
+      // HACK: get size of null terminator for this encoding
+      int characterWidth = HACK_GetCharacterWidth(encoding);
+      NSUInteger totalStringBytes = stringBytesWithoutTerminator + characterWidth;
 
-        // If the buffer is too small, we have to copy as much as possible and
-        // then return NO. (Not how I'd design it, but that's how it is...)
-        BOOL partialCopy = totalStringBytes > maxBytes;
+      // If the buffer is too small, we have to copy as much as possible and
+      // then return NO. (Not how I'd design it, but that's how it is...)
+      BOOL partialCopy = totalStringBytes > maxBytes;
 
-        if (partialCopy) {
-            // Copy as much as possible, ignoring the null terminator
-            NSUInteger partialCopyBytes = MIN(stringBytesWithoutTerminator, maxBytes);
-            [data getBytes:buffer range:NSMakeRange(0, partialCopyBytes)];
+      if (partialCopy)
+        {
+          // Copy as much as possible, ignoring the null terminator
+          NSUInteger partialCopyBytes = MIN(stringBytesWithoutTerminator, maxBytes);
+          [data getBytes:buffer range:NSMakeRange(0, partialCopyBytes)];
 
-            return NO;
-        } else {
-            // Much simpler case
-            [data getBytes:buffer range:NSMakeRange(0, stringBytesWithoutTerminator)];
-            NSUInteger nullTerminatorOffset = totalStringBytes - characterWidth;
-            for (int i = 0; i < characterWidth; i++) {
-                buffer[nullTerminatorOffset + i] = '\0';
+          return NO;
+        }
+      else
+        {
+          NSUInteger nullTerminatorOffset;
+
+          // Much simpler case
+          [data getBytes:buffer range:NSMakeRange(0, stringBytesWithoutTerminator)];
+
+          nullTerminatorOffset = totalStringBytes - characterWidth;
+
+          for (int i = 0; i < characterWidth; ++i)
+            {
+              buffer[nullTerminatorOffset + i] = '\0';
             }
 
             return YES;
@@ -3583,64 +4178,72 @@ inline static int HACK_GetCharacterWidth(NSStringEncoding encoding)
  * Deprecated ... do not use.<br />.
  * Use -getCString:maxLength:encoding: instead.
  */
-- (void)getCString:(char *)buffer
-         maxLength:(NSUInteger)maxLength
-             range:(NSRange)aRange
-    remainingRange:(NSRange *)leftoverRange
+- (void) getCString: (char*)buffer
+          maxLength: (NSUInteger)maxLength
+              range: (NSRange)aRange
+     remainingRange: (NSRange*)leftoverRange
 {
-    NSString *s;
+  NSString	*s;
 
-    /* As this is a deprecated method, keep things simple (but inefficient)
-     * by copying the receiver to a new instance of a base library built-in
-     * class, and use the implementation provided by that class.
-     * We need an autorelease to avoid a memory leak if there is an exception.
-     */
-    s = AUTORELEASE([(NSString *)defaultPlaceholderString initWithString:self]);
-    [s getCString:buffer
-             maxLength:maxLength
-                 range:aRange
-        remainingRange:leftoverRange];
+  /* As this is a deprecated method, keep things simple (but inefficient)
+   * by copying the receiver to a new instance of a base library built-in
+   * class, and use the implementation provided by that class.
+   * We need an autorelease to avoid a memory leak if there is an exception.
+   */
+  s = AUTORELEASE([(NSString*)defaultPlaceholderString initWithString: self]);
+  [s getCString: buffer
+      maxLength: maxLength
+          range: aRange
+ remainingRange: leftoverRange];
 }
 
 
 // Getting Numeric Values
 
-- (BOOL)boolValue
+- (BOOL) boolValue
 {
-    unsigned length = [self length];
+  unsigned	length = [self length];
 
-    if (length > 0) {
-        unsigned index;
-        SEL sel = @selector(characterAtIndex:);
-        unichar (*imp)() = (unichar(*)())[self methodForSelector:sel];
+  if (length > 0)
+    {
+      unsigned index;
+      SEL sel = @selector(characterAtIndex:);
+      unichar (*imp)() = (unichar (*)())[self methodForSelector: sel];
 
-        for (index = 0; index < length; index++) {
-            unichar c = (*imp)(self, sel, index);
+      for (index = 0; index < length; index++)
+        {
+          unichar c = (*imp)(self, sel, index);
 
-            if (c > 'y') {
-                break;
+          if (c > 'y')
+            {
+              break;
             }
-            if (strchr("123456789yYtT", c) != 0) {
-                return YES;
+
+          if (strchr("123456789yYtT", c) != 0)
+            {
+              return YES;
             }
-            if (!isspace(c) && c != '0' && c != '-' && c != '+') {
-                break;
+
+          if (!isspace(c) && c != '0' && c != '-' && c != '+')
+            {
+              break;
             }
         }
     }
-    return NO;
+
+  return NO;
 }
 
 /**
  * Returns the string's content as a decimal.<br />
  * Undocumented feature of Aplle Foundation.
  */
-- (NSDecimal)decimalValue
+- (NSDecimal) decimalValue
 {
-    NSDecimal result;
+  NSDecimal result;
 
-    NSDecimalFromString(&result, self, nil);
-    return result;
+  NSDecimalFromString(&result, self, nil);
+  return result;
 }
 
 /**
@@ -3648,11 +4251,11 @@ inline static int HACK_GetCharacterWidth(NSStringEncoding encoding)
  * Conversion is not localised (i.e. uses '.' as the decimal separator).<br />
  * Returns 0.0 on underflow or if the string does not contain a number.
  */
-- (double)doubleValue
+- (double) doubleValue
 {
-    double d = 0.0;
-    [NSScanner _scanDouble:&d from:self];
-    return d;
+  double d = 0.0;
+  [NSScanner _scanDouble: &d from: self];
+  return d;
 }
 
 /**
@@ -3660,11 +4263,11 @@ inline static int HACK_GetCharacterWidth(NSStringEncoding encoding)
  * Conversion is not localised (i.e. uses '.' as the decimal separator).<br />
  * Returns 0.0 on underflow or if the string does not contain a number.
  */
-- (float)floatValue
+- (float) floatValue
 {
-    double d = 0.0;
-    [NSScanner _scanDouble:&d from:self];
-    return (float)d;
+  double d = 0.0;
+  [NSScanner _scanDouble: &d from: self];
+  return (float)d;
 }
 
 /**
@@ -3672,54 +4275,69 @@ inline static int HACK_GetCharacterWidth(NSStringEncoding encoding)
  * Current implementation uses a C runtime library function, which does not
  * detect conversion errors -- use with care!</p>
  */
-- (int)intValue
+- (int) intValue
 {
-    const char *ptr = [self UTF8String];
+  const char *ptr = [self UTF8String];
 
-    while (isspace(*ptr)) {
-        ptr++;
+  while (isspace(*ptr))
+    {
+      ptr++;
     }
-    if ('-' == *ptr) {
-        return (int)atoi(ptr);
-    } else {
-        uint64_t v;
 
-        v = strtoul(ptr, 0, 10);
-        return (int)v;
+  if ('-' == *ptr)
+    {
+      return (int)atoi(ptr);
+    }
+  else
+    {
+      uint64_t v;
+
+      v = strtoul(ptr, 0, 10);
+      return (int)v;
     }
 }
 
-- (NSInteger)integerValue
+- (NSInteger) integerValue
 {
-    const char *ptr = [self UTF8String];
+  const char *ptr = [self UTF8String];
 
-    while (isspace(*ptr)) {
-        ptr++;
+  while (isspace(*ptr))
+    {
+      ++ptr;
     }
-    if ('-' == *ptr) {
-        return (NSInteger)atoll(ptr);
-    } else {
-        uint64_t v;
 
-        v = (uint64_t)strtoull(ptr, 0, 10);
-        return (NSInteger)v;
+  if ('-' == *ptr)
+    {
+      return (NSInteger)atoll(ptr);
+    }
+  else
+    {
+      uint64_t  v;
+
+      v = (uint64_t)strtoull(ptr, 0, 10);
+      return (NSInteger)v;
     }
 }
 
-- (long long)longLongValue
+- (long long) longLongValue
 {
-    const char *ptr = [self UTF8String];
+  const char *ptr = [self UTF8String];
 
-    while (isspace(*ptr)) {
-        ptr++;
+  while (isspace(*ptr))
+    {
+      ptr++;
     }
-    if ('-' == *ptr) {
-        return atoll(ptr);
-    } else {
-        unsigned long long l;
 
-        l = strtoull(ptr, 0, 10);
-        return (long long)l;
+  if ('-' == *ptr)
+    {
+      return atoll(ptr);
+    }
+  else
+    {
+      unsigned long long l;
+
+      l = strtoull(ptr, 0, 10);
+      return (long long)l;
     }
 }
 
@@ -3742,742 +4360,896 @@ inline static int HACK_GetCharacterWidth(NSStringEncoding encoding)
  *   <code>NSISOLatin1StringEncoding</code> is assumed.
  * </p>
  */
-+ (NSStringEncoding)defaultCStringEncoding
++ (NSStringEncoding) defaultCStringEncoding
 {
-    return _DefaultStringEncoding;
+  return _DefaultStringEncoding;
 }
 
 /**
  * Returns an array of all available string encodings,
  * terminated by a null value.
  */
-+ (NSStringEncoding *)availableStringEncodings
++ (NSStringEncoding*) availableStringEncodings
 {
-    return GSPrivateAvailableEncodings();
+  return GSPrivateAvailableEncodings();
 }
 
 /**
  * Returns the localized name of the encoding specified.
  */
-+ (NSString *)localizedNameOfStringEncoding:(NSStringEncoding)encoding
++ (NSString*) localizedNameOfStringEncoding: (NSStringEncoding)encoding
 {
-    id ourbundle;
-    id ourname;
+  id ourbundle;
+  id ourname;
 
-    /*
-          Should be path to localizable.strings file.
-          Until we have it, just make sure that bundle
-          is initialized.
-    */
-    ourbundle = [NSBundle bundleForLibrary:@"gnustep-base"];
+/*
+      Should be path to localizable.strings file.
+      Until we have it, just make sure that bundle
+      is initialized.
+*/
+  ourbundle = [NSBundle bundleForLibrary: @"gnustep-base"];
 
-    ourname = GSPrivateEncodingName(encoding);
-    return [ourbundle localizedStringForKey:ourname
-                                      value:ourname
-                                      table:nil];
+  ourname = GSPrivateEncodingName(encoding);
+  return [ourbundle localizedStringForKey: ourname
+                                    value: ourname
+                                    table: nil];
 }
 
 /**
  *  Returns whether this string can be converted to the given string encoding
  *  without information loss.
  */
-- (BOOL)canBeConvertedToEncoding:(NSStringEncoding)encoding
+- (BOOL) canBeConvertedToEncoding: (NSStringEncoding)encoding
 {
-    id d = [self dataUsingEncoding:encoding allowLossyConversion:NO];
+  id d = [self dataUsingEncoding: encoding allowLossyConversion: NO];
 
-    return d != nil ? YES : NO;
+  return d != nil ? YES : NO;
 }
 
 /**
  *  Converts string to a byte array in the given encoding, returning nil if
  *  this would result in information loss.
  */
-- (NSData *)dataUsingEncoding:(NSStringEncoding)encoding
+- (NSData*) dataUsingEncoding: (NSStringEncoding)encoding
 {
-    return [self dataUsingEncoding:encoding allowLossyConversion:NO];
+  return [self dataUsingEncoding: encoding allowLossyConversion: NO];
 }
 
 /**
  *  Converts string to a byte array in the given encoding.  If flag is NO,
  *  nil would be returned if this would result in information loss.
  */
-- (NSData *)dataUsingEncoding:(NSStringEncoding)encoding
-         allowLossyConversion:(BOOL)flag
+- (NSData*) dataUsingEncoding: (NSStringEncoding)encoding
+         allowLossyConversion: (BOOL)flag
 {
-    unsigned len = [self length];
-    NSData *d;
+  unsigned	len = [self length];
+  NSData	*d;
 
-    if (NSUnicodeStringEncoding == encoding) {
-        unichar *u;
-        unsigned l;
+  if (NSUnicodeStringEncoding == encoding)
+    {
+      unichar	*u;
+      unsigned	l;
 
-        /* Fast path for Unicode (UTF16) without a specific byte order,
-         * where we must prepend a byte order mark.
-         * The case for UTF32 is handled in the slower branch.
-         */
-        u = (unichar *)NSZoneMalloc(NSDefaultMallocZone(),
-                                    (len + 1) * sizeof(unichar));
-        *u = byteOrderMark;
-        [self getCharacters:u + 1];
-        l = GSUnicode(u, len, 0, 0);
-        d = [NSDataClass dataWithBytesNoCopy:u
-                                      length:(l + 1) * sizeof(unichar)];
-    } else {
-        unichar buf[8192];
-        unichar *u = buf;
-        unsigned int options;
-        unsigned char *b = 0;
-        unsigned int l = 0;
+      /* Fast path for Unicode (UTF16) without a specific byte order,
+       * where we must prepend a byte order mark.
+       * The case for UTF32 is handled in the slower branch.
+       */
+      u = (unichar*)NSZoneMalloc(NSDefaultMallocZone(), (len + 1) * sizeof(unichar));
+      *u = byteOrderMark;
+      [self getCharacters: u + 1];
+      l = GSUnicode(u, len, 0, 0);
+      d = [NSDataClass dataWithBytesNoCopy: u
+                                    length: (l + 1) * sizeof(unichar)];
+    }
+  else
+    {
+      unichar buf[8192];
+      unichar *u = buf;
+      unsigned int options;
+      unsigned char *b = 0;
+      unsigned int l = 0;
 
-        /* Build a fake object on the stack and copy unicode characters
-         * into its buffer from the receiver.
-         * We can then use our concrete subclass implementation to do the
-         * work of converting to the desired encoding.
-         */
-        if (NSUTF32StringEncoding == encoding) {
-            /* For UTF32 without byte order specified, we must include a
-             * BOM at the start of the data.
-             */
-            len++;
-            if (len >= 4096) {
-                u = NSZoneMalloc(NSDefaultMallocZone(), len * sizeof(unichar));
+      /* Build a fake object on the stack and copy unicode characters
+       * into its buffer from the receiver.
+       * We can then use our concrete subclass implementation to do the
+       * work of converting to the desired encoding.
+       */
+      if (NSUTF32StringEncoding == encoding)
+        {
+          /* For UTF32 without byte order specified, we must include a
+           * BOM at the start of the data.
+           */
+          ++len;
+
+          if (len >= 4096)
+            {
+              u = NSZoneMalloc(NSDefaultMallocZone(), len * sizeof(unichar));
             }
-            *u = byteOrderMark;
-            [self getCharacters:u + 1];
-        } else {
-            if (len >= 4096) {
-                u = NSZoneMalloc(NSDefaultMallocZone(), len * sizeof(unichar));
+
+          *u = byteOrderMark;
+          [self getCharacters: u+1];
+        }
+      else
+        {
+          if (len >= 4096)
+            {
+              u = NSZoneMalloc(NSDefaultMallocZone(), len * sizeof(unichar));
             }
-            [self getCharacters:u];
+
+          [self getCharacters: u];
         }
 
-        if (flag == NO) {
-            options = GSUniStrict;
-        } else {
-            options = 0;
+      if (flag == NO)
+        {
+          options = GSUniStrict;
         }
-        if (GSFromUnicode(&b, &l, u, len, encoding, NSDefaultMallocZone(),
-                          options) == YES) {
-            d = [NSDataClass dataWithBytesNoCopy:b length:l];
-        } else {
-            d = nil;
+      else
+        {
+          options = 0;
         }
-        if (u != buf) {
-            NSZoneFree(NSDefaultMallocZone(), u);
+
+      if (GSFromUnicode(&b, &l, u, len, encoding, NSDefaultMallocZone(), options) == YES)
+        {
+          d = [NSDataClass dataWithBytesNoCopy: b length: l];
+        }
+      else
+        {
+          d = nil;
+        }
+
+      if (u != buf)
+        {
+          NSZoneFree(NSDefaultMallocZone(), u);
         }
     }
-    return d;
+
+  return d;
 }
 
 /**
  * Returns the encoding with which this string can be converted without
  * information loss that would result in most efficient character access.
  */
-- (NSStringEncoding)fastestEncoding
+- (NSStringEncoding) fastestEncoding
 {
-    return NSUnicodeStringEncoding;
+  return NSUnicodeStringEncoding;
 }
 
 /**
  * Returns the smallest encoding with which this string can be converted
  * without information loss.
  */
-- (NSStringEncoding)smallestEncoding
+- (NSStringEncoding) smallestEncoding
 {
-    return NSUnicodeStringEncoding;
+  return NSUnicodeStringEncoding;
 }
 
-- (NSUInteger)completePathIntoString:(NSString **)outputName
-                       caseSensitive:(BOOL)flag
-                    matchesIntoArray:(NSArray **)outputArray
-                         filterTypes:(NSArray *)filterTypes
+- (NSUInteger) completePathIntoString: (NSString**)outputName
+                        caseSensitive: (BOOL)flag
+                     matchesIntoArray: (NSArray**)outputArray
+                          filterTypes: (NSArray*)filterTypes
 {
-    NSString *basePath = [self stringByDeletingLastPathComponent];
-    NSString *lastComp = [self lastPathComponent];
-    NSString *tmpPath;
-    NSDirectoryEnumerator *e;
-    NSMutableArray *op = nil;
-    unsigned matchCount = 0;
+  NSString *basePath = [self stringByDeletingLastPathComponent];
+  NSString *lastComp = [self lastPathComponent];
+  NSString *tmpPath;
+  NSDirectoryEnumerator *e;
+  NSMutableArray *op = nil;
+  unsigned matchCount = 0;
 
-    if (outputArray != 0) {
-        op = (NSMutableArray *)[NSMutableArray array];
+  if (outputArray != 0)
+    {
+      op = (NSMutableArray*)[NSMutableArray array];
     }
 
-    if (outputName != NULL) {
-        *outputName = nil;
+  if (outputName != NULL)
+    {
+      *outputName = nil;
     }
 
-    if ([basePath length] == 0) {
-        basePath = @".";
+  if ([basePath length] == 0)
+    {
+      basePath = @".";
     }
 
-    e = [[NSFileManager defaultManager] enumeratorAtPath:basePath];
-    while (tmpPath = [e nextObject], tmpPath) {
-        /* Prefix matching */
-        if (flag == YES) { /* Case sensitive */
-            if ([tmpPath hasPrefix:lastComp] == NO) {
-                continue;
+  e = [[NSFileManager defaultManager] enumeratorAtPath: basePath];
+
+  while (tmpPath = [e nextObject], tmpPath)
+    {
+      /* Prefix matching */
+      if (flag == YES)
+        { /* Case sensitive */
+          if ([tmpPath hasPrefix: lastComp] == NO)
+            {
+              continue;
             }
-        } else if ([[tmpPath uppercaseString]
-                       hasPrefix:[lastComp uppercaseString]] == NO) {
-            continue;
+        }
+      else if ([[tmpPath uppercaseString] hasPrefix: [lastComp uppercaseString]] == NO)
+        {
+          continue;
         }
 
-        /* Extensions filtering */
-        if (filterTypes && ([filterTypes containsObject:[tmpPath pathExtension]] == NO)) {
-            continue;
+      /* Extensions filtering */
+      if (filterTypes && ([filterTypes containsObject: [tmpPath pathExtension]] == NO))
+        {
+          continue;
         }
 
-        /* Found a completion */
-        matchCount++;
-        if (outputArray != NULL) {
-            [op addObject:tmpPath];
+      /* Found a completion */
+      matchCount++;
+
+      if (outputArray != NULL)
+        {
+          [op addObject: tmpPath];
         }
 
-        if ((outputName != NULL) &&
-            ((*outputName == nil) || (([*outputName length] < [tmpPath length])))) {
-            *outputName = tmpPath;
+      if ((outputName != NULL) && ((*outputName == nil) || (([*outputName length] < [tmpPath length]))))
+        {
+          *outputName = tmpPath;
         }
     }
-    if (outputArray != NULL) {
-        *outputArray = AUTORELEASE([op copy]);
+
+  if (outputArray != NULL)
+    {
+      *outputArray = AUTORELEASE([op copy]);
     }
-    return matchCount;
+
+  return matchCount;
 }
 
 static NSFileManager *fm = nil;
 
-#if defined(_WIN32)
-- (const GSNativeChar *)fileSystemRepresentation
+#if	defined(_WIN32)
+- (const GSNativeChar*) fileSystemRepresentation
 {
-    if (fm == nil) {
-        fm = RETAIN([NSFileManager defaultManager]);
+  if (fm == nil)
+    {
+      fm = RETAIN([NSFileManager defaultManager]);
     }
-    return [fm fileSystemRepresentationWithPath:self];
+
+  return [fm fileSystemRepresentationWithPath: self];
 }
 
-- (BOOL)getFileSystemRepresentation:(GSNativeChar *)buffer
-                          maxLength:(NSUInteger)size
+- (BOOL) getFileSystemRepresentation: (GSNativeChar*)buffer
+                           maxLength: (NSUInteger)size
 {
-    const unichar *ptr;
-    unsigned i;
+  const unichar	*ptr;
+  unsigned	i;
 
-    if (size == 0) {
-        return NO;
+  if (size == 0)
+    {
+      return NO;
     }
-    if (buffer == 0) {
-        [NSException raise:NSInvalidArgumentException
-                    format:@"%@ given null pointer",
-                           NSStringFromSelector(_cmd)];
+
+  if (buffer == 0)
+    {
+      [NSException raise: NSInvalidArgumentException
+                  format: @"%@ given null pointer", NSStringFromSelector(_cmd)];
     }
-    ptr = [self fileSystemRepresentation];
-    for (i = 0; i < size; i++) {
-        buffer[i] = ptr[i];
-        if (ptr[i] == 0) {
-            break;
+
+  ptr = [self fileSystemRepresentation];
+
+  for (i = 0; i < size; i++)
+    {
+      buffer[i] = ptr[i];
+
+      if (ptr[i] == 0)
+        {
+          break;
         }
     }
-    if (i == size && ptr[i] != 0) {
-        return NO; // Not at end.
+
+  if (i == size && ptr[i] != 0)
+    {
+      return NO;	// Not at end.
     }
-    return YES;
+
+  return YES;
 }
 #else
-- (const GSNativeChar *)fileSystemRepresentation
+- (const GSNativeChar*) fileSystemRepresentation
 {
-    if (fm == nil) {
-        fm = RETAIN([NSFileManager defaultManager]);
+  if (fm == nil)
+    {
+      fm = RETAIN([NSFileManager defaultManager]);
     }
-    return [fm fileSystemRepresentationWithPath:self];
+  return [fm fileSystemRepresentationWithPath: self];
 }
 
-- (BOOL)getFileSystemRepresentation:(GSNativeChar *)buffer
-                          maxLength:(NSUInteger)size
+- (BOOL) getFileSystemRepresentation: (GSNativeChar*)buffer
+                           maxLength: (NSUInteger)size
 {
-    const char *ptr;
+  const char* ptr;
 
-    if (size == 0) {
-        return NO;
+  if (size == 0)
+    {
+      return NO;
     }
-    if (buffer == 0) {
-        [NSException raise:NSInvalidArgumentException
-                    format:@"%@ given null pointer",
-                           NSStringFromSelector(_cmd)];
+  if (buffer == 0)
+    {
+      [NSException raise: NSInvalidArgumentException
+                  format: @"%@ given null pointer", NSStringFromSelector(_cmd)];
     }
-    ptr = [self fileSystemRepresentation];
-    if (strlen(ptr) > size) {
-        return NO;
+
+  ptr = [self fileSystemRepresentation];
+
+  if (strlen(ptr) > size)
+    {
+      return NO;
     }
-    strncpy(buffer, ptr, size);
-    return YES;
+
+  strncpy(buffer, ptr, size);
+  return YES;
 }
 #endif
 
-- (NSString *)lastPathComponent
+- (NSString*) lastPathComponent
 {
-    unsigned int l = [self length];
-    NSRange range;
-    unsigned int i;
+  unsigned int l = [self length];
+  NSRange range;
+  unsigned int i;
 
-    if (l == 0) {
-        return @""; // self is empty
+  if (l == 0)
+    {
+      return @""; // self is empty
     }
 
-    // Skip back over any trailing path separators, but not in to root.
-    i = rootOf(self, l);
-    while (l > i && pathSepMember([self characterAtIndex:l - 1]) == YES) {
-        l--;
+  // Skip back over any trailing path separators, but not in to root.
+  i = rootOf(self, l);
+
+  while (l > i && pathSepMember([self characterAtIndex: l-1]) == YES)
+    {
+      l--;
     }
 
-    // If only the root is left, return it.
-    if (i == l) {
-        /*
-         * NB. tilde escapes should not have trailing separator in the
-         * path component as they are not trreated as true roots.
-         */
-        if ([self characterAtIndex:0] == '~' && pathSepMember([self characterAtIndex:i - 1]) == YES) {
-            return [self substringToIndex:i - 1];
+  // If only the root is left, return it.
+  if (i == l)
+    {
+      /*
+       * NB. tilde escapes should not have trailing separator in the
+       * path component as they are not trreated as true roots.
+       */
+      if ([self characterAtIndex: 0] == '~' && pathSepMember([self characterAtIndex: i-1]) == YES)
+        {
+          return [self substringToIndex: i-1];
         }
-        return [self substringToIndex:i];
+
+      return [self substringToIndex: i];
     }
 
-    // Got more than root ... find last component.
-    range = [self rangeOfCharacterFromSet:pathSeps()
-                                  options:NSBackwardsSearch
-                                    range:((NSRange){i, l - i})];
-    if (range.length > 0) {
-        // Found separator ... adjust to point to component.
-        i = NSMaxRange(range);
+  // Got more than root ... find last component.
+  range = [self rangeOfCharacterFromSet: pathSeps()
+                                options: NSBackwardsSearch
+                                  range: ((NSRange){i, l-i})];
+
+  if (range.length > 0)
+    {
+      // Found separator ... adjust to point to component.
+      i = NSMaxRange(range);
     }
-    return [self substringWithRange:((NSRange){i, l - i})];
+
+  return [self substringWithRange: ((NSRange){i, l-i})];
 }
 
-- (NSRange)paragraphRangeForRange:(NSRange)range
+- (NSRange) paragraphRangeForRange: (NSRange)range
 {
-    NSUInteger startIndex;
-    NSUInteger endIndex;
+  NSUInteger startIndex;
+  NSUInteger endIndex;
 
-    [self getParagraphStart:&startIndex
-                        end:&endIndex
-                contentsEnd:NULL
-                   forRange:range];
-    return NSMakeRange(startIndex, endIndex - startIndex);
+  [self getParagraphStart: &startIndex
+        end: &endIndex
+        contentsEnd: NULL
+        forRange: range];
+
+  return NSMakeRange(startIndex, endIndex - startIndex);
 }
 
-- (NSString *)pathExtension
+- (NSString*) pathExtension
 {
-    NSRange range;
-    unsigned int l = [self length];
-    unsigned int root;
+  NSRange range;
+  unsigned int l = [self length];
+  unsigned int root;
 
-    if (l == 0) {
-        return @"";
+  if (l == 0)
+    {
+      return @"";
     }
-    root = rootOf(self, l);
 
-    /*
-     * Step past trailing path separators.
-     */
-    while (l > root && pathSepMember([self characterAtIndex:l - 1]) == YES) {
-        l--;
+  root = rootOf(self, l);
+
+  /*
+   * Step past trailing path separators.
+   */
+  while (l > root && pathSepMember([self characterAtIndex: l-1]) == YES)
+    {
+      l--;
     }
-    range = NSMakeRange(root, l - root);
 
-    /*
-     * Look for a dot in the path ... if there isn't one, or if it is
-     * immediately after the root or a path separator, there is no extension.
-     */
-    range = [self rangeOfString:@"."
-                        options:NSBackwardsSearch
-                          range:range
-                         locale:nil];
-    if (range.length > 0 && range.location > root && pathSepMember([self characterAtIndex:range.location - 1]) == NO) {
-        NSRange sepRange;
+  range = NSMakeRange(root, l-root);
 
-        /*
-         * Found a dot, so we determine the range of the (possible)
-         * path extension, then check to see if we have a path
-         * separator within it ... if we have a path separator then
-         * the dot is inside the last path component and there is
-         * therefore no extension.
-         */
-        range.location++;
-        range.length = l - range.location;
-        sepRange = [self rangeOfCharacterFromSet:pathSeps()
-                                         options:NSBackwardsSearch
-                                           range:range];
-        if (sepRange.length == 0) {
-            return [self substringFromRange:range];
+  /*
+   * Look for a dot in the path ... if there isn't one, or if it is
+   * immediately after the root or a path separator, there is no extension.
+   */
+  range = [self rangeOfString: @"."
+                      options: NSBackwardsSearch
+                        range: range
+                       locale: nil];
+
+  if (range.length > 0 && range.location > root && pathSepMember([self characterAtIndex: range.location-1]) == NO)
+    {
+      NSRange sepRange;
+
+      /*
+       * Found a dot, so we determine the range of the (possible)
+       * path extension, then check to see if we have a path
+       * separator within it ... if we have a path separator then
+       * the dot is inside the last path component and there is
+       * therefore no extension.
+       */
+      range.location++;
+      range.length = l - range.location;
+      sepRange = [self rangeOfCharacterFromSet: pathSeps()
+                                       options: NSBackwardsSearch
+                                         range: range];
+
+      if (sepRange.length == 0)
+        {
+          return [self substringFromRange: range];
         }
     }
 
-    return @"";
+  return @"";
 }
 
-- (NSString *)precomposedStringWithCompatibilityMapping
+- (NSString *) precomposedStringWithCompatibilityMapping
 {
 #if (GS_USE_ICU == 1) && (defined(HAVE_UNICODE_UNORM2_H) || defined(HAVE_ICU_H))
-    return [self _normalizedICUStringOfType:"nfkc" mode:UNORM2_COMPOSE];
+  return [self _normalizedICUStringOfType: "nfkc" mode: UNORM2_COMPOSE];
 #else
-    return [self notImplemented:_cmd];
+  return [self notImplemented: _cmd];
 #endif
 }
 
-- (NSString *)precomposedStringWithCanonicalMapping
+- (NSString *) precomposedStringWithCanonicalMapping
 {
 #if (GS_USE_ICU == 1) && (defined(HAVE_UNICODE_UNORM2_H) || defined(HAVE_ICU_H))
-    return [self _normalizedICUStringOfType:"nfc" mode:UNORM2_COMPOSE];
+   return [self _normalizedICUStringOfType: "nfc" mode: UNORM2_COMPOSE];
 #else
-    return [self notImplemented:_cmd];
+  return [self notImplemented: _cmd];
 #endif
 }
 
-- (NSString *)stringByAppendingPathComponent:(NSString *)aString
+- (NSString*) stringByAppendingPathComponent: (NSString*)aString
 {
-    unsigned originalLength = [self length];
-    unsigned length = originalLength;
-    unsigned aLength = [aString length];
-    unsigned root;
-    unichar buf[length + aLength + 1];
+  unsigned originalLength = [self length];
+  unsigned length = originalLength;
+  unsigned aLength = [aString length];
+  unsigned root;
+  unichar buf[length+aLength+1];
 
-    root = rootOf(aString, aLength);
+  root = rootOf(aString, aLength);
 
-    if (length == 0) {
-        [aString getCharacters:buf range:((NSRange){0, aLength})];
-        length = aLength;
-        root = rootOf(aString, aLength);
-    } else {
-        /* If the 'component' has a leading path separator (or drive spec
-         * in windows) then we need to find its length so we can strip it.
-         */
-        if (root > 0) {
-            unichar c = [aString characterAtIndex:0];
+  if (length == 0)
+    {
+      [aString getCharacters: buf range: ((NSRange){0, aLength})];
+      length = aLength;
+      root = rootOf(aString, aLength);
+    }
+  else
+    {
+      /* If the 'component' has a leading path separator (or drive spec
+       * in windows) then we need to find its length so we can strip it.
+       */
+      if (root > 0)
+        {
+          unichar c = [aString characterAtIndex: 0];
+    
+          if (c == '~')
+            {
+              root = 0;
+            }
+          else if (root > 1 && pathSepMember(c))
+            {
+              int	i;
+    
+              for (i = 1; i < root; i++)
+                {
+                  c = [aString characterAtIndex: i];
 
-            if (c == '~') {
-                root = 0;
-            } else if (root > 1 && pathSepMember(c)) {
-                int i;
-
-                for (i = 1; i < root; i++) {
-                    c = [aString characterAtIndex:i];
-                    if (!pathSepMember(c)) {
-                        break;
+                  if (!pathSepMember(c))
+                    {
+                      break;
                     }
                 }
-                root = i;
+
+              root = i;
             }
         }
 
-        [self getCharacters:buf range:((NSRange){0, length})];
+      [self getCharacters: buf range: ((NSRange){0, length})];
 
-        /* We strip back trailing path separators, and replace them with
-         * a single one ... except in the case where we have a windows
-         * drive specification, and the string being appended does not
-         * have a path separator as a root. In that case we just want to
-         * append to the drive specification directly, leaving a relative
-         * path like c:foo
-         */
-        if (length != 2 || buf[1] != ':' || GSPathHandlingUnix() == YES || buf[0] < 'A' || buf[0] > 'z' || (buf[0] > 'Z' && buf[0] < 'a') || (root > 0 && pathSepMember([aString characterAtIndex:root - 1]))) {
-            while (length > 0 && pathSepMember(buf[length - 1]) == YES) {
-                length--;
+      /* We strip back trailing path separators, and replace them with
+       * a single one ... except in the case where we have a windows
+       * drive specification, and the string being appended does not
+       * have a path separator as a root. In that case we just want to
+       * append to the drive specification directly, leaving a relative
+       * path like c:foo
+       */
+      if (length != 2 || buf[1] != ':' || GSPathHandlingUnix() == YES
+        || buf[0] < 'A' || buf[0] > 'z' || (buf[0] > 'Z' && buf[0] < 'a')
+        || (root > 0 && pathSepMember([aString characterAtIndex: root-1])))
+        {
+          while (length > 0 && pathSepMember(buf[length-1]) == YES)
+            {
+              length--;
             }
-            buf[length++] = pathSepChar();
+
+          buf[length++] = pathSepChar();
         }
 
-        if ((aLength - root) > 0) {
-            // appending .. discard root from aString
-            [aString getCharacters:&buf[length]
-                             range:((NSRange){root, aLength - root})];
-            length += aLength - root;
+      if ((aLength - root) > 0)
+        {
+          // appending .. discard root from aString
+          [aString getCharacters: &buf[length]
+                   range: ((NSRange){root, aLength-root})];
+          length += aLength-root;
         }
-        // Find length of root part of new path.
-        root = rootOf(self, originalLength);
+
+      // Find length of root part of new path.
+      root = rootOf(self, originalLength);
     }
 
-    if (length > 0) {
-        /* Trim trailing path separators as long as they are not part of
-         * the root.
-         */
-        aLength = length - 1;
-        while (aLength > root && pathSepMember(buf[aLength]) == YES) {
-            aLength--;
-            length--;
+  if (length > 0)
+    {
+      /* Trim trailing path separators as long as they are not part of
+       * the root.
+       */
+      aLength = length - 1;
+
+      while (aLength > root && pathSepMember(buf[aLength]) == YES)
+        {
+          aLength--;
+          length--;
         }
 
-        /* Trim multi separator sequences outside root (root may contain an
-         * initial // pair if it is a windows UNC path).
-         */
-        if (length > 0) {
-            while (aLength > root) {
-                if (pathSepMember(buf[aLength]) == YES) {
-                    buf[aLength] = pathSepChar();
-                    if (pathSepMember(buf[aLength - 1]) == YES) {
-                        unsigned pos;
+      /* Trim multi separator sequences outside root (root may contain an
+       * initial // pair if it is a windows UNC path).
+       */
+      if (length > 0)
+        {
+          while (aLength > root)
+            {
+              if (pathSepMember(buf[aLength]) == YES)
+                {
+                  buf[aLength] = pathSepChar();
 
-                        buf[aLength - 1] = pathSepChar();
-                        for (pos = aLength + 1; pos < length; pos++) {
-                            buf[pos - 1] = buf[pos];
+                  if (pathSepMember(buf[aLength-1]) == YES)
+                    {
+                      unsigned	pos;
+        
+                      buf[aLength-1] = pathSepChar();
+                      for (pos = aLength+1; pos < length; pos++)
+                        {
+                          buf[pos-1] = buf[pos];
                         }
-                        length--;
+
+                      length--;
                     }
                 }
-                aLength--;
+              aLength--;
             }
         }
     }
-    return [NSStringClass stringWithCharacters:buf length:length];
+  return [NSStringClass stringWithCharacters: buf length: length];
 }
 
-- (NSString *)stringByAppendingPathExtension:(NSString *)aString
+- (NSString*) stringByAppendingPathExtension: (NSString*)aString
 {
-    unsigned l = [self length];
-    unsigned originalLength = l;
-    unsigned root;
+  unsigned l = [self length];
+  unsigned originalLength = l;
+  unsigned root;
 
-    if (l == 0) {
-        NSLog(@"[%@-%@] cannot append extension '%@' to empty string",
-              NSStringFromClass([self class]), NSStringFromSelector(_cmd), aString);
-        return @""; // Must have a file name to append extension.
-    }
-    root = rootOf(self, l);
-    /*
-     * Step past trailing path separators.
-     */
-    while (l > root && pathSepMember([self characterAtIndex:l - 1]) == YES) {
-        l--;
-    }
-    if (root == l) {
-        NSLog(@"[%@-%@] cannot append extension '%@' to path '%@'",
-              NSStringFromClass([self class]), NSStringFromSelector(_cmd),
-              aString, self);
-        return IMMUTABLE(self); // Must have a file name to append extension.
+  if (l == 0)
+    {
+      NSLog(@"[%@-%@] cannot append extension '%@' to empty string", NSStringFromClass([self class]), NSStringFromSelector(_cmd), aString);
+      return @""; // Must have a file name to append extension.
     }
 
-    /* MacOS-X prohibits an extension beginning with a path separator,
-     * but this code extends that a little to prohibit any root except
-     * one beginning with '~' from being used as an extension.
-     */
-    root = rootOf(aString, [aString length]);
-    if (root > 0 && [aString characterAtIndex:0] != '~') {
-        NSLog(@"[%@-%@] cannot append extension '%@' to path '%@'",
-              NSStringFromClass([self class]), NSStringFromSelector(_cmd),
-              aString, self);
-        return IMMUTABLE(self); // Must have a file name to append extension.
+  root = rootOf(self, l);
+
+  /*
+   * Step past trailing path separators.
+   */
+  while (l > root && pathSepMember([self characterAtIndex: l-1]) == YES)
+    {
+      --l;
     }
 
-    if (originalLength != l) {
-        NSRange range = NSMakeRange(0, l);
-
-        return [[self substringFromRange:range]
-            stringByAppendingFormat:@".%@", aString];
+  if (root == l)
+    {
+      NSLog(@"[%@-%@] cannot append extension '%@' to path '%@'", NSStringFromClass([self class]), NSStringFromSelector(_cmd), aString, self);
+      return IMMUTABLE(self); // Must have a file name to append extension.
     }
-    return [self stringByAppendingFormat:@".%@", aString];
+
+  /* MacOS-X prohibits an extension beginning with a path separator,
+   * but this code extends that a little to prohibit any root except
+   * one beginning with '~' from being used as an extension.
+   */
+  root = rootOf(aString, [aString length]);
+
+  if (root > 0 && [aString characterAtIndex: 0] != '~')
+    {
+      NSLog(@"[%@-%@] cannot append extension '%@' to path '%@'", NSStringFromClass([self class]), NSStringFromSelector(_cmd), aString, self);
+      return IMMUTABLE(self);	// Must have a file name to append extension.
+    }
+
+  if (originalLength != l)
+    {
+      NSRange range = NSMakeRange(0, l);
+
+      return [[self substringFromRange: range] stringByAppendingFormat: @".%@", aString];
+    }
+
+  return [self stringByAppendingFormat: @".%@", aString];
 }
 
-- (NSString *)stringByDeletingLastPathComponent
+- (NSString*) stringByDeletingLastPathComponent
 {
-    unsigned int length;
-    unsigned int root;
-    unsigned int end;
-    unsigned int i;
+  unsigned int length;
+  unsigned int root;
+  unsigned int end;
+  unsigned int i;
 
-    end = length = [self length];
-    if (length == 0) {
-        return @"";
-    }
-    i = root = rootOf(self, length);
+  end = length = [self length];
 
-    /*
-     * Any root without a trailing path separator can be deleted
-     * as it's either a relative path or a tilde expression.
-     */
-    if (i == length && pathSepMember([self characterAtIndex:i - 1]) == NO) {
-        return @""; // Delete relative root
+  if (length == 0)
+    {
+      return @"";
     }
 
-    /*
-     * Step past trailing path separators.
-     */
-    while (end > i && pathSepMember([self characterAtIndex:end - 1]) == YES) {
-        end--;
+  i = root = rootOf(self, length);
+
+  /*
+   * Any root without a trailing path separator can be deleted
+   * as it's either a relative path or a tilde expression.
+   */
+  if (i == length && pathSepMember([self characterAtIndex: i-1]) == NO)
+    {
+      return @"";	// Delete relative root
     }
 
-    /*
-     * If all we have left is the root, return that root, except for the
-     * special case of a tilde expression ... which may be deleted even
-     * when it is followed by a separator.
-     */
-    if (end == i) {
-        if ([self characterAtIndex:0] == '~') {
-            return @""; // Tilde roots may be deleted.
+  /*
+   * Step past trailing path separators.
+   */
+  while (end > i && pathSepMember([self characterAtIndex: end-1]) == YES)
+    {
+      -- end;
+    }
+
+  /*
+   * If all we have left is the root, return that root, except for the
+   * special case of a tilde expression ... which may be deleted even
+   * when it is followed by a separator.
+   */
+  if (end == i)
+    {
+      if ([self characterAtIndex: 0] == '~')
+        {
+          return @""; // Tilde roots may be deleted.
         }
-        return [self substringToIndex:i]; // Return root component.
-    } else {
-        NSString *result;
-        unichar *to;
-        unsigned o;
-        unsigned lastComponent = root;
-        GS_BEGINITEMBUF(from, (end * 2 * sizeof(unichar)), unichar)
 
-        to = from + end;
-        [self getCharacters:from range:NSMakeRange(0, end)];
-        for (o = 0; o < root; o++) {
-            to[o] = from[o];
+      return [self substringToIndex: i];	// Return root component.
+    }
+  else
+    {
+      NSString *result;
+      unichar *to;
+      unsigned o;
+      unsigned lastComponent = root;
+      GS_BEGINITEMBUF(from, (end * 2 * sizeof(unichar)), unichar)
+
+      to = from + end;
+      [self getCharacters: from range: NSMakeRange(0, end)];
+      for (o = 0; o < root; o++)
+        {
+          to[o] = from[o];
         }
-        for (i = root; i < end; i++) {
-            if (pathSepMember(from[i])) {
-                if (o > lastComponent) {
-                    to[o++] = from[i];
-                    lastComponent = o;
+
+      for (i = root; i < end; i++)
+        {
+          if (pathSepMember(from[i]))
+            {
+              if (o > lastComponent)
+                {
+                  to[o++] = from[i];
+                  lastComponent = o;
                 }
-            } else {
-                to[o++] = from[i];
+            }
+          else
+            {
+              to[o++] = from[i];
             }
         }
-        if (lastComponent > root) {
-            o = lastComponent - 1;
-        } else {
-            o = root;
+
+      if (lastComponent > root)
+        {
+          o = lastComponent - 1;
         }
-        result = [NSString stringWithCharacters:to length:o];
-        GS_ENDITEMBUF();
-        return result;
+      else
+        {
+          o = root;
+        }
+
+      result = [NSString stringWithCharacters: to length: o];
+      GS_ENDITEMBUF();
+      return result;
     }
 }
 
-- (NSString *)stringByDeletingPathExtension
+- (NSString*) stringByDeletingPathExtension
 {
-    NSRange range;
-    NSRange r0;
-    NSRange r1;
-    NSString *substring;
-    unsigned l = [self length];
-    unsigned root;
+  NSRange range;
+  NSRange r0;
+  NSRange r1;
+  NSString *substring;
+  unsigned l = [self length];
+  unsigned root;
 
-    if ((root = rootOf(self, l)) == l) {
-        return IMMUTABLE(self);
+  if ((root = rootOf(self, l)) == l)
+    {
+      return IMMUTABLE(self);
     }
 
-    /*
-     * Skip past any trailing path separators... but not into root.
-     */
-    while (l > root && pathSepMember([self characterAtIndex:l - 1]) == YES) {
-        l--;
+  /*
+   * Skip past any trailing path separators... but not into root.
+   */
+  while (l > root && pathSepMember([self characterAtIndex: l-1]) == YES)
+    {
+      --l;
     }
-    range = NSMakeRange(root, l - root);
-    /*
-     * Locate path extension.
-     */
-    r0 = [self rangeOfString:@"."
-                     options:NSBackwardsSearch
-                       range:range
-                      locale:nil];
-    /*
-     * Locate a path separator.
-     */
-    r1 = [self rangeOfCharacterFromSet:pathSeps()
-                               options:NSBackwardsSearch
-                                 range:range];
-    /*
-     * Assuming the extension separator was found in the last path
-     * component, set the length of the substring we want.
-     */
-    if (r0.length > 0 && r0.location > root && (r1.length == 0 || r1.location < r0.location)) {
-        l = r0.location;
+
+  range = NSMakeRange(root, l-root);
+
+  /*
+   * Locate path extension.
+   */
+  r0 = [self rangeOfString: @"."
+           options: NSBackwardsSearch
+             range: range
+                    locale: nil];
+  /*
+   * Locate a path separator.
+   */
+  r1 = [self rangeOfCharacterFromSet: pathSeps()
+                 options: NSBackwardsSearch
+                   range: range];
+  /*
+   * Assuming the extension separator was found in the last path
+   * component, set the length of the substring we want.
+   */
+  if (r0.length > 0 && r0.location > root
+    && (r1.length == 0 || r1.location < r0.location))
+    {
+      l = r0.location;
     }
-    substring = [self substringToIndex:l];
-    return substring;
+  substring = [self substringToIndex: l];
+  return substring;
 }
 
-- (NSString *)stringByExpandingTildeInPath
+- (NSString*) stringByExpandingTildeInPath
 {
-    NSString *homedir;
-    NSRange firstSlashRange;
-    unsigned length;
+  NSString	*homedir;
+  NSRange	firstSlashRange;
+  unsigned	length;
 
-    if ((length = [self length]) == 0) {
-        return IMMUTABLE(self);
+  if ((length = [self length]) == 0)
+    {
+      return IMMUTABLE(self);
     }
-    if ([self characterAtIndex:0] != 0x007E) {
-        return IMMUTABLE(self);
-    }
-
-    /* FIXME ... should remove in future
-     * Anything beginning '~@' is assumed to be a windows path specification
-     * which can't be expanded.
-     */
-    if (length > 1 && [self characterAtIndex:1] == 0x0040) {
-        return IMMUTABLE(self);
+  if ([self characterAtIndex: 0] != 0x007E)
+    {
+      return IMMUTABLE(self);
     }
 
-    firstSlashRange = [self rangeOfCharacterFromSet:pathSeps()
-                                            options:NSLiteralSearch
-                                              range:((NSRange){0, length})];
-    if (firstSlashRange.length == 0) {
-        firstSlashRange.location = length;
+  /* FIXME ... should remove in future
+   * Anything beginning '~@' is assumed to be a windows path specification
+   * which can't be expanded.
+   */
+  if (length > 1 && [self characterAtIndex: 1] == 0x0040)
+    {
+      return IMMUTABLE(self);
     }
 
-    /* FIXME ... should remove in future
-     * Anything beginning '~' followed by a single letter is assumed
-     * to be a windows drive specification.
-     */
-    if (firstSlashRange.location == 2 && isalpha([self characterAtIndex:1])) {
-        return IMMUTABLE(self);
+  firstSlashRange = [self rangeOfCharacterFromSet: pathSeps()
+                                          options: NSLiteralSearch
+                                            range: ((NSRange){0, length})];
+
+  if (firstSlashRange.length == 0)
+    {
+      firstSlashRange.location = length;
     }
 
-    if (firstSlashRange.location != 1) {
-        /* It is of the form `~username/blah/...' or '~username' */
-        int userNameLen;
-        NSString *uname;
+  /* FIXME ... should remove in future
+   * Anything beginning '~' followed by a single letter is assumed
+   * to be a windows drive specification.
+   */
+  if (firstSlashRange.location == 2 && isalpha([self characterAtIndex: 1]))
+    {
+      return IMMUTABLE(self);
+    }
 
-        if (firstSlashRange.length != 0) {
-            userNameLen = firstSlashRange.location - 1;
-        } else {
-            /* It is actually of the form `~username' */
-            userNameLen = [self length] - 1;
-            firstSlashRange.location = [self length];
+  if (firstSlashRange.location != 1)
+    {
+      /* It is of the form `~username/blah/...' or '~username' */
+      int	userNameLen;
+      NSString	*uname;
+
+      if (firstSlashRange.length != 0)
+        {
+          userNameLen = firstSlashRange.location - 1;
         }
-        uname = [self substringWithRange:((NSRange){1, userNameLen})];
-        homedir = NSHomeDirectoryForUser(uname);
-    } else {
-        /* It is of the form `~/blah/...' or is '~' */
-        homedir = NSHomeDirectory();
+      else
+        {
+          /* It is actually of the form `~username' */
+          userNameLen = [self length] - 1;
+          firstSlashRange.location = [self length];
+        }
+      uname = [self substringWithRange: ((NSRange){1, userNameLen})];
+      homedir = NSHomeDirectoryForUser(uname);
+    }
+  else
+    {
+      /* It is of the form `~/blah/...' or is '~' */
+      homedir = NSHomeDirectory();
     }
 
-    if (homedir != nil) {
-        if (firstSlashRange.location < length) {
-            return [homedir stringByAppendingPathComponent:
-                                [self substringFromIndex:firstSlashRange.location]];
-        } else {
-            return IMMUTABLE(homedir);
+  if (homedir != nil)
+    {
+      if (firstSlashRange.location < length)
+        {
+          return [homedir stringByAppendingPathComponent: [self substringFromIndex: firstSlashRange.location]];
         }
-    } else {
-        return IMMUTABLE(self);
+      else
+        {
+          return IMMUTABLE(homedir);
+        }
+    }
+  else
+    {
+      return IMMUTABLE(self);
     }
 }
 
-- (NSString *)stringByAbbreviatingWithTildeInPath
+- (NSString*) stringByAbbreviatingWithTildeInPath
 {
-    NSString *homedir;
+  NSString	*homedir;
 
-    if (YES == [self hasPrefix:@"~"]) {
-        return IMMUTABLE(self);
+  if (YES == [self hasPrefix: @"~"])
+    {
+      return IMMUTABLE(self);
     }
-    homedir = NSHomeDirectory();
-    if (NO == [self hasPrefix:homedir]) {
-        /* OSX compatibility ... we clean up the path to try to get a
-         * home directory we can abbreviate.
-         */
-        self = [self stringByStandardizingPath];
-        if (NO == [self hasPrefix:homedir]) {
-            return IMMUTABLE(self);
+
+  homedir = NSHomeDirectory();
+
+  if (NO == [self hasPrefix: homedir])
+    {
+      /* OSX compatibility ... we clean up the path to try to get a
+       * home directory we can abbreviate.
+       */
+      self = [self stringByStandardizingPath];
+
+      if (NO == [self hasPrefix: homedir])
+        {
+          return IMMUTABLE(self);
         }
     }
-    if ([self length] == [homedir length]) {
-        return @"~";
+
+  if ([self length] == [homedir length])
+    {
+      return @"~";
     }
-    return [@"~" stringByAppendingPathComponent:
-                     [self substringFromIndex:[homedir length]]];
+
+  return [@"~" stringByAppendingPathComponent: [self substringFromIndex: [homedir length]]];
 }
 
 /**
@@ -4487,65 +5259,83 @@ static NSFileManager *fm = nil;
  * as required).  The first character from padString to be appended
  * is specified by padIndex.<br />
  */
-- (NSString *)stringByPaddingToLength:(NSUInteger)newLength
-                           withString:(NSString *)padString
-                      startingAtIndex:(NSUInteger)padIndex
+- (NSString*) stringByPaddingToLength: (NSUInteger)newLength
+                           withString: (NSString*)padString
+                      startingAtIndex: (NSUInteger)padIndex
 {
-    unsigned length = [self length];
-    unsigned padLength;
+  unsigned	length = [self length];
+  unsigned	padLength;
 
-    if (padString == nil || [padString isKindOfClass:[NSString class]] == NO) {
-        [NSException raise:NSInvalidArgumentException
-                    format:@"%@ - Illegal pad string", NSStringFromSelector(_cmd)];
+  if (padString == nil || [padString isKindOfClass: [NSString class]] == NO)
+    {
+      [NSException raise: NSInvalidArgumentException
+    format: @"%@ - Illegal pad string", NSStringFromSelector(_cmd)];
     }
-    padLength = [padString length];
-    if (padIndex >= padLength) {
-        [NSException raise:NSRangeException
-                    format:@"%@ - pad index larger too big", NSStringFromSelector(_cmd)];
+
+  padLength = [padString length];
+
+  if (padIndex >= padLength)
+    {
+      [NSException raise: NSRangeException format: @"%@ - pad index larger too big", NSStringFromSelector(_cmd)];
     }
-    if (newLength == length) {
-        return IMMUTABLE(self);
-    } else if (newLength < length) {
-        return [self substringToIndex:newLength];
-    } else {
-        length = newLength - length; // What we want to add.
-        if (length <= (padLength - padIndex)) {
-            NSRange r;
 
-            r = NSMakeRange(padIndex, length);
-            return [self stringByAppendingString:
-                             [padString substringWithRange:r]];
-        } else {
-            NSMutableString *m = [self mutableCopy];
+  if (newLength == length)
+    {
+      return IMMUTABLE(self);
+    }
+  else if (newLength < length)
+    {
+      return [self substringToIndex: newLength];
+    }
+  else
+    {
+      length = newLength - length;	// What we want to add.
 
-            if (padIndex > 0) {
-                NSRange r;
-
-                r = NSMakeRange(padIndex, padLength - padIndex);
-                [m appendString:[padString substringWithRange:r]];
-                length -= r.length;
+      if (length <= (padLength - padIndex))
+        {
+          NSRange r;
+    
+          r = NSMakeRange(padIndex, length);
+          return [self stringByAppendingString: [padString substringWithRange: r]];
+        }
+      else
+        {
+          NSMutableString *m = [self mutableCopy];
+    
+          if (padIndex > 0)
+            {
+              NSRange	r;
+    
+              r = NSMakeRange(padIndex, padLength - padIndex);
+              [m appendString: [padString substringWithRange: r]];
+              length -= r.length;
             }
-            /*
-             * In case we have to append a small string lots of times,
-             * we cache the method impllementation to do it.
-             */
-            if (length >= padLength) {
-                void (*appImp)(NSMutableString *, SEL, NSString *);
-                SEL appSel;
 
-                appSel = @selector(appendString:);
-                appImp = (void (*)(NSMutableString *, SEL, NSString *))
-                    [m methodForSelector:appSel];
-                while (length >= padLength) {
-                    (*appImp)(m, appSel, padString);
-                    length -= padLength;
+          /*
+           * In case we have to append a small string lots of times,
+           * we cache the method impllementation to do it.
+           */
+          if (length >= padLength)
+            {
+              void (*appImp)(NSMutableString*, SEL, NSString*);
+              SEL appSel;
+    
+              appSel = @selector(appendString:);
+              appImp = (void (*)(NSMutableString*, SEL, NSString*))[m methodForSelector: appSel];
+
+              while (length >= padLength)
+                {
+                  (*appImp)(m, appSel, padString);
+                  length -= padLength;
                 }
             }
-            if (length > 0) {
-                [m appendString:
-                        [padString substringWithRange:NSMakeRange(0, length)]];
+
+          if (length > 0)
+            {
+              [m appendString: [padString substringWithRange: NSMakeRange(0, length)]];
             }
-            return AUTORELEASE(m);
+
+          return AUTORELEASE(m);
         }
     }
 }
@@ -4556,387 +5346,515 @@ static NSFileManager *fm = nil;
  * the specified encoding.<br />
  * Returns nil if the result is not a string in the specified encoding.
  */
-- (NSString *)stringByReplacingPercentEscapesUsingEncoding:(NSStringEncoding)e
+- (NSString*) stringByReplacingPercentEscapesUsingEncoding: (NSStringEncoding)e
 {
-    NSMutableData *d;
-    NSString *s = nil;
+  NSMutableData	*d;
+  NSString	*s = nil;
 
-    d = [[self dataUsingEncoding:NSASCIIStringEncoding] mutableCopy];
-    if (d != nil) {
-        unsigned char *p = (unsigned char *)[d mutableBytes];
-        unsigned l = [d length];
-        unsigned i = 0;
-        unsigned j = 0;
+  d = [[self dataUsingEncoding: NSASCIIStringEncoding] mutableCopy];
+  if (d != nil)
+    {
+      unsigned char	*p = (unsigned char*)[d mutableBytes];
+      unsigned l = [d length];
+      unsigned i = 0;
+      unsigned j = 0;
 
-        while (i < l) {
-            unsigned char t;
+      while (i < l)
+        {
+          unsigned char	t;
 
-            if ((t = p[i++]) == '%') {
-                unsigned char c;
+          if ((t = p[i++]) == '%')
+            {
+              unsigned char	c;
 
-                if (i >= l) {
-                    DESTROY(d);
-                    break;
+              if (i >= l)
+                {
+                  DESTROY(d);
+                  break;
                 }
-                t = p[i++];
 
-                if (isxdigit(t)) {
-                    if (t <= '9') {
-                        c = t - '0';
-                    } else if (t <= 'F') {
-                        c = t - 'A' + 10;
-                    } else {
-                        c = t - 'a' + 10;
+              t = p[i++];
+
+              if (isxdigit(t))
+                {
+                  if (t <= '9')
+                    {
+                      c = t - '0';
                     }
-                } else {
-                    DESTROY(d);
-                    break;
-                }
-                c <<= 4;
-
-                if (i >= l) {
-                    DESTROY(d);
-                    break;
-                }
-                t = p[i++];
-                if (isxdigit(t)) {
-                    if (t <= '9') {
-                        c |= t - '0';
-                    } else if (t <= 'F') {
-                        c |= t - 'A' + 10;
-                    } else {
-                        c |= t - 'a' + 10;
+                  else if (t <= 'F')
+                    {
+                      c = t - 'A' + 10;
                     }
-                } else {
-                    DESTROY(d);
-                    break;
+                  else
+                    {
+                      c = t - 'a' + 10;
+                    }
                 }
-                p[j++] = c;
-            } else {
-                p[j++] = t;
+              else
+                {
+                  DESTROY(d);
+                  break;
+                }
+
+              c <<= 4;
+
+              if (i >= l)
+                {
+                  DESTROY(d);
+                  break;
+                }
+
+              t = p[i++];
+
+              if (isxdigit(t))
+                {
+                  if (t <= '9')
+                    {
+                      c |= t - '0';
+                    }
+                  else if (t <= 'F')
+                    {
+                      c |= t - 'A' + 10;
+                    }
+                  else
+                    {
+                      c |= t - 'a' + 10;
+                    }
+                }
+              else
+                {
+                  DESTROY(d);
+                  break;
+                }
+
+              p[j++] = c;
+            }
+          else
+            {
+              p[j++] = t;
             }
         }
-        [d setLength:j];
-        s = AUTORELEASE([[NSString alloc] initWithData:d encoding:e]);
-        RELEASE(d);
+
+      [d setLength: j];
+      s = AUTORELEASE([[NSString alloc] initWithData: d encoding: e]);
+      RELEASE(d);
     }
-    return s;
+
+  return s;
 }
 
-- (NSString *)stringByResolvingSymlinksInPath
+- (NSString*) stringByResolvingSymlinksInPath
 {
-    NSString *s = self;
+  NSString	*s = self;
 
-    if (0 == [s length]) {
-        return @"";
+  if (0 == [s length])
+    {
+      return @"";
     }
-    if ('~' == [s characterAtIndex:0]) {
-        s = [s stringByExpandingTildeInPath];
+
+  if ('~' == [s characterAtIndex: 0])
+    {
+      s = [s stringByExpandingTildeInPath];
     }
 #if defined(_WIN32)
+  return IMMUTABLE(s);
+#else
+
+{
+  #if defined(__GLIBC__) || defined(__FreeBSD__)
+  #define GS_MAXSYMLINKS sysconf(_SC_SYMLOOP_MAX)
+  #else
+  #define GS_MAXSYMLINKS MAXSYMLINKS
+  #endif
+
+  #ifndef PATH_MAX
+  #define PATH_MAX 1024
+  /* Don't use realpath unless we know we have the correct path size limit */
+  #ifdef        HAVE_REALPATH
+  #undef        HAVE_REALPATH
+  #endif
+  #endif
+  char		newBuf[PATH_MAX];
+#ifdef HAVE_REALPATH
+
+  if (realpath([s fileSystemRepresentation], newBuf) == 0)
     return IMMUTABLE(s);
 #else
+  char		extra[PATH_MAX];
+  char		*dest;
+  const char	*name = [s fileSystemRepresentation];
+  const char	*start;
+  const	char	*end;
+  unsigned	num_links = 0;
 
+  if (name[0] != '/')
     {
-#if defined(__GLIBC__) || defined(__FreeBSD__)
-#define GS_MAXSYMLINKS sysconf(_SC_SYMLOOP_MAX)
-#else
-#define GS_MAXSYMLINKS MAXSYMLINKS
-#endif
-
-#ifndef PATH_MAX
-#define PATH_MAX 1024
-/* Don't use realpath unless we know we have the correct path size limit */
-#ifdef HAVE_REALPATH
-#undef HAVE_REALPATH
-#endif
-#endif
-        char newBuf[PATH_MAX];
-#ifdef HAVE_REALPATH
-
-        if (realpath([s fileSystemRepresentation], newBuf) == 0)
-            return IMMUTABLE(s);
-#else
-        char extra[PATH_MAX];
-        char *dest;
-        const char *name = [s fileSystemRepresentation];
-        const char *start;
-        const char *end;
-        unsigned num_links = 0;
-
-        if (name[0] != '/') {
-            if (!getcwd(newBuf, PATH_MAX)) {
-                return IMMUTABLE(s); /* Couldn't get directory.	*/
-            }
-            dest = strchr(newBuf, '\0');
-        } else {
-            newBuf[0] = '/';
-            dest = &newBuf[1];
-        }
-
-        for (start = end = name; *start; start = end) {
-            struct stat st;
-            int n;
-            int len;
-
-            /* Elide repeated path separators	*/
-            while (*start == '/') {
-                start++;
-            }
-            /* Locate end of path component	*/
-            end = start;
-            while (*end && *end != '/') {
-                end++;
-            }
-            len = end - start;
-            if (len == 0) {
-                break; /* End of path.	*/
-            } else if (len == 1 && *start == '.') {
-                /* Elide '/./' sequence by ignoring it.	*/
-            } else if (len == 2 && strncmp(start, "..", len) == 0) {
-                /*
-                 * Backup - if we are not at the root, remove the last component.
-                 */
-                if (dest > &newBuf[1]) {
-                    do {
-                        dest--;
-                    } while (dest[-1] != '/');
-                }
-            } else {
-                if (dest[-1] != '/') {
-                    *dest++ = '/';
-                }
-                if (&dest[len] >= &newBuf[PATH_MAX]) {
-                    return IMMUTABLE(s); /* Resolved name too long.	*/
-                }
-                memmove(dest, start, len);
-                dest += len;
-                *dest = '\0';
-
-                if (lstat(newBuf, &st) < 0) {
-                    return IMMUTABLE(s); /* Unable to stat file.		*/
-                }
-                if (S_ISLNK(st.st_mode)) {
-                    char buf[PATH_MAX];
-                    int l;
-
-                    if (++num_links > GS_MAXSYMLINKS) {
-                        return IMMUTABLE(s); /* Too many links.	*/
-                    }
-                    n = readlink(newBuf, buf, PATH_MAX);
-                    if (n < 0) {
-                        return IMMUTABLE(s); /* Couldn't resolve.	*/
-                    }
-                    buf[n] = '\0';
-
-                    l = strlen(end);
-                    if ((n + l) >= PATH_MAX) {
-                        return IMMUTABLE(s); /* Path too long.	*/
-                    }
-                    /*
-                     * Concatenate the resolved name with the string still to
-                     * be processed, and start using the result as input.
-                     */
-                    memcpy(buf + n, end, l);
-                    n += l;
-                    buf[n] = '\0';
-                    memcpy(extra, buf, n);
-                    extra[n] = '\0';
-                    name = end = extra;
-
-                    if (buf[0] == '/') {
-                        /*
-                         * For an absolute link, we start at root again.
-                         */
-                        dest = newBuf + 1;
-                    } else {
-                        /*
-                         * Backup - remove the last component.
-                         */
-                        if (dest > newBuf + 1) {
-                            do {
-                                dest--;
-                            } while (dest[-1] != '/');
-                        }
-                    }
-                } else {
-                    num_links = 0;
-                }
-            }
-        }
-        if (dest > newBuf + 1 && dest[-1] == '/') {
-            --dest;
-        }
-        *dest = '\0';
-#endif
-        if (strncmp(newBuf, "/private/", 9) == 0) {
-            struct stat st;
-
-            if (lstat(&newBuf[8], &st) == 0) {
-                int l = strlen(newBuf) - 7;
-
-                memmove(newBuf, &newBuf[8], l);
-            }
-        }
-        return [[NSFileManager defaultManager]
-            stringWithFileSystemRepresentation:newBuf
-                                        length:strlen(newBuf)];
+      if (!getcwd(newBuf, PATH_MAX))
+    {
+      return IMMUTABLE(s);	/* Couldn't get directory.	*/
     }
+      dest = strchr(newBuf, '\0');
+    }
+  else
+    {
+      newBuf[0] = '/';
+      dest = &newBuf[1];
+    }
+
+  for (start = end = name; *start; start = end)
+    {
+      struct stat st;
+      int n;
+      int len;
+
+      /* Elide repeated path separators	*/
+      while (*start == '/')
+        {
+          ++start;
+        }
+
+      /* Locate end of path component	*/
+      end = start;
+
+      while (*end && *end != '/')
+        {
+          ++end;
+        }
+
+      len = end - start;
+      if (len == 0)
+        {
+          break; /* End of path. */
+        }
+      else if (len == 1 && *start == '.')
+        {
+              /* Elide '/./' sequence by ignoring it. */
+        }
+      else if (len == 2 && strncmp(start, "..", len) == 0)
+        {
+          /*
+           * Backup - if we are not at the root, remove the last component.
+           */
+          if (dest > &newBuf[1])
+            {
+              do
+                {
+                  --dest;
+                }
+              while (dest[-1] != '/');
+            }
+        }
+      else
+        {
+          if (dest[-1] != '/')
+            {
+              *dest++ = '/';
+            }
+
+          if (&dest[len] >= &newBuf[PATH_MAX])
+            {
+              return IMMUTABLE(s); /* Resolved name too long.	*/
+            }
+
+          memmove(dest, start, len);
+          dest += len;
+          *dest = '\0';
+
+          if (lstat(newBuf, &st) < 0)
+            {
+              return IMMUTABLE(s); /* Unable to stat file. */
+            }
+
+          if (S_ISLNK(st.st_mode))
+            {
+              char buf[PATH_MAX];
+              int l;
+
+              if (++num_links > GS_MAXSYMLINKS)
+                {
+                  return IMMUTABLE(s); /* Too many links. */
+                }
+
+              n = readlink(newBuf, buf, PATH_MAX);
+
+              if (n < 0)
+                {
+                  return IMMUTABLE(s); /* Couldn't resolve. */
+                }
+
+              buf[n] = '\0';
+
+              l = strlen(end);
+
+              if ((n + l) >= PATH_MAX)
+                {
+                  return IMMUTABLE(s); /* Path too long. */
+                }
+
+              /*
+               * Concatenate the resolved name with the string still to
+               * be processed, and start using the result as input.
+               */
+              memcpy(buf + n, end, l);
+              n += l;
+              buf[n] = '\0';
+              memcpy(extra, buf, n);
+              extra[n] = '\0';
+              name = end = extra;
+
+              if (buf[0] == '/')
+                {
+                  /*
+                   * For an absolute link, we start at root again.
+                   */
+                  dest = newBuf + 1;
+                }
+              else
+                {
+                  /*
+                   * Backup - remove the last component.
+                   */
+                  if (dest > newBuf + 1)
+                    {
+                      do
+                        {
+                          --dest;
+                        }
+                      while (dest[-1] != '/');
+                    }
+                }
+            }
+          else
+            {
+              num_links = 0;
+            }
+        }
+    }
+
+  if (dest > newBuf + 1 && dest[-1] == '/')
+    {
+      --dest;
+    }
+  *dest = '\0';
+#endif
+  if (strncmp(newBuf, "/private/", 9) == 0)
+    {
+      struct stat	st;
+
+      if (lstat(&newBuf[8], &st) == 0)
+        {
+          int l = strlen(newBuf) - 7;
+
+          memmove(newBuf, &newBuf[8], l);
+        }
+    }
+
+  return [[NSFileManager defaultManager] stringWithFileSystemRepresentation: newBuf length: strlen(newBuf)];
+}
 #endif
 }
 
-- (NSString *)stringByStandardizingPath
+- (NSString*) stringByStandardizingPath
 {
-    NSMutableString *s;
-    NSRange r;
-    unichar (*caiImp)(NSString *, SEL, NSUInteger);
-    unsigned int l = [self length];
-    unichar c;
-    unsigned root;
+  NSMutableString	*s;
+  NSRange r;
+  unichar (*caiImp)(NSString*, SEL, NSUInteger);
+  unsigned int l = [self length];
+  unichar c;
+  unsigned root;
 
-    if (l == 0) {
-        return @"";
-    }
-    c = [self characterAtIndex:0];
-    if (c == '~') {
-        s = AUTORELEASE([[self stringByExpandingTildeInPath] mutableCopy]);
-    } else {
-        s = AUTORELEASE([self mutableCopy]);
+  if (l == 0)
+    {
+      return @"";
     }
 
-    /* We must always use the standard path separator unless specifically set
-     * to use the mswindows one.  That ensures that standardised paths and
-     * anything built by adding path components to them use a consistent
-     * separator character anad can be compared readily using standard string
-     * comparisons.
-     */
-    if (GSPathHandlingWindows() == YES) {
-        [s replaceString:@"/" withString:@"\\"];
-    } else {
-        [s replaceString:@"\\" withString:@"/"];
+  c = [self characterAtIndex: 0];
+
+  if (c == '~')
+    {
+      s = AUTORELEASE([[self stringByExpandingTildeInPath] mutableCopy]);
+    }
+  else
+    {
+      s = AUTORELEASE([self mutableCopy]);
     }
 
-    l = [s length];
-    root = rootOf(s, l);
+  /* We must always use the standard path separator unless specifically set
+   * to use the mswindows one.  That ensures that standardised paths and
+   * anything built by adding path components to them use a consistent
+   * separator character anad can be compared readily using standard string
+   * comparisons.
+   */
+  if (GSPathHandlingWindows() == YES)
+    {
+      [s replaceString: @"/" withString: @"\\"];
+    }
+  else
+    {
+      [s replaceString: @"\\" withString: @"/"];
+    }
 
-    caiImp = (unichar(*)())[s methodForSelector:caiSel];
+  l = [s length];
+  root = rootOf(s, l);
 
-    /* Remove any separators ('/') immediately after the trailing
-     * separator in the root (if any).
-     */
-    if (root > 0 && YES == pathSepMember((*caiImp)(s, caiSel, root - 1))) {
-        unsigned i;
+  caiImp = (unichar (*)())[s methodForSelector: caiSel];
 
-        for (i = root; i < l; i++) {
-            if (NO == pathSepMember((*caiImp)(s, caiSel, i))) {
-                break;
+  /* Remove any separators ('/') immediately after the trailing
+   * separator in the root (if any).
+   */
+  if (root > 0 && YES == pathSepMember((*caiImp)(s, caiSel, root-1)))
+    {
+      unsigned	i;
+
+      for (i = root; i < l; i++)
+        {
+          if (NO == pathSepMember((*caiImp)(s, caiSel, i)))
+            {
+              break;
             }
         }
-        if (i > root) {
-            r = (NSRange){root, i - root};
-            [s deleteCharactersInRange:r];
-            l -= r.length;
+
+      if (i > root)
+        {
+          r = (NSRange){root, i-root};
+          [s deleteCharactersInRange: r];
+          l -= r.length;
         }
     }
 
-    /* Condense multiple separator ('/') sequences.
-     */
-    r = (NSRange){root, l - root};
-    while ((r = [s rangeOfCharacterFromSet:pathSeps()
-                                   options:0
-                                     range:r])
-               .length == 1) {
-        while (NSMaxRange(r) < l && pathSepMember((*caiImp)(s, caiSel, NSMaxRange(r))) == YES) {
-            r.length++;
+  /* Condense multiple separator ('/') sequences.
+   */
+  r = (NSRange){root, l-root};
+
+  while ((r = [s rangeOfCharacterFromSet: pathSeps()
+                 options: 0
+                   range: r]).length == 1)
+    {
+      while (NSMaxRange(r) < l && pathSepMember((*caiImp)(s, caiSel, NSMaxRange(r))) == YES)
+        {
+          ++r.length;
         }
-        r.location++;
-        r.length--;
-        if (r.length > 0) {
-            [s deleteCharactersInRange:r];
-            l -= r.length;
+
+      ++r.location;
+      --r.length;
+
+      if (r.length > 0)
+        {
+          [s deleteCharactersInRange: r];
+          l -= r.length;
         }
-        r.length = l - r.location;
+
+      r.length = l - r.location;
     }
 
-    /* Remove trailing ('.') as long as it's preceeded by a path separator.
-     * As a special case for OSX compatibility, we only remove the trailing
-     * dot if it's not immediately after the root.
-     */
-    if (l > root + 1 && (*caiImp)(s, caiSel, l - 1) == '.' && pathSepMember((*caiImp)(s, caiSel, l - 2)) == YES) {
-        l--;
-        [s deleteCharactersInRange:NSMakeRange(l, 1)];
+  /* Remove trailing ('.') as long as it's preceeded by a path separator.
+   * As a special case for OSX compatibility, we only remove the trailing
+   * dot if it's not immediately after the root.
+   */
+  if (l > root + 1 && (*caiImp)(s, caiSel, l-1) == '.'
+    && pathSepMember((*caiImp)(s, caiSel, l-2)) == YES)
+    {
+      --l;
+      [s deleteCharactersInRange: NSMakeRange(l, 1)];
     }
 
-    // Condense ('/./') sequences.
-    r = (NSRange){root, l - root};
-    while ((r = [s rangeOfString:@"." options:0 range:r locale:nil]).length == 1) {
-        if (r.location > 0 && r.location < l - 1 && pathSepMember((*caiImp)(s, caiSel, r.location - 1)) == YES && pathSepMember((*caiImp)(s, caiSel, r.location + 1)) == YES) {
-            r.length++;
-            [s deleteCharactersInRange:r];
-            l -= r.length;
-        } else {
-            r.location++;
+  // Condense ('/./') sequences.
+  r = (NSRange){root, l-root};
+  while ((r = [s rangeOfString: @"." options: 0 range: r locale: nil]).length
+    == 1)
+    {
+      if (r.location > 0 && r.location < l - 1
+          && pathSepMember((*caiImp)(s, caiSel, r.location-1)) == YES
+          && pathSepMember((*caiImp)(s, caiSel, r.location+1)) == YES)
+        {
+          ++r.length;
+          [s deleteCharactersInRange: r];
+          l -= r.length;
         }
-        r.length = l - r.location;
+      else
+        {
+          ++r.location;
+        }
+
+      r.length = l - r.location;
     }
 
-    // Strip trailing '/' if present.
-    if (l > root && pathSepMember([s characterAtIndex:l - 1]) == YES) {
-        r.length = 1;
-        r.location = l - r.length;
-        [s deleteCharactersInRange:r];
-        l -= r.length;
+  // Strip trailing '/' if present.
+  if (l > root && pathSepMember([s characterAtIndex: l - 1]) == YES)
+    {
+      r.length = 1;
+      r.location = l - r.length;
+      [s deleteCharactersInRange: r];
+      l -= r.length;
     }
 
-    if ([s isAbsolutePath] == NO) {
-        return s;
+  if ([s isAbsolutePath] == NO)
+    {
+      return s;
     }
 
-    // Remove leading `/private' if present.
-    if ([s hasPrefix:@"/private"]) {
-        [s deleteCharactersInRange:((NSRange){0, 8})];
-        l -= 8;
+  // Remove leading `/private' if present.
+  if ([s hasPrefix: @"/private"])
+    {
+      [s deleteCharactersInRange: ((NSRange){0,8})];
+      l -= 8;
     }
 
-    /*
-     *	For absolute paths, we must
-     *	remove '/../' sequences and their matching parent directories.
-     */
-    r = (NSRange){root, l - root};
-    while ((r = [s rangeOfString:@".." options:0 range:r locale:nil]).length == 2) {
-        if (r.location > 0 && pathSepMember((*caiImp)(s, caiSel, r.location - 1)) == YES && (NSMaxRange(r) == l || pathSepMember((*caiImp)(s, caiSel, NSMaxRange(r))) == YES)) {
-            BOOL atEnd = (NSMaxRange(r) == l) ? YES : NO;
+  /*
+   *	For absolute paths, we must
+   *	remove '/../' sequences and their matching parent directories.
+   */
+  r = (NSRange){root, l-root};
 
-            if (r.location > root) {
-                NSRange r2;
+  while ((r = [s rangeOfString: @".." options: 0 range: r locale: nil]).length == 2)
+    {
+      if (r.location > 0
+          && pathSepMember((*caiImp)(s, caiSel, r.location-1)) == YES
+          && (NSMaxRange(r) == l || pathSepMember((*caiImp)(s, caiSel, NSMaxRange(r))) == YES))
+        {
+          BOOL atEnd = (NSMaxRange(r) == l) ? YES : NO;
 
-                r.location--;
-                r.length++;
-                r2 = NSMakeRange(root, r.location - root);
-                r = [s rangeOfCharacterFromSet:pathSeps()
-                                       options:NSBackwardsSearch
-                                         range:r2];
-                if (r.length == 0) {
-                    r = r2; // Location just after root
-                    r.length++;
-                } else {
-                    r.length = NSMaxRange(r2) - r.location;
-                    r.location++; // Location Just after last separator
+          if (r.location > root)
+            {
+              NSRange r2;
+
+              r.location--;
+              r.length++;
+              r2 = NSMakeRange(root, r.location-root);
+              r = [s rangeOfCharacterFromSet: pathSeps()
+                                     options: NSBackwardsSearch
+                                       range: r2];
+              if (r.length == 0)
+                {
+                  r = r2; // Location just after root
+                  ++r.length;
                 }
-                r.length += 2; // Add the `..'
+              else
+                {
+                  r.length = NSMaxRange(r2) - r.location;
+                  ++r.location; // Location Just after last separator
+                }
+
+              r.length += 2; // Add the `..'
             }
-            if (NO == atEnd) {
-                r.length++; // Add the '/' after the '..'
+
+          if (NO == atEnd)
+            {
+              ++r.length; // Add the '/' after the '..'
             }
-            [s deleteCharactersInRange:r];
-            l -= r.length;
-        } else {
-            r.location++;
+
+          [s deleteCharactersInRange: r];
+          l -= r.length;
         }
-        r.length = l - r.location;
+      else
+        {
+          ++r.location;
+        }
+
+      r.length = l - r.location;
     }
 
-    return IMMUTABLE(s);
+  return IMMUTABLE(s);
 }
 
 /**
@@ -4946,224 +5864,276 @@ static NSFileManager *fm = nil;
  * string is returned.<br />
  * The aSet argument must not be nil.<br />
  */
-- (NSString *)stringByTrimmingCharactersInSet:(NSCharacterSet *)aSet
+- (NSString*) stringByTrimmingCharactersInSet: (NSCharacterSet*)aSet
 {
-    unsigned length = [self length];
-    unsigned end = length;
-    unsigned start = 0;
+  unsigned length = [self length];
+  unsigned end = length;
+  unsigned start = 0;
 
-    if (aSet == nil) {
-        [NSException raise:NSInvalidArgumentException
-                    format:@"%@ - nil character set argument", NSStringFromSelector(_cmd)];
+  if (aSet == nil)
+    {
+      [NSException raise: NSInvalidArgumentException format: @"%@ - nil character set argument", NSStringFromSelector(_cmd)];
     }
-    if (length > 0) {
-        unichar (*caiImp)(NSString *, SEL, NSUInteger);
-        BOOL (*mImp)
-        (id, SEL, unichar);
-        unichar letter;
 
-        caiImp = (unichar(*)())[self methodForSelector:caiSel];
-        mImp = (BOOL(*)(id, SEL, unichar))[aSet methodForSelector:cMemberSel];
+  if (length > 0)
+    {
+      unichar	(*caiImp)(NSString*, SEL, NSUInteger);
+      BOOL	(*mImp)(id, SEL, unichar);
+      unichar	letter;
 
-        while (end > 0) {
-            letter = (*caiImp)(self, caiSel, end - 1);
-            if ((*mImp)(aSet, cMemberSel, letter) == NO) {
-                break;
+      caiImp = (unichar (*)())[self methodForSelector: caiSel];
+      mImp = (BOOL(*)(id,SEL,unichar)) [aSet methodForSelector: cMemberSel];
+
+      while (end > 0)
+        {
+          letter = (*caiImp)(self, caiSel, end-1);
+
+          if ((*mImp)(aSet, cMemberSel, letter) == NO)
+            {
+              break;
             }
-            end--;
+
+          --end;
         }
-        while (start < end) {
-            letter = (*caiImp)(self, caiSel, start);
-            if ((*mImp)(aSet, cMemberSel, letter) == NO) {
-                break;
+
+      while (start < end)
+        {
+          letter = (*caiImp)(self, caiSel, start);
+
+          if ((*mImp)(aSet, cMemberSel, letter) == NO)
+            {
+              break;
             }
-            start++;
+
+          ++start;
         }
     }
-    if (start == 0 && end == length) {
-        return IMMUTABLE(self);
+
+  if (start == 0 && end == length)
+    {
+      return IMMUTABLE(self);
     }
-    if (start == end) {
-        return @"";
+
+  if (start == end)
+    {
+      return @"";
     }
-    return [self substringFromRange:NSMakeRange(start, end - start)];
+
+  return [self substringFromRange: NSMakeRange(start, end - start)];
 }
 
 // private methods for Unicode level 3 implementation
-- (int)_baseLength
+- (int) _baseLength
 {
-    int blen = 0;
-    unsigned len = [self length];
+  int blen = 0;
+  unsigned len = [self length];
 
-    if (len > 0) {
-        unsigned int count = 0;
-        unichar (*caiImp)(NSString *, SEL, NSUInteger);
+  if (len > 0)
+    {
+      unsigned int count = 0;
+      unichar (*caiImp)(NSString*, SEL, NSUInteger);
 
-        caiImp = (unichar(*)())[self methodForSelector:caiSel];
-        while (count < len) {
-            if (!uni_isnonsp((*caiImp)(self, caiSel, count++))) {
-                blen++;
+      caiImp = (unichar (*)())[self methodForSelector: caiSel];
+      while (count < len)
+        {
+          if (!uni_isnonsp((*caiImp)(self, caiSel, count++)))
+            {
+              blen++;
             }
         }
     }
-    return blen;
+
+  return blen;
 }
 
-+ (NSString *)pathWithComponents:(NSArray *)components
++ (NSString*) pathWithComponents: (NSArray*)components
 {
-    NSString *s;
-    unsigned c;
-    unsigned i;
+  NSString	*s;
+  unsigned	c;
+  unsigned	i;
 
-    c = [components count];
-    if (c == 0) {
-        return @"";
+  c = [components count];
+
+  if (c == 0)
+    {
+      return @"";
     }
-    s = [components objectAtIndex:0];
-    if ([s length] == 0) {
-        s = pathSepString();
+
+  s = [components objectAtIndex: 0];
+
+  if ([s length] == 0)
+    {
+      s = pathSepString();
     }
-    for (i = 1; i < c; i++) {
-        s = [s stringByAppendingPathComponent:[components objectAtIndex:i]];
+
+  for (i = 1; i < c; i++)
+    {
+      s = [s stringByAppendingPathComponent: [components objectAtIndex: i]];
     }
-    return s;
+
+  return s;
 }
 
-- (BOOL)isAbsolutePath
+- (BOOL) isAbsolutePath
 {
-    unichar c;
-    unsigned l = [self length];
-    unsigned root;
+  unichar c;
+  unsigned l = [self length];
+  unsigned root;
 
-    if (l == 0) {
-        return NO; // Empty string ... relative
-    }
-    c = [self characterAtIndex:0];
-    if (c == (unichar)'~') {
-        return YES; // Begins with tilde ... absolute
+  if (l == 0)
+    {
+      return NO;		// Empty string ... relative
     }
 
-    /*
-     * Any string beginning with '/' is absolute ... except in windows mode
-     * or on windows and not in unix mode.
-     */
-    if (c == pathSepChar()) {
+  c = [self characterAtIndex: 0];
+
+  if (c == (unichar)'~')
+    {
+      return YES;		// Begins with tilde ... absolute
+    }
+
+  /*
+   * Any string beginning with '/' is absolute ... except in windows mode
+   * or on windows and not in unix mode.
+   */
+  if (c == pathSepChar())
+    {
 #if defined(_WIN32)
-        if (GSPathHandlingUnix() == YES) {
-            return YES;
+      if (GSPathHandlingUnix() == YES)
+        {
+          return YES;
         }
 #else
-        if (GSPathHandlingWindows() == NO) {
-            return YES;
+      if (GSPathHandlingWindows() == NO)
+        {
+          return YES;
         }
 #endif
+     }
+
+  /*
+   * Any root over two characters long must be a drive specification with a
+   * slash (absolute) or a UNC path (always absolute).
+   */
+  root = rootOf(self, l);
+  if (root > 2)
+    {
+      return YES;		// UNC or C:/ ... absolute
     }
 
-    /*
-     * Any root over two characters long must be a drive specification with a
-     * slash (absolute) or a UNC path (always absolute).
-     */
-    root = rootOf(self, l);
-    if (root > 2) {
-        return YES; // UNC or C:/ ... absolute
-    }
-
-    /*
-     * What we have left are roots of the form 'C:' or '\' or a path
-     * with no root, or a '/' (in windows mode only sence we already
-     * handled a single slash in unix mode) ...
-     * all these cases are relative paths.
-     */
-    return NO;
+  /*
+   * What we have left are roots of the form 'C:' or '\' or a path
+   * with no root, or a '/' (in windows mode only sence we already
+   * handled a single slash in unix mode) ...
+   * all these cases are relative paths.
+   */
+  return NO;
 }
 
-- (NSArray *)pathComponents
+- (NSArray*) pathComponents
 {
-    NSMutableArray *a;
-    NSArray *r;
-    NSString *s = self;
-    unsigned int l = [s length];
-    unsigned int root;
-    unsigned int i;
-    NSRange range;
+  NSMutableArray *a;
+  NSArray *r;
+  NSString *s = self;
+  unsigned int l = [s length];
+  unsigned int root;
+  unsigned int i;
+  NSRange range;
 
-    if (l == 0) {
-        return [NSArray array];
+  if (l == 0)
+    {
+      return [NSArray array];
     }
-    root = rootOf(s, l);
-    a = [[NSMutableArray alloc] initWithCapacity:8];
-    if (root > 0) {
-        [a addObject:[s substringToIndex:root]];
-    }
-    i = root;
 
-    while (i < l) {
-        range = [s rangeOfCharacterFromSet:pathSeps()
-                                   options:NSLiteralSearch
-                                     range:((NSRange){i, l - i})];
-        if (range.length > 0) {
-            if (range.location > i) {
-                [a addObject:[s substringWithRange:
-                                     NSMakeRange(i, range.location - i)]];
+  root = rootOf(s, l);
+  a = [[NSMutableArray alloc] initWithCapacity: 8];
+
+  if (root > 0)
+    {
+      [a addObject: [s substringToIndex: root]];
+    }
+
+  i = root;
+
+  while (i < l)
+    {
+      range = [s rangeOfCharacterFromSet: pathSeps()
+                 options: NSLiteralSearch
+                   range: ((NSRange){i, l - i})];
+
+      if (range.length > 0)
+        {
+          if (range.location > i)
+            {
+              [a addObject: [s substringWithRange: NSMakeRange(i, range.location - i)]];
             }
-            i = NSMaxRange(range);
-        } else {
-            [a addObject:[s substringFromIndex:i]];
-            i = l;
+
+          i = NSMaxRange(range);
+        }
+
+      else
+        {
+          [a addObject: [s substringFromIndex: i]];
+          i = l;
         }
     }
 
-    /*
-     * If the path ended with a path separator which was not already
-     * added as part of the root, add it as final component.
-     */
-    if (l > root && pathSepMember([s characterAtIndex:l - 1])) {
-        [a addObject:pathSepString()];
+  /*
+   * If the path ended with a path separator which was not already
+   * added as part of the root, add it as final component.
+   */
+  if (l > root && pathSepMember([s characterAtIndex: l-1]))
+    {
+      [a addObject: pathSepString()];
     }
 
-    r = [a copy];
-    RELEASE(a);
-    return AUTORELEASE(r);
+  r = [a copy];
+  RELEASE(a);
+  return AUTORELEASE(r);
 }
 
-- (NSArray *)stringsByAppendingPaths:(NSArray *)paths
+- (NSArray*) stringsByAppendingPaths: (NSArray*)paths
 {
-    NSMutableArray *a;
-    NSArray *r;
-    unsigned i, count = [paths count];
+  NSMutableArray *a;
+  NSArray *r;
+  unsigned i, count = [paths count];
 
-    a = [[NSMutableArray allocWithZone:NSDefaultMallocZone()]
-        initWithCapacity:count];
-    for (i = 0; i < count; i++) {
-        NSString *s = [paths objectAtIndex:i];
+  a = [[NSMutableArray allocWithZone: NSDefaultMallocZone()] initWithCapacity: count];
 
-        s = [self stringByAppendingPathComponent:s];
-        [a addObject:s];
+  for (i = 0; i < count; i++)
+    {
+      NSString	*s = [paths objectAtIndex: i];
+
+      s = [self stringByAppendingPathComponent: s];
+      [a addObject: s];
     }
-    r = [a copy];
-    RELEASE(a);
-    return AUTORELEASE(r);
+
+  r = [a copy];
+  RELEASE(a);
+  return AUTORELEASE(r);
 }
 
 /**
  * Returns an autoreleased string with given format using the default locale.
  */
-+ (NSString *)localizedStringWithFormat:(NSString *)format, ...
++ (NSString*) localizedStringWithFormat: (NSString*) format, ...
 {
-    va_list ap;
-    id ret;
+  va_list ap;
+  id ret;
 
-    va_start(ap, format);
-    if (format == nil) {
-        ret = nil;
-    } else {
-        ret = AUTORELEASE([[self allocWithZone:NSDefaultMallocZone()]
-            initWithFormat:format
-                    locale:GSPrivateDefaultLocale()
-                 arguments:ap]);
+  va_start(ap, format);
+
+  if (format == nil)
+    {
+      ret = nil;
     }
-    va_end(ap);
-    return ret;
+  else
+    {
+      ret = AUTORELEASE([[self allocWithZone: NSDefaultMallocZone()] initWithFormat: format locale: GSPrivateDefaultLocale() arguments: ap]);
+    }
+
+  va_end(ap);
+  return ret;
 }
 
 /**
@@ -5171,13 +6141,16 @@ static NSFileManager *fm = nil;
  * -compare:options:range: with the <code>NSCaseInsensitiveSearch</code>
  * option, in the default locale.
  */
-- (NSComparisonResult)caseInsensitiveCompare:(NSString *)aString
+- (NSComparisonResult) caseInsensitiveCompare: (NSString*)aString
 {
-    if (aString == self)
-        return NSOrderedSame;
-    return [self compare:aString
-                 options:NSCaseInsensitiveSearch
-                   range:((NSRange){0, [self length]})];
+  if (aString == self)
+    {
+      return NSOrderedSame;
+    }
+
+  return [self compare: aString
+               options: NSCaseInsensitiveSearch
+                 range: ((NSRange){0, [self length]})];
 }
 
 /**
@@ -5207,80 +6180,78 @@ static NSFileManager *fm = nil;
  * before or after string in lexical order, or is equal to it.
  * </p>
  */
-- (NSComparisonResult)compare:(NSString *)string
-                      options:(NSUInteger)mask
-                        range:(NSRange)compareRange
-                       locale:(id)locale
+- (NSComparisonResult) compare: (NSString *)string
+               options: (NSUInteger)mask
+             range: (NSRange)compareRange
+            locale: (id)locale
 {
-    GS_RANGE_CHECK(compareRange, [self length]);
-    if (nil == string) {
-        [NSException raise:NSInvalidArgumentException
-                    format:@"compare with nil"];
+  GS_RANGE_CHECK(compareRange, [self length]);
+
+  if (nil == string)
+    {
+      [NSException raise: NSInvalidArgumentException
+          format: @"compare with nil"];
     }
 
 #if GS_USE_ICU == 1
     {
-        UCollator *coll = GSICUCollatorOpen(mask, locale);
+      UCollator *coll = GSICUCollatorOpen(mask, locale);
 
-        if (coll != NULL) {
-            NSUInteger countSelf = compareRange.length;
-            NSUInteger countOther = [string length];
-            unichar *charsSelf;
-            unichar *charsOther;
-            UCollationResult result;
+      if (coll != NULL)
+        {
+          NSUInteger countSelf = compareRange.length;
+          NSUInteger countOther = [string length];
+          unichar *charsSelf;
+          unichar *charsOther;
+          UCollationResult result;
 
-            charsSelf = NSZoneMalloc(NSDefaultMallocZone(),
-                                     countSelf * sizeof(unichar));
-            charsOther = NSZoneMalloc(NSDefaultMallocZone(),
-                                      countOther * sizeof(unichar));
-            // Copy to buffer
+          charsSelf = NSZoneMalloc(NSDefaultMallocZone(), countSelf * sizeof(unichar));
+          charsOther = NSZoneMalloc(NSDefaultMallocZone(), countOther * sizeof(unichar));
+          // Copy to buffer
 
-            [self getCharacters:charsSelf range:compareRange];
-            [string getCharacters:charsOther range:NSMakeRange(0, countOther)];
+          [self getCharacters: charsSelf range: compareRange];
+          [string getCharacters: charsOther range: NSMakeRange(0, countOther)];
 
-            result = ucol_strcoll(coll,
-                                  charsSelf, countSelf, charsOther, countOther);
+          result = ucol_strcoll(coll, charsSelf, countSelf, charsOther, countOther);
 
-            NSZoneFree(NSDefaultMallocZone(), charsSelf);
-            NSZoneFree(NSDefaultMallocZone(), charsOther);
-            ucol_close(coll);
+          NSZoneFree(NSDefaultMallocZone(), charsSelf);
+          NSZoneFree(NSDefaultMallocZone(), charsOther);
+          ucol_close(coll);
 
-            switch (result) {
-                case UCOL_EQUAL:
-                    return NSOrderedSame;
-                case UCOL_GREATER:
-                    return NSOrderedDescending;
-                case UCOL_LESS:
-                    return NSOrderedAscending;
+          switch (result)
+            {
+              case UCOL_EQUAL: return NSOrderedSame;
+              case UCOL_GREATER: return NSOrderedDescending;
+              case UCOL_LESS: return NSOrderedAscending;
             }
         }
     }
 #endif
 
-    return strCompNsNs(self, string, mask, compareRange);
+  return strCompNsNs(self, string, mask, compareRange);
 }
 
 /**
  * Compares this instance with string, using +[NSLocale currentLocale].
  */
-- (NSComparisonResult)localizedCompare:(NSString *)string
+- (NSComparisonResult) localizedCompare: (NSString *)string
 {
-    return [self compare:string
-                 options:0
-                   range:NSMakeRange(0, [self length])
-                  locale:[NSLocale currentLocale]];
+  return [self compare: string
+               options: 0
+                 range: NSMakeRange(0, [self length])
+                locale: [NSLocale currentLocale]];
 }
 
 /**
  * Compares this instance with string, using +[NSLocale currentLocale],
  * ignoring case.
  */
-- (NSComparisonResult)localizedCaseInsensitiveCompare:(NSString *)string
+- (NSComparisonResult) localizedCaseInsensitiveCompare: (NSString *)string
 {
-    return [self compare:string
-                 options:NSCaseInsensitiveSearch
-                   range:NSMakeRange(0, [self length])
-                  locale:[NSLocale currentLocale]];
+  return [self compare: string
+               options: NSCaseInsensitiveSearch
+                 range: NSMakeRange(0, [self length])
+                locale: [NSLocale currentLocale]];
 }
 
 /**
@@ -5290,15 +6261,17 @@ static NSFileManager *fm = nil;
  * written to a temp file, which is then closed and renamed to filename.  Thus,
  * an incomplete file at filename should never result.
  */
-- (BOOL)writeToFile:(NSString *)filename
-         atomically:(BOOL)useAuxiliaryFile
+- (BOOL) writeToFile: (NSString*)filename
+      atomically: (BOOL)useAuxiliaryFile
 {
-    id d = [self dataUsingEncoding:_DefaultStringEncoding];
+  id d = [self dataUsingEncoding: _DefaultStringEncoding];
 
-    if (d == nil) {
-        d = [self dataUsingEncoding:NSUnicodeStringEncoding];
+  if (d == nil)
+    {
+      d = [self dataUsingEncoding: NSUnicodeStringEncoding];
     }
-    return [d writeToFile:filename atomically:useAuxiliaryFile];
+
+  return [d writeToFile: filename atomically: useAuxiliaryFile];
 }
 
 /**
@@ -5310,24 +6283,28 @@ static NSFileManager *fm = nil;
  * If there is a problem and error is not NULL, the cause of the problem is
  * returned in *error.
  */
-- (BOOL)writeToFile:(NSString *)path
-         atomically:(BOOL)atomically
-           encoding:(NSStringEncoding)enc
-              error:(NSError **)error
+- (BOOL) writeToFile: (NSString*)path
+      atomically: (BOOL)atomically
+        encoding: (NSStringEncoding)enc
+           error: (NSError**)error
 {
-    id d = [self dataUsingEncoding:enc];
+  id d = [self dataUsingEncoding: enc];
 
-    if (d == nil) {
-        if (error != 0) {
-            *error = [NSError errorWithDomain:NSCocoaErrorDomain
-                                         code:NSFileWriteInapplicableStringEncodingError
-                                     userInfo:nil];
+  if (d == nil)
+    {
+      if (error != 0)
+        {
+          *error = [NSError errorWithDomain: NSCocoaErrorDomain
+                                       code: NSFileWriteInapplicableStringEncodingError
+                                   userInfo: nil];
         }
-        return NO;
+
+      return NO;
     }
-    return [d writeToFile:path
-                  options:atomically ? NSDataWritingAtomic : 0
-                    error:error];
+
+  return [d writeToFile: path
+            options: atomically ? NSDataWritingAtomic : 0
+          error: error];
 }
 
 /**
@@ -5339,27 +6316,33 @@ static NSFileManager *fm = nil;
  * If there is a problem and error is not NULL, the cause of the problem is
  * returned in *error.
  */
-- (BOOL)writeToURL:(NSURL *)url
-        atomically:(BOOL)atomically
-          encoding:(NSStringEncoding)enc
-             error:(NSError **)error
+- (BOOL) writeToURL: (NSURL*)url
+         atomically: (BOOL)atomically
+           encoding: (NSStringEncoding)enc
+              error: (NSError**)error
 {
-    id d = [self dataUsingEncoding:enc];
+  id d = [self dataUsingEncoding: enc];
 
-    if (d == nil) {
-        d = [self dataUsingEncoding:NSUnicodeStringEncoding];
+  if (d == nil)
+    {
+      d = [self dataUsingEncoding: NSUnicodeStringEncoding];
     }
-    if (d == nil) {
-        if (error != 0) {
-            *error = [NSError errorWithDomain:NSCocoaErrorDomain
-                                         code:NSFileWriteInapplicableStringEncodingError
-                                     userInfo:nil];
+
+  if (d == nil)
+    {
+      if (error != 0)
+        {
+          *error = [NSError errorWithDomain: NSCocoaErrorDomain
+                                       code: NSFileWriteInapplicableStringEncodingError
+                                   userInfo: nil];
         }
-        return NO;
+
+      return NO;
     }
-    return [d writeToURL:url
-                 options:atomically ? NSDataWritingAtomic : 0
-                   error:error];
+
+  return [d writeToURL: url
+               options: atomically ? NSDataWritingAtomic : 0
+                 error: error];
 }
 
 /**
@@ -5369,145 +6352,171 @@ static NSFileManager *fm = nil;
  * The '<code>atomically</code>' option is only heeded if the URL is a
  * <code>file://</code> URL; see -writeToFile:atomically: .
  */
-- (BOOL)writeToURL:(NSURL *)url atomically:(BOOL)atomically
+- (BOOL) writeToURL: (NSURL*)url atomically: (BOOL)atomically
 {
-    id d = [self dataUsingEncoding:_DefaultStringEncoding];
+  id d = [self dataUsingEncoding: _DefaultStringEncoding];
 
-    if (d == nil) {
-        d = [self dataUsingEncoding:NSUnicodeStringEncoding];
+  if (d == nil)
+    {
+      d = [self dataUsingEncoding: NSUnicodeStringEncoding];
     }
-    return [d writeToURL:url atomically:atomically];
+
+  return [d writeToURL: url atomically: atomically];
 }
 
 /* NSCopying Protocol */
 
-- (id)copyWithZone:(NSZone *)zone
+- (id) copyWithZone: (NSZone*)zone
 {
-    /*
-     * Default implementation should not simply retain ... the string may
-     * have been initialised with freeWhenDone==NO and not own its
-     * characters ... so the code which created it may destroy the memory
-     * when it has finished with the original string ... leaving the
-     * copy with pointers to invalid data.  So, we always copy in full.
-     */
-    return [[NSStringClass allocWithZone:zone] initWithString:self];
+  /*
+   * Default implementation should not simply retain ... the string may
+   * have been initialised with freeWhenDone==NO and not own its
+   * characters ... so the code which created it may destroy the memory
+   * when it has finished with the original string ... leaving the
+   * copy with pointers to invalid data.  So, we always copy in full.
+   */
+  return [[NSStringClass allocWithZone: zone] initWithString: self];
 }
 
-- (id)mutableCopyWithZone:(NSZone *)zone
+- (id) mutableCopyWithZone: (NSZone*)zone
 {
-    return [[GSMutableStringClass allocWithZone:zone] initWithString:self];
+  return [[GSMutableStringClass allocWithZone: zone] initWithString: self];
 }
 
 /* NSCoding Protocol */
 
-- (void)encodeWithCoder:(NSCoder *)aCoder
+- (void) encodeWithCoder: (NSCoder*)aCoder
 {
-    if ([aCoder allowsKeyedCoding]) {
-        [(NSKeyedArchiver *)aCoder _encodePropertyList:self forKey:@"NS.string"];
-    } else {
-        unsigned count = [self length];
+  if ([aCoder allowsKeyedCoding])
+    {
+      [(NSKeyedArchiver*)aCoder _encodePropertyList: self forKey: @"NS.string"];
+    }
+  else
+    {
+      unsigned	count = [self length];
 
-        [aCoder encodeValueOfObjCType:@encode(unsigned) at:&count];
-        if (count > 0) {
-            NSStringEncoding enc = NSUnicodeStringEncoding;
-            unichar *chars;
+      [aCoder encodeValueOfObjCType: @encode(unsigned) at: &count];
 
-            /* For backwards-compatibility, we always encode/decode
-               'NSStringEncoding' (which really is an 'unsigned int') as
-               an 'int'.  Due to a bug, GCC up to 4.5 always encode all
-               enums as 'i' (int) regardless of the actual integer type
-               required to store them; we need to be able to read/write
-               archives compatible with GCC <= 4.5 so we explictly use
-               'int' to read/write these variables.  */
-            [aCoder encodeValueOfObjCType:@encode(int) at:&enc];
+      if (count > 0)
+        {
+          NSStringEncoding enc = NSUnicodeStringEncoding;
+          unichar *chars;
 
-            chars = NSZoneMalloc(NSDefaultMallocZone(), count * sizeof(unichar));
-            [self getCharacters:chars range:((NSRange){0, count})];
-            [aCoder encodeArrayOfObjCType:@encode(unichar)
-                                    count:count
-                                       at:chars];
-            NSZoneFree(NSDefaultMallocZone(), chars);
+          /* For backwards-compatibility, we always encode/decode
+             'NSStringEncoding' (which really is an 'unsigned int') as
+             an 'int'.  Due to a bug, GCC up to 4.5 always encode all
+             enums as 'i' (int) regardless of the actual integer type
+             required to store them; we need to be able to read/write
+             archives compatible with GCC <= 4.5 so we explictly use
+             'int' to read/write these variables.  */
+          [aCoder encodeValueOfObjCType: @encode(int) at: &enc];
+
+          chars = NSZoneMalloc(NSDefaultMallocZone(), count*sizeof(unichar));
+          [self getCharacters: chars range: ((NSRange){0, count})];
+          [aCoder encodeArrayOfObjCType: @encode(unichar)
+                                  count: count
+                                     at: chars];
+          NSZoneFree(NSDefaultMallocZone(), chars);
         }
     }
 }
 
-- (id)initWithCoder:(NSCoder *)aCoder
+- (id) initWithCoder: (NSCoder*)aCoder
 {
-    if ([aCoder allowsKeyedCoding]) {
-        if ([aCoder containsValueForKey:@"NS.string"]) {
-            NSString *string = nil;
+  if ([aCoder allowsKeyedCoding])
+    {
+      if ([aCoder containsValueForKey: @"NS.string"])
+        {
+          NSString *string = nil;
 
-            string = (NSString *)[(NSKeyedUnarchiver *)aCoder
-                _decodePropertyListForKey:@"NS.string"];
-            self = [self initWithString:string];
-        } else if ([aCoder containsValueForKey:@"NS.bytes"]) {
-            id bytes = [(NSKeyedUnarchiver *)aCoder
-                decodeObjectForKey:@"NS.bytes"];
-
-            if ([bytes isKindOfClass:NSStringClass]) {
-                self = [self initWithString:(NSString *)bytes];
-            } else {
-                self = [self initWithData:(NSData *)bytes
-                                 encoding:NSUTF8StringEncoding];
-            }
-        } else {
-            // empty string
-            self = [self initWithString:@""];
+          string = (NSString*)[(NSKeyedUnarchiver*)aCoder _decodePropertyListForKey: @"NS.string"];
+          self = [self initWithString: string];
         }
-    } else {
-        unsigned count;
+      else if ([aCoder containsValueForKey: @"NS.bytes"])
+        {
+          id bytes = [(NSKeyedUnarchiver*)aCoder decodeObjectForKey: @"NS.bytes"];
 
-        [aCoder decodeValueOfObjCType:@encode(unsigned) at:&count];
-
-        if (count > 0) {
-            NSStringEncoding enc;
-            NSZone *zone;
-
-            [aCoder decodeValueOfObjCType:@encode(int) at:&enc];
-            zone = [self zone];
-
-            if (enc == NSUnicodeStringEncoding) {
-                unichar *chars;
-
-                chars = NSZoneMalloc(zone, count * sizeof(unichar));
-                [aCoder decodeArrayOfObjCType:@encode(unichar)
-                                        count:count
-                                           at:chars];
-                self = [self initWithCharactersNoCopy:chars
-                                               length:count
-                                         freeWhenDone:YES];
-            } else {
-                unsigned char *chars;
-
-                chars = NSZoneMalloc(zone, count + 1);
-                [aCoder decodeArrayOfObjCType:@encode(unsigned char)
-                                        count:count
-                                           at:chars];
-                self = [self initWithBytesNoCopy:chars
-                                          length:count
-                                        encoding:enc
-                                    freeWhenDone:YES];
+          if ([bytes isKindOfClass: NSStringClass])
+            {
+              self = [self initWithString: (NSString*)bytes];
             }
-        } else {
-            self = [self initWithBytesNoCopy:(char *)""
-                                      length:0
-                                    encoding:NSASCIIStringEncoding
-                                freeWhenDone:NO];
+          else
+            {
+              self = [self initWithData: (NSData*)bytes
+                               encoding: NSUTF8StringEncoding];
+            }
+        }
+      else
+        {
+          // empty string
+          self = [self initWithString: @""];
         }
     }
-    return self;
+  else
+    {
+      unsigned	count;
+
+      [aCoder decodeValueOfObjCType: @encode(unsigned) at: &count];
+
+      if (count > 0)
+        {
+          NSStringEncoding enc;
+          NSZone *zone;
+
+          [aCoder decodeValueOfObjCType: @encode(int) at: &enc];
+          zone = [self zone];
+
+          if (enc == NSUnicodeStringEncoding)
+            {
+              unichar	*chars;
+
+              chars = NSZoneMalloc(zone, count*sizeof(unichar));
+              [aCoder decodeArrayOfObjCType: @encode(unichar)
+                                      count: count
+                                         at: chars];
+              self = [self initWithCharactersNoCopy: chars
+                                             length: count
+                                       freeWhenDone: YES];
+            }
+          else
+            {
+              unsigned char	*chars;
+
+              chars = NSZoneMalloc(zone, count+1);
+              [aCoder decodeArrayOfObjCType: @encode(unsigned char)
+                                      count: count
+                                         at: chars];
+              self = [self initWithBytesNoCopy: chars
+                                        length: count
+                                      encoding: enc
+                                  freeWhenDone: YES];
+            }
+        }
+      else
+        {
+          self = [self initWithBytesNoCopy: (char *)""
+                                    length: 0
+                                  encoding: NSASCIIStringEncoding
+                              freeWhenDone: NO];
+        }
+    }
+
+  return self;
 }
 
-- (Class)classForCoder
+- (Class) classForCoder
 {
-    return NSStringClass;
+  return NSStringClass;
 }
 
-- (id)replacementObjectForPortCoder:(NSPortCoder *)aCoder
+- (id) replacementObjectForPortCoder: (NSPortCoder*)aCoder
 {
-    if ([aCoder isByref] == NO)
-        return self;
-    return [super replacementObjectForPortCoder:aCoder];
+  if ([aCoder isByref] == NO)
+    {
+      return self;
+    }
+
+  return [super replacementObjectForPortCoder: aCoder];
 }
 
 /**
@@ -5559,46 +6568,48 @@ static NSFileManager *fm = nil;
  * -propertyListFromStringsFileFormat method).
  * </p>
  */
-- (id)propertyList
+- (id) propertyList
 {
-    NSData *data;
-    id result = nil;
-    NSPropertyListFormat format;
-    NSString *error = nil;
+  NSData *data;
+  id result = nil;
+  NSPropertyListFormat format;
+  NSString *error = nil;
 
-    if ([self length] == 0) {
-        return nil;
+  if ([self length] == 0)
+    {
+      return nil;
     }
-    data = [self dataUsingEncoding:NSUTF8StringEncoding];
-    NSAssert(data, @"Couldn't get utf8 data from string.");
 
-    result = [NSPropertyListSerialization
-        propertyListFromData:data
-            mutabilityOption:NSPropertyListMutableContainers
-                      format:&format
-            errorDescription:&error];
+  data = [self dataUsingEncoding: NSUTF8StringEncoding];
+  NSAssert(data, @"Couldn't get utf8 data from string.");
 
-    if (result == nil) {
-        extern id GSPropertyListFromStringsFormat(NSString * string);
+  result = [NSPropertyListSerialization propertyListFromData: data
+                                            mutabilityOption: NSPropertyListMutableContainers
+                                                      format: &format
+                                            errorDescription: &error];
 
-        NS_DURING
+  if (result == nil)
+    {
+      extern id	GSPropertyListFromStringsFormat(NSString *string);
+
+      NS_DURING
         {
-            result = GSPropertyListFromStringsFormat(self);
+          result = GSPropertyListFromStringsFormat(self);
         }
-        NS_HANDLER
+      NS_HANDLER
         {
-            error = [NSString stringWithFormat:
-                                  @"as property list {%@}, and as strings file {%@}",
-                                  error, [localException reason]];
-            result = nil;
+          error = [NSString stringWithFormat: @"as property list {%@}, and as strings file {%@}", error, [localException reason]];
+          result = nil;
         }
-        NS_ENDHANDLER
-        if (result == nil) {
-            [NSException raise:NSGenericException
-                        format:@"Parse failed - %@", error];
+      NS_ENDHANDLER
+
+      if (result == nil)
+        {
+          [NSException raise: NSGenericException format: @"Parse failed - %@", error];
         }
     }
-    return result;
+
+  return result;
 }
 
 /**
@@ -5620,193 +6631,231 @@ static NSFileManager *fm = nil;
  *   "Another key" = "a longer string value for th third key";
  * </example>
  */
-- (NSDictionary *)propertyListFromStringsFileFormat
+- (NSDictionary*) propertyListFromStringsFileFormat
 {
-    extern id GSPropertyListFromStringsFormat(NSString * string);
+  extern id	GSPropertyListFromStringsFormat(NSString *string);
 
-    return GSPropertyListFromStringsFormat(self);
+  return GSPropertyListFromStringsFormat(self);
 }
 
 /**
- * Returns YES if the receiver contains string, otherwise, NO.
- */
-- (BOOL)containsString:(NSString *)string
+  * Returns YES if the receiver contains string, otherwise, NO.
+  */
+- (BOOL) containsString: (NSString *)string
 {
-    return [self rangeOfString:string].location != NSNotFound;
+  return [self rangeOfString: string].location != NSNotFound;
 }
 
-- (void)enumerateSubstringsInRange:(NSRange)range
-                           options:(NSStringEnumerationOptions)opts
-                        usingBlock:(GSNSStringEnumerationBlock)block
+- (void) enumerateSubstringsInRange: (NSRange)range
+                            options: (NSStringEnumerationOptions)opts
+                         usingBlock: (GSNSStringEnumerationBlock)block
 {
-    // Get low byte.
-    uint8_t substringType = opts & 0xFF;
+  // Get low byte.
+  uint8_t substringType = opts & 0xFF;
 
-    BOOL isReverse = opts & NSStringEnumerationReverse;
-    BOOL substringNotRequired = opts & NSStringEnumerationSubstringNotRequired;
-    BOOL localized = opts & NSStringEnumerationLocalized;
+  BOOL isReverse = opts & NSStringEnumerationReverse;
+  BOOL substringNotRequired = opts & NSStringEnumerationSubstringNotRequired;
+  BOOL localized = opts & NSStringEnumerationLocalized;
 
-    NSUInteger currentLocation;
-    BOOL stop = NO;
+  NSUInteger currentLocation;
+  BOOL stop = NO;
 
-    if (isReverse) {
-        currentLocation = range.location + range.length;
-    } else {
-        currentLocation = range.location;
+  if (isReverse)
+    {
+      currentLocation = range.location + range.length;
+    }
+  else
+    {
+      currentLocation = range.location;
     }
 
-    if (substringType == NSStringEnumerationByLines || substringType == NSStringEnumerationByParagraphs) {
-        BOOL isLineSep = substringType == NSStringEnumerationByLines;
+  if (substringType == NSStringEnumerationByLines || substringType == NSStringEnumerationByParagraphs)
+    {
+      BOOL isLineSep = substringType == NSStringEnumerationByLines;
 
-        while (YES) {
-            /* Contains the index of the first character of the line
-             * containing the beginning of aRange.
-             */
-            NSUInteger start;
+      while (YES)
+        {
+          /* Contains the index of the first character of the line
+           * containing the beginning of aRange.
+           */
+          NSUInteger start;
 
-            /* Contains the index of the first character past the
-             * terminator of the line containing the end of aRange.
-             */
-            NSUInteger end;
+          /* Contains the index of the first character past the
+           * terminator of the line containing the end of aRange.
+           */
+          NSUInteger end;
 
-            /* Contains the index of the first character of the terminator
-             * of the line containing the end of aRange.
-             */
-            NSUInteger contentsEnd;
-            NSRange currentLocationRange = NSMakeRange(currentLocation, 0);
-            NSUInteger substringStart;
-            NSRange substringRange;
+          /* Contains the index of the first character of the terminator
+           * of the line containing the end of aRange.
+           */
+          NSUInteger contentsEnd;
+          NSRange currentLocationRange = NSMakeRange(currentLocation, 0);
+          NSUInteger substringStart;
+          NSRange substringRange;
 
-            [self _getStart:&start
-                        end:&end
-                contentsEnd:&contentsEnd
-                   forRange:currentLocationRange
-                    lineSep:isLineSep];
+          [self _getStart: &start
+                      end: &end
+              contentsEnd: &contentsEnd
+                forRange: currentLocationRange
+                  lineSep: isLineSep];
 
-            /* If the enumerated range starts after the line/paragraph,
-             * we start at the beginning of the enumerated range
-             */
-            substringStart = start > range.location ? start : range.location;
-            substringRange = NSMakeRange(substringStart, contentsEnd - substringStart);
-            CALL_BLOCK(block,
-                       substringNotRequired ? nil : [self substringWithRange:substringRange],
-                       substringRange,
-                       NSMakeRange(start, end - start),
-                       &stop);
-            if (stop)
-                break;
-            if (end == range.location + range.length)
-                break;
-            currentLocation = end;
+          /* If the enumerated range starts after the line/paragraph,
+           * we start at the beginning of the enumerated range
+           */
+          substringStart = start > range.location ? start : range.location;
+          substringRange = NSMakeRange(substringStart, contentsEnd - substringStart);
+
+          CALL_BLOCK(block,
+            substringNotRequired
+            ? nil
+            : [self substringWithRange: substringRange],
+            substringRange,
+            NSMakeRange(start, end - start),
+            &stop);
+
+          if (stop)
+            {
+              break;
+            }
+
+          if (end == range.location + range.length)
+            {
+              break;
+            }
+
+          currentLocation = end;
         }
-    } else if (substringType == NSStringEnumerationByComposedCharacterSequences) {
-        /* We could also use rangeOfComposedCharacterSequenceAtIndex:,
-         * but then we would need different logic.
-         */
-        while (YES) {
-            NSRange enclosingRange;
+    }
+  else if (substringType == NSStringEnumerationByComposedCharacterSequences)
+    {
+      /* We could also use rangeOfComposedCharacterSequenceAtIndex:,
+       * but then we would need different logic.
+       */
+      while (YES)
+        {
+          NSRange enclosingRange;
 
-            /* Since all characters are in a composed character sequence,
-             * enclosingRange == substringRange
-             */
-            enclosingRange = [self rangeOfComposedCharacterSequenceAtIndex:currentLocation];
-            CALL_BLOCK(block,
-                       substringNotRequired ? nil : [self substringWithRange:enclosingRange],
-                       enclosingRange,
-                       enclosingRange,
-                       &stop);
-            if (stop)
-                break;
-            currentLocation = enclosingRange.location + enclosingRange.length;
+          /* Since all characters are in a composed character sequence,
+       * enclosingRange == substringRange
+       */
+          enclosingRange = [self rangeOfComposedCharacterSequenceAtIndex: currentLocation];
+          CALL_BLOCK(block,
+            substringNotRequired
+          ? nil
+          : [self substringWithRange: enclosingRange],
+            enclosingRange,
+            enclosingRange,
+            &stop);
+
+          if (stop)
+            {
+              break;
+            }
+
+          currentLocation = enclosingRange.location + enclosingRange.length;
         }
-    } else if (substringType == NSStringEnumerationByWords || substringType == NSStringEnumerationBySentences) {
+    }
+  else if (substringType == NSStringEnumerationByWords || substringType == NSStringEnumerationBySentences)
+    {
 #if GS_USE_ICU
-// These macros may be useful elsewhere.
-#define GS_U_HANDLE_ERROR(errorCode, description)                               \
-    do {                                                                        \
-        if (U_FAILURE(errorCode)) {                                             \
-            NSWarnMLog(@"Error " description ": %s", u_errorName(errorCode));   \
-            return;                                                             \
-        } else if (errorCode < U_ZERO_ERROR) {                                  \
-            NSWarnMLog(@"Warning " description ": %s", u_errorName(errorCode)); \
-        }                                                                       \
-        errorCode = U_ZERO_ERROR;                                               \
-    } while (NO)
+      // These macros may be useful elsewhere.
+      #define GS_U_HANDLE_ERROR(errorCode, description) do { \
+        if (U_FAILURE(errorCode)) { \
+          NSWarnMLog(@"Error " description ": %s", u_errorName(errorCode)); \
+          return; \
+        } else if (errorCode < U_ZERO_ERROR) { \
+          NSWarnMLog(@"Warning " description ": %s", u_errorName(errorCode)); \
+        } \
+        errorCode = U_ZERO_ERROR; \
+      } while (NO)
 
-        BOOL byWords = substringType == NSStringEnumerationByWords;
-        NSUInteger length = range.length;
-        UChar characters[length];
-        UErrorCode errorCode = U_ZERO_ERROR;
-        const char *locale;
-        UBreakIterator *breakIterator;
+      BOOL		byWords = substringType == NSStringEnumerationByWords;
+      NSUInteger	length = range.length;
+      UChar 		characters[length];
+      UErrorCode 	errorCode = U_ZERO_ERROR;
+      const char	*locale;
+      UBreakIterator	*breakIterator;
 
-        [self getCharacters:characters range:range];
-        /* @ss=standard will use lists of common abbreviations,
-         * such as Mr., Mrs., etc.
-         */
-        locale = localized ? [[[[NSLocale currentLocale] localeIdentifier]
-                                 stringByAppendingString:@"@ss=standard"] UTF8String] :
-                             "en_US_POSIX";
-        breakIterator = ubrk_open(
-            byWords ? UBRK_WORD : UBRK_SENTENCE, // type
-            locale, // locale
-            characters, // text
-            length, // textLength
-            &errorCode);
-        GS_U_HANDLE_ERROR(errorCode, @"opening ICU break iterator");
-        ubrk_first(breakIterator);
-        while (YES) {
-            // Make sure it's a valid substring.
-            BOOL isValidSubstring = YES;
-            int32_t nextPosition;
-            NSUInteger nextLocation;
-            NSRange enclosingRange;
+      [self getCharacters: characters range: range];
+      /* @ss=standard will use lists of common abbreviations,
+       * such as Mr., Mrs., etc.
+       */
+      locale = localized
+        ? [[[[NSLocale currentLocale] localeIdentifier]
+          stringByAppendingString: @"@ss=standard"] UTF8String]
+        : "en_US_POSIX";
+      breakIterator = ubrk_open(
+        byWords ? UBRK_WORD : UBRK_SENTENCE, // type
+        locale, // locale
+        characters, // text
+        length, // textLength
+        &errorCode);
+      GS_U_HANDLE_ERROR(errorCode, @"opening ICU break iterator");
+      ubrk_first(breakIterator);
 
-            if (byWords) {
-                int32_t ruleStatus = ubrk_getRuleStatus(breakIterator);
-                /* From ICU User Guide:
-                 *   A status value UBRK_WORD_NONE indicates that the boundary
-                 *   does not start a word or number.
-                 * However, valid words seem to be UBRK_WORD_NONE, and invalid
-                 * words seem to be UBRK_WORD_NONE_LIMIT.
-                 */
-                isValidSubstring = ruleStatus != UBRK_WORD_NONE_LIMIT;
-                // NSLog(@"Status for position %d (%d): %d", (int)currentLocation, (int)ubrk_current(breakIterator), (int) ruleStatus);
+      while (YES)
+        {
+          // Make sure it's a valid substring.
+          BOOL isValidSubstring = YES;
+          int32_t nextPosition;
+          NSUInteger nextLocation;
+          NSRange enclosingRange;
+
+          if (byWords)
+            {
+              int32_t ruleStatus = ubrk_getRuleStatus(breakIterator);
+              /* From ICU User Guide:
+               *   A status value UBRK_WORD_NONE indicates that the boundary
+               *   does not start a word or number.
+               * However, valid words seem to be UBRK_WORD_NONE, and invalid
+               * words seem to be UBRK_WORD_NONE_LIMIT.
+               */
+              isValidSubstring = ruleStatus != UBRK_WORD_NONE_LIMIT;
+              // NSLog(@"Status for position %d (%d): %d", (int)currentLocation, (int)ubrk_current(breakIterator), (int) ruleStatus);
             }
 
-            nextPosition = ubrk_next(breakIterator);
-            if (nextPosition == UBRK_DONE)
-                break;
+          nextPosition = ubrk_next(breakIterator);
+          if (nextPosition == UBRK_DONE) break;
 
-            nextLocation = range.location + nextPosition;
-            // Same as substringRange
-            enclosingRange = NSMakeRange(currentLocation, nextLocation - currentLocation);
+          nextLocation = range.location + nextPosition;
+          // Same as substringRange
+          enclosingRange = NSMakeRange(currentLocation, nextLocation - currentLocation);
 
-            if (isValidSubstring) {
-                CALL_BLOCK(block,
-                           substringNotRequired ? nil : [self substringWithRange:enclosingRange],
-                           enclosingRange,
-                           enclosingRange,
-                           &stop);
-                if (stop)
-                    break;
+          if (isValidSubstring)
+            {
+              CALL_BLOCK(block,
+                substringNotRequired
+                ? nil
+                : [self substringWithRange: enclosingRange],
+                enclosingRange,
+                enclosingRange,
+                &stop);
+
+              if (stop)
+                {
+                  break;
+                }
             }
 
-            currentLocation = nextLocation;
+          currentLocation = nextLocation;
         }
 #else
-        NSWarnLog(@"NSStringEnumerationByWords and NSStringEnumerationBySentences"
-                  @" are not supported when GNUstep-base is compiled without ICU.");
-        return;
-#endif
-    } else if (substringType == NSStringEnumerationByCaretPositions) {
-        // FIXME - Not documented by Apple.
-        NSWarnLog(@"NSStringEnumerationByCaretPositions is not supported");
-        return;
-    } else if (substringType == NSStringEnumerationByDeletionClusters) {
-        // FIXME - Not documented by Apple.
-        NSWarnLog(@"NSStringEnumerationByDeletionClusters is not supported");
-        return;
+      NSWarnLog(@"NSStringEnumerationByWords and NSStringEnumerationBySentences"
+    @" are not supported when GNUstep-base is compiled without ICU.");
+      return;
+#endif // GS_USE_ICU
+    }
+  else if (substringType == NSStringEnumerationByCaretPositions)
+    {
+      // FIXME - Not documented by Apple.
+      NSWarnLog(@"NSStringEnumerationByCaretPositions is not supported");
+      return;
+    }
+  else if (substringType == NSStringEnumerationByDeletionClusters)
+    {
+      // FIXME - Not documented by Apple.
+      NSWarnLog(@"NSStringEnumerationByDeletionClusters is not supported");
+      return;
     }
 }
 
@@ -5817,12 +6866,15 @@ static NSFileManager *fm = nil;
  */
 @implementation NSMutableString
 
-+ (id)allocWithZone:(NSZone *)z
++ (id) allocWithZone: (NSZone*)z
 {
-    if (self == NSMutableStringClass) {
-        return NSAllocateObject(GSMutableStringClass, 0, z);
-    } else {
-        return NSAllocateObject(self, 0, z);
+  if (self == NSMutableStringClass)
+    {
+      return NSAllocateObject(GSMutableStringClass, 0, z);
+    }
+  else
+    {
+      return NSAllocateObject(self, 0, z);
     }
 }
 
@@ -5831,31 +6883,27 @@ static NSFileManager *fm = nil;
 /**
  * Constructs an empty string.
  */
-+ (id)string
++ (id) string
 {
-    return AUTORELEASE([[GSMutableStringClass allocWithZone:
-                                                  NSDefaultMallocZone()] initWithCapacity:0]);
+  return AUTORELEASE([[GSMutableStringClass allocWithZone: NSDefaultMallocZone()] initWithCapacity: 0]);
 }
 
 /**
  * Constructs an empty string with initial buffer size of capacity.
  */
-+ (NSMutableString *)stringWithCapacity:(NSUInteger)capacity
++ (NSMutableString*) stringWithCapacity: (NSUInteger)capacity
 {
-    return AUTORELEASE([[GSMutableStringClass allocWithZone:
-                                                  NSDefaultMallocZone()] initWithCapacity:capacity]);
+  return AUTORELEASE([[GSMutableStringClass allocWithZone: NSDefaultMallocZone()] initWithCapacity: capacity]);
 }
 
 /**
  * Create a string of unicode characters.
  */
 // Inefficient implementation.
-+ (id)stringWithCharacters:(const unichar *)characters
-                    length:(NSUInteger)length
++ (id) stringWithCharacters: (const unichar*)characters
+             length: (NSUInteger)length
 {
-    return AUTORELEASE([[GSMutableStringClass allocWithZone:
-                                                  NSDefaultMallocZone()] initWithCharacters:characters
-                                                                                     length:length]);
+  return AUTORELEASE([[GSMutableStringClass allocWithZone: NSDefaultMallocZone()] initWithCharacters: characters length: length]);
 }
 
 /**
@@ -5863,10 +6911,9 @@ static NSFileManager *fm = nil;
  * containing direct unicode if it begins with the unicode byte order mark,
  * else converts to unicode using default C string encoding.
  */
-+ (id)stringWithContentsOfFile:(NSString *)path
++ (id) stringWithContentsOfFile: (NSString *)path
 {
-    return AUTORELEASE([[GSMutableStringClass allocWithZone:
-                                                  NSDefaultMallocZone()] initWithContentsOfFile:path]);
+  return AUTORELEASE([[GSMutableStringClass allocWithZone: NSDefaultMallocZone()] initWithContentsOfFile: path]);
 }
 
 /**
@@ -5874,10 +6921,9 @@ static NSFileManager *fm = nil;
  * null-terminated and encoded in the default C string encoding.  (Characters
  * will be converted to unicode representation internally.)
  */
-+ (id)stringWithCString:(const char *)byteString
++ (id) stringWithCString: (const char*)byteString
 {
-    return AUTORELEASE([[GSMutableStringClass allocWithZone:
-                                                  NSDefaultMallocZone()] initWithCString:byteString]);
+  return AUTORELEASE([[GSMutableStringClass allocWithZone: NSDefaultMallocZone()] initWithCString: byteString]);
 }
 
 /**
@@ -5885,12 +6931,10 @@ static NSFileManager *fm = nil;
  * null bytes and should be encoded in the default C string encoding.
  * (Characters will be converted to unicode representation internally.)
  */
-+ (id)stringWithCString:(const char *)byteString
-                 length:(NSUInteger)length
++ (id) stringWithCString: (const char*)byteString
+          length: (NSUInteger)length
 {
-    return AUTORELEASE([[GSMutableStringClass allocWithZone:
-                                                  NSDefaultMallocZone()] initWithCString:byteString
-                                                                                  length:length]);
+  return AUTORELEASE([[GSMutableStringClass allocWithZone: NSDefaultMallocZone()] initWithCString: byteString length: length]);
 }
 
 /**
@@ -5898,15 +6942,15 @@ static NSFileManager *fm = nil;
  * be a constant format string, like '<code>@"float val = %f"</code>', remaining
  * arguments should be the variables to print the values of, comma-separated.
  */
-+ (id)stringWithFormat:(NSString *)format, ...
++ (id) stringWithFormat: (NSString*)format, ...
 {
-    id s;
+  id    s;
 
-    va_list ap;
-    va_start(ap, format);
-    s = [super stringWithFormat:format arguments:ap];
-    va_end(ap);
-    return s;
+  va_list ap;
+  va_start(ap, format);
+  s = [super stringWithFormat: format arguments: ap];
+  va_end(ap);
+  return s;
 }
 
 /** <init/> <override-subclass />
@@ -5915,44 +6959,46 @@ static NSFileManager *fm = nil;
  * and needs to be re-implemented in subclasses in order to have all
  * other initialisers work.
  */
-- (id)initWithCapacity:(NSUInteger)capacity
+- (id) initWithCapacity: (NSUInteger)capacity
 {
-    self = [self init];
-    return self;
+  self = [self init];
+  return self;
 }
 
-- (id)initWithCharactersNoCopy:(unichar *)chars
-                        length:(NSUInteger)length
-                  freeWhenDone:(BOOL)flag
+- (id) initWithCharactersNoCopy: (unichar*)chars
+                         length: (NSUInteger)length
+                   freeWhenDone: (BOOL)flag
 {
-    if ((self = [self initWithCapacity:length]) != nil && length > 0) {
-        NSString *tmp;
+  if ((self = [self initWithCapacity: length]) != nil && length > 0)
+    {
+      NSString *tmp;
 
-        tmp = [NSString allocWithZone:NSDefaultMallocZone()];
-        tmp = [tmp initWithCharactersNoCopy:chars
-                                     length:length
-                               freeWhenDone:flag];
-        [self replaceCharactersInRange:NSMakeRange(0, 0) withString:tmp];
-        RELEASE(tmp);
+      tmp = [NSString allocWithZone: NSDefaultMallocZone()];
+      tmp = [tmp initWithCharactersNoCopy: chars
+                                   length: length
+                             freeWhenDone: flag];
+      [self replaceCharactersInRange: NSMakeRange(0,0) withString: tmp];
+      RELEASE(tmp);
     }
-    return self;
+  return self;
 }
 
-- (id)initWithCStringNoCopy:(char *)chars
-                     length:(NSUInteger)length
-               freeWhenDone:(BOOL)flag
+- (id) initWithCStringNoCopy: (char*)chars
+              length: (NSUInteger)length
+        freeWhenDone: (BOOL)flag
 {
-    if ((self = [self initWithCapacity:length]) != nil && length > 0) {
-        NSString *tmp;
+  if ((self = [self initWithCapacity: length]) != nil && length > 0)
+    {
+      NSString *tmp;
 
-        tmp = [NSString allocWithZone:NSDefaultMallocZone()];
-        tmp = [tmp initWithCStringNoCopy:chars
-                                  length:length
-                            freeWhenDone:flag];
-        [self replaceCharactersInRange:NSMakeRange(0, 0) withString:tmp];
-        RELEASE(tmp);
+      tmp = [NSString allocWithZone: NSDefaultMallocZone()];
+      tmp = [tmp initWithCStringNoCopy: chars
+                                length: length
+                          freeWhenDone: flag];
+      [self replaceCharactersInRange: NSMakeRange(0,0) withString: tmp];
+      RELEASE(tmp);
     }
-    return self;
+  return self;
 }
 
 // Modify A String
@@ -5960,63 +7006,62 @@ static NSFileManager *fm = nil;
 /**
  *  Modifies this string by appending aString.
  */
-- (void)appendString:(NSString *)aString
+- (void) appendString: (NSString*)aString
 {
-    NSRange aRange;
+  NSRange aRange;
 
-    aRange.location = [self length];
-    aRange.length = 0;
-    [self replaceCharactersInRange:aRange withString:aString];
+  aRange.location = [self length];
+  aRange.length = 0;
+  [self replaceCharactersInRange: aRange withString: aString];
 }
 
 /**
  *  Modifies this string by appending string described by given format.
  */
 // Inefficient implementation.
-- (void)appendFormat:(NSString *)format, ...
+- (void) appendFormat: (NSString*)format, ...
 {
-    va_list ap;
-    id tmp;
+  va_list ap;
+  id tmp;
 
-    va_start(ap, format);
-    tmp = [[NSStringClass allocWithZone:NSDefaultMallocZone()]
-        initWithFormat:format
-             arguments:ap];
-    va_end(ap);
-    [self appendString:tmp];
-    RELEASE(tmp);
+  va_start(ap, format);
+  tmp = [[NSStringClass allocWithZone: NSDefaultMallocZone()]
+                       initWithFormat: format arguments: ap];
+  va_end(ap);
+  [self appendString: tmp];
+  RELEASE(tmp);
 }
 
-- (Class)classForCoder
+- (Class) classForCoder
 {
-    return NSMutableStringClass;
+  return NSMutableStringClass;
 }
 
 /**
  * Modifies this instance by deleting specified range of characters.
  */
-- (void)deleteCharactersInRange:(NSRange)range
+- (void) deleteCharactersInRange: (NSRange)range
 {
-    [self replaceCharactersInRange:range withString:nil];
+  [self replaceCharactersInRange: range withString: nil];
 }
 
 /**
  * Modifies this instance by inserting aString at loc.
  */
-- (void)insertString:(NSString *)aString atIndex:(NSUInteger)loc
+- (void) insertString: (NSString*)aString atIndex: (NSUInteger)loc
 {
-    NSRange range = {loc, 0};
-    [self replaceCharactersInRange:range withString:aString];
+  NSRange range = {loc, 0};
+  [self replaceCharactersInRange: range withString: aString];
 }
 
 /**
  * Modifies this instance by deleting characters in range and then inserting
  * aString at its beginning.
  */
-- (void)replaceCharactersInRange:(NSRange)range
-                      withString:(NSString *)aString
+- (void) replaceCharactersInRange: (NSRange)range
+               withString: (NSString*)aString
 {
-    [self subclassResponsibility:_cmd];
+  [self subclassResponsibility: _cmd];
 }
 
 /**
@@ -6030,67 +7075,83 @@ static NSFileManager *fm = nil;
  * Raises NSRangeException if part of searchRange is beyond the end
  * of the receiver.
  */
-- (NSUInteger)replaceOccurrencesOfString:(NSString *)replace
-                              withString:(NSString *)by
-                                 options:(NSUInteger)opts
-                                   range:(NSRange)searchRange
+- (NSUInteger) replaceOccurrencesOfString: (NSString*)replace
+                               withString: (NSString*)by
+                                  options: (NSUInteger)opts
+                                    range: (NSRange)searchRange
 {
-    NSRange range;
-    unsigned int count = 0;
-    GSRSFunc func;
+  NSRange	range;
+  unsigned int	count = 0;
+  GSRSFunc	func;
 
-    if ([replace isKindOfClass:NSStringClass] == NO) {
-        [NSException raise:NSInvalidArgumentException
-                    format:@"%@ bad search string", NSStringFromSelector(_cmd)];
+  if ([replace isKindOfClass: NSStringClass] == NO)
+    {
+      [NSException raise: NSInvalidArgumentException
+          format: @"%@ bad search string", NSStringFromSelector(_cmd)];
     }
-    if ([by isKindOfClass:NSStringClass] == NO) {
-        [NSException raise:NSInvalidArgumentException
-                    format:@"%@ bad replace string", NSStringFromSelector(_cmd)];
+
+  if ([by isKindOfClass: NSStringClass] == NO)
+    {
+      [NSException raise: NSInvalidArgumentException
+          format: @"%@ bad replace string", NSStringFromSelector(_cmd)];
     }
-    if (NSMaxRange(searchRange) > [self length]) {
-        [NSException raise:NSInvalidArgumentException
-                    format:@"%@ bad search range", NSStringFromSelector(_cmd)];
+
+  if (NSMaxRange(searchRange) > [self length])
+    {
+      [NSException raise: NSInvalidArgumentException
+          format: @"%@ bad search range", NSStringFromSelector(_cmd)];
     }
-    func = GSPrivateRangeOfString(self, replace);
-    range = (*func)(self, replace, opts, searchRange);
 
-    if (range.length > 0) {
-        unsigned byLen = [by length];
-        SEL sel;
-        void (*imp)(id, SEL, NSRange, NSString *);
+  func = GSPrivateRangeOfString(self, replace);
+  range = (*func)(self, replace, opts, searchRange);
 
-        sel = @selector(replaceCharactersInRange:withString:);
-        imp = (void (*)(id, SEL, NSRange, NSString *))[self methodForSelector:sel];
-        do {
-            count++;
-            (*imp)(self, sel, range, by);
-            if ((opts & NSBackwardsSearch) == NSBackwardsSearch) {
-                searchRange.length = range.location - searchRange.location;
-            } else {
-                unsigned int newEnd;
+  if (range.length > 0)
+    {
+      unsigned byLen = [by length];
+      SEL sel;
+      void (*imp)(id, SEL, NSRange, NSString*);
 
-                newEnd = NSMaxRange(searchRange) + byLen - range.length;
-                searchRange.location = range.location + byLen;
-                searchRange.length = newEnd - searchRange.location;
+      sel = @selector(replaceCharactersInRange:withString:);
+      imp = (void(*)(id, SEL, NSRange, NSString*))[self methodForSelector: sel];
+
+      do
+        {
+          count++;
+          (*imp)(self, sel, range, by);
+
+          if ((opts & NSBackwardsSearch) == NSBackwardsSearch)
+            {
+              searchRange.length = range.location - searchRange.location;
             }
-            /* We replaced something and now need to scan again.
-             * As we modified the receiver, we must refresh the
-             * method implementation for searching.
-             */
-            func = GSPrivateRangeOfString(self, replace);
-            range = (*func)(self, replace, opts, searchRange);
-        } while (range.length > 0);
+          else
+            {
+              unsigned int	newEnd;
+
+              newEnd = NSMaxRange(searchRange) + byLen - range.length;
+              searchRange.location = range.location + byLen;
+              searchRange.length = newEnd - searchRange.location;
+            }
+
+          /* We replaced something and now need to scan again.
+           * As we modified the receiver, we must refresh the
+           * method implementation for searching.
+           */
+          func = GSPrivateRangeOfString(self, replace);
+          range = (*func)(self, replace, opts, searchRange);
+        }
+      while (range.length > 0);
     }
-    return count;
+
+  return count;
 }
 
 /**
  * Modifies this instance by replacing contents with those of aString.
  */
-- (void)setString:(NSString *)aString
+- (void) setString: (NSString*)aString
 {
-    NSRange range = {0, [self length]};
-    [self replaceCharactersInRange:range withString:aString];
+  NSRange range = {0, [self length]};
+  [self replaceCharactersInRange: range withString: aString];
 }
 
 @end
@@ -6103,284 +7164,299 @@ static NSFileManager *fm = nil;
 
 - (id)initWithDictionary:(NSDictionary *)dict defaultValue:(NSString *)value
 {
-    _dict = dict;
-    return [self initWithString:value];
+  _dict = dict;
+  return [self initWithString:value];
 }
 
 /* Returns a format that's appropriate for the pluralization of the arguments in
  * the current language */
 - (NSString *)getPluralizedFormat:(va_list)argList
 {
-    /* Sample dictionary:
-        NSStringLocalizedFormatKey=%#@x_hours@, %#@x_minutes@
-        x_hours=NSDictionary {
-          NSStringFormatSpecTypeKey=NSStringPluralRuleType
-          NSStringFormatValueTypeKey=ld
-          zero=0 hours
-          one=1 hour
-          other=%1$ld hours
-        }
-        x_minutes=NSDictionary {
-          NSStringFormatSpecTypeKey=NSStringPluralRuleType
-          NSStringFormatValueTypeKey=ld
-          zero=0 minutes
-          one=1 minute
-          other=%2$ld minutes
-        }
-     */
+  /* Sample dictionary:
+      NSStringLocalizedFormatKey=%#@x_hours@, %#@x_minutes@
+      x_hours=NSDictionary {
+        NSStringFormatSpecTypeKey=NSStringPluralRuleType
+        NSStringFormatValueTypeKey=ld
+        zero=0 hours
+        one=1 hour
+        other=%1$ld hours
+      }
+      x_minutes=NSDictionary {
+        NSStringFormatSpecTypeKey=NSStringPluralRuleType
+        NSStringFormatValueTypeKey=ld
+        zero=0 minutes
+        one=1 minute
+        other=%2$ld minutes
+      }
+   */
 
-    NSString *formatKey = _dict[@"NSStringLocalizedFormatKey"];
-    if (!formatKey) {
-        return self;
+  NSString *formatKey = _dict[@"NSStringLocalizedFormatKey"];
+
+  if (!formatKey)
+    {
+      return self;
     }
 
-    NSRegularExpression *regex = nil;
+  NSRegularExpression *regex = [NSRegularExpression regularExpressionWithPattern: @"%#@([^@]+)@"
+                                                                         options: NSRegularExpressionCaseInsensitive
+                                                                           error: nil];
 
-    regex = [NSRegularExpression
-        regularExpressionWithPattern:@"%#@([^@]+)@"
-                             options:NSRegularExpressionCaseInsensitive
-                               error:nil];
+  NSArray<NSTextCheckingResult *> *matches = [regex matchesInString: formatKey
+                                                            options: 0
+                                                              range: NSMakeRange(0, [formatKey length])];
 
-    NSArray<NSTextCheckingResult *> *matches =
-        [regex matchesInString:formatKey
-                       options:0
-                         range:NSMakeRange(0, [formatKey length])];
+  va_list args;
+  va_copy(args, argList);
 
-    va_list args;
-    va_copy(args, argList);
+  NSMutableString *newFormat = [formatKey mutableCopy];
+  NSInteger offset = 0;
 
-    NSMutableString *newFormat = [formatKey mutableCopy];
-    NSInteger offset = 0;
+  for (NSTextCheckingResult *match in matches)
+    {
+      NSString *varKey = [formatKey substringWithRange:[match rangeAtIndex:1]];
+      NSDictionary<NSString *, NSString *> *varDict = _dict[varKey];
 
-    for (NSTextCheckingResult *match in matches) {
-        NSString *varKey = [formatKey substringWithRange:[match rangeAtIndex:1]];
+      // Get the numeric value of the variable (luckily, only "%ld", "%lu", and
+      // "%1g" is used).
+      unsigned long number = 0;
+      NSString	   *type = varDict[@"NSStringFormatValueTypeKey"];
 
-        NSDictionary<NSString *, NSString *> *varDict = _dict[varKey];
-
-        // Get the numeric value of the variable (luckily, only "%ld", "%lu", and
-        // "%1g" is used).
-        unsigned long number = 0;
-        NSString *type = varDict[@"NSStringFormatValueTypeKey"];
-
-        if ([type isEqualToString:@"ld"]) {
-            number = va_arg(args, long);
-        } else if ([type isEqualToString:@"lu"]) {
-            number = va_arg(args, unsigned long);
-        } else if ([type isEqualToString:@"d"]) {
-            number = va_arg(args, int);
-        } else if ([type isEqualToString:@"u"]) {
-            number = va_arg(args, unsigned int);
-        } else if ([type isEqualToString:@"1g"]) {
-            double d = va_arg(args, double);
-            // Casting to an int would mean 0.3 is "zero" and 1.2 would be "one", so
-            // check against just 0 or 1 and let any other value be "other".
-            number = d == 0 ? 0 : (d == 1 || d == -1) ? 1 :
-                                                        10;
-        } else {
-            number = va_arg(args, int);
+      if ([type isEqualToString:@"ld"])
+        {
+          number = va_arg(args, long);
+        }
+      else if ([type isEqualToString:@"lu"])
+        {
+          number = va_arg(args, unsigned long);
+        }
+      else if ([type isEqualToString:@"d"])
+        {
+          number = va_arg(args, int);
+        }
+      else if ([type isEqualToString:@"u"])
+        {
+          number = va_arg(args, unsigned int);
+        }
+      else if ([type isEqualToString:@"1g"])
+        {
+          double d = va_arg(args, double);
+          // Casting to an int would mean 0.3 is "zero" and 1.2 would be "one", so
+          // check against just 0 or 1 and let any other value be "other".
+          number = d == 0 ? 0 : (d == 1 || d == -1) ? 1 : 10;
+        }
+      else
+        {
+          number = va_arg(args, int);
         }
 
-        // Only supports languages which have similar rules to english (zero,
-        // none, or other), as well as japanese (zero or other).
-        NSString *variantKey;
-        if (number == 0) {
-            variantKey = @"zero";
-        } else if (number == 1) {
-            variantKey = @"one";
-        } else {
-            variantKey = @"other";
+      // Only supports languages which have similar rules to english (zero,
+      // none, or other), as well as japanese (zero or other).
+      NSString *variantKey;
+
+      if (number == 0)
+        {
+          variantKey = @"zero";
+        }
+      else if (number == 1)
+        {
+          variantKey = @"one";
+        }
+      else
+        {
+          variantKey = @"other";
         }
 
-        NSString *replacement = varDict[variantKey];
-        if (!replacement) {
-            // Fallback to the "other" variant.
-            replacement = varDict[@"other"];
+      NSString *replacement = varDict[variantKey];
+
+      if (!replacement)
+        {
+          // Fallback to the "other" variant.
+          replacement = varDict[@"other"];
         }
 
-        if (replacement) {
-            [newFormat
-                replaceCharactersInRange:NSMakeRange(match.range.location + offset,
-                                                     match.range.length)
-                              withString:replacement];
-            offset += (NSInteger)([replacement length] - match.range.length);
+      if (replacement)
+        {
+          [newFormat replaceCharactersInRange: NSMakeRange(match.range.location + offset, match.range.length)
+                                   withString: replacement];
+          offset += (NSInteger) ([replacement length] - match.range.length);
         }
     }
 
-    va_end(args);
+  va_end(args);
 
-    return newFormat;
+  return newFormat;
 }
 
 - (BOOL)canBeConvertedToEncoding:(NSStringEncoding)enc
 {
-    return [_parent canBeConvertedToEncoding:enc];
+  return [_parent canBeConvertedToEncoding:enc];
 }
 
 - (unichar)characterAtIndex:(NSUInteger)index
 {
-    return [_parent characterAtIndex:index];
+  return [_parent characterAtIndex:index];
 }
 
 - (NSComparisonResult)compare:(NSString *)aString
-                      options:(NSUInteger)mask
-                        range:(NSRange)aRange
+              options:(NSUInteger)mask
+            range:(NSRange)aRange
 {
-    return [_parent compare:aString options:mask range:aRange];
+  return [_parent compare:aString options:mask range:aRange];
 }
 
 - (const char *)cString
 {
-    return [_parent cString];
+  return [_parent cString];
 }
 
 - (const char *)cStringUsingEncoding:(NSStringEncoding)encoding
 {
-    return [_parent cStringUsingEncoding:encoding];
+  return [_parent cStringUsingEncoding:encoding];
 }
 
 - (NSUInteger)cStringLength
 {
-    return [_parent cStringLength];
+  return [_parent cStringLength];
 }
 
 - (NSData *)dataUsingEncoding:(NSStringEncoding)encoding
-         allowLossyConversion:(BOOL)flag
+     allowLossyConversion:(BOOL)flag
 {
-    return [_parent dataUsingEncoding:encoding allowLossyConversion:flag];
+  return [_parent dataUsingEncoding:encoding allowLossyConversion:flag];
 }
 
 - (void)dealloc
 {
-    RELEASE(_parent);
-    [super dealloc];
+  RELEASE(_parent);
+  [super dealloc];
 }
 
 - (id)copyWithZone:(NSZone *)z
 {
-    return [_parent copyWithZone:z];
+  return [_parent copyWithZone:z];
 }
 
 - (id)mutableCopyWithZone:(NSZone *)z
 {
-    return [_parent mutableCopyWithZone:z];
+  return [_parent mutableCopyWithZone:z];
 }
 
 - (void)encodeWithCoder:(NSCoder *)aCoder
 {
-    [_parent encodeWithCoder:aCoder];
+  [_parent encodeWithCoder:aCoder];
 }
 
 - (NSStringEncoding)fastestEncoding
 {
-    return [_parent fastestEncoding];
+  return [_parent fastestEncoding];
 }
 
 - (void)getCharacters:(unichar *)buffer
 {
-    [_parent getCharacters:buffer];
+  [_parent getCharacters:buffer];
 }
 
 - (void)getCharacters:(unichar *)buffer range:(NSRange)aRange
 {
-    [_parent getCharacters:buffer range:aRange];
+  [_parent getCharacters:buffer range:aRange];
 }
 
 - (void)getCString:(char *)buffer
 {
-    [_parent getCString:buffer];
+  [_parent getCString:buffer];
 }
 
 - (void)getCString:(char *)buffer maxLength:(NSUInteger)maxLength
 {
-    [_parent getCString:buffer maxLength:maxLength];
+  [_parent getCString:buffer maxLength:maxLength];
 }
 
 - (BOOL)getCString:(char *)buffer
-         maxLength:(NSUInteger)maxLength
-          encoding:(NSStringEncoding)encoding
+     maxLength:(NSUInteger)maxLength
+      encoding:(NSStringEncoding)encoding
 {
-    return [_parent getCString:buffer maxLength:maxLength encoding:encoding];
+  return [_parent getCString:buffer maxLength:maxLength encoding:encoding];
 }
 
 - (void)getCString:(char *)buffer
-         maxLength:(NSUInteger)maxLength
-             range:(NSRange)aRange
+     maxLength:(NSUInteger)maxLength
+         range:(NSRange)aRange
     remainingRange:(NSRange *)leftoverRange
 {
-    [_parent getCString:buffer
-              maxLength:maxLength
-                  range:aRange
-         remainingRange:leftoverRange];
+  [_parent getCString:buffer
+        maxLength:maxLength
+        range:aRange
+       remainingRange:leftoverRange];
 }
 
 - (NSUInteger)hash
 {
-    return [_parent hash];
+  return [_parent hash];
 }
 
 - (id)initWithString:(NSString *)parent
 {
-    _parent = RETAIN(parent);
-    return self;
+  _parent = RETAIN(parent);
+  return self;
 }
 
 - (BOOL)isEqual:(id)anObject
 {
-    return [_parent isEqual:anObject];
+  return [_parent isEqual:anObject];
 }
 
 - (BOOL)isEqualToString:(NSString *)anObject
 {
-    return [_parent isEqualToString:anObject];
+  return [_parent isEqualToString:anObject];
 }
 
 - (BOOL)isProxy
 {
-    return YES;
+  return YES;
 }
 
 - (NSUInteger)length
 {
-    return [_parent length];
+  return [_parent length];
 }
 
 - (NSUInteger)lengthOfBytesUsingEncoding:(NSStringEncoding)encoding
 {
-    return [_parent lengthOfBytesUsingEncoding:encoding];
+  return [_parent lengthOfBytesUsingEncoding:encoding];
 }
 
 - (const char *)lossyCString
 {
-    return [_parent lossyCString];
+  return [_parent lossyCString];
 }
 
 - (NSUInteger)maximumLengthOfBytesUsingEncoding:(NSStringEncoding)encoding
 {
-    return [_parent maximumLengthOfBytesUsingEncoding:encoding];
+  return [_parent maximumLengthOfBytesUsingEncoding:encoding];
 }
 
 - (NSRange)rangeOfComposedCharacterSequenceAtIndex:(NSUInteger)anIndex
 {
-    return [_parent rangeOfComposedCharacterSequenceAtIndex:anIndex];
+  return [_parent rangeOfComposedCharacterSequenceAtIndex:anIndex];
 }
 
 - (NSRange)rangeOfCharacterFromSet:(NSCharacterSet *)aSet
-                           options:(NSUInteger)mask
-                             range:(NSRange)aRange
+               options:(NSUInteger)mask
+                 range:(NSRange)aRange
 {
-    return [_parent rangeOfCharacterFromSet:aSet options:mask range:aRange];
+  return [_parent rangeOfCharacterFromSet:aSet options:mask range:aRange];
 }
 
 - (NSRange)rangeOfString:(NSString *)aString
-                 options:(NSUInteger)mask
-                   range:(NSRange)aRange
+         options:(NSUInteger)mask
+           range:(NSRange)aRange
 {
-    return [_parent rangeOfString:aString options:mask range:aRange];
+  return [_parent rangeOfString:aString options:mask range:aRange];
 }
 
 - (NSStringEncoding)smallestEncoding
 {
-    return [_parent smallestEncoding];
+  return [_parent smallestEncoding];
 }
 
 @end
