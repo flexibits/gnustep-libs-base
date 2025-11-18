@@ -31,7 +31,6 @@
 
 #include <Foundation/NSObject.h>
 #include <Foundation/NSGeometry.h>
-#import <Foundation/NSLock.h>
 
 @class NSDate;
 @class NSCalendar;
@@ -249,7 +248,6 @@ GS_EXPORT_CLASS
 {
 @private
   void *_NSCalendarInternal;
-  NSRecursiveLock *_lock;
 }
 
 /**
