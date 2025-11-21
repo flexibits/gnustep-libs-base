@@ -677,27 +677,40 @@ static NSOperationQueue *mainQueue = nil;
     return internal->underlyingQueue;
 }
 
-- (void) setUnderlyingQueue: (dispatch_queue_t)underlyingQueue
+- (void) setUnderlyingQueue: (dispatch_queue_t) underlyingQueue
 {
-    if (underlyingQueue == dispatch_get_main_queue())
-      {
-        [NSException raise: NSInvalidArgumentException
-        format: @"Cannot use dispatch_get_main_queue as an underlying queue"];
-      }
+  if (underlyingQueue == dispatch_get_main_queue())
+    {
+      [NSException raise: NSInvalidArgumentException
+                  format: @"Cannot use dispatch_get_main_queue as an underlying queue"];
+      return;
+    }
 
-    [internal->lock lock];
+  [internal->lock lock];
 
-    if (0 != [self operationCount])
-      {
-        [internal->lock unlock];
+  if (0 != [self operationCount])
+    {
+      [internal->lock unlock];
 
-        [NSException raise: NSInvalidArgumentException
-        format: @"Cannot set the underlyingQueue of an NSOperationQueue while operations are pending"];
-      }
+      [NSException raise: NSInvalidArgumentException
+                  format: @"Cannot set the underlyingQueue of an NSOperationQueue while operations are pending"];
+      return;
+    }
 
-    internal->underlyingQueue = underlyingQueue;
+  if (internal->underlyingQueue != NULL)
+    {
+      dispatch_release(internal->underlyingQueue);
+      internal->underlyingQueue = NULL;
+    }
 
-    [internal->lock unlock];
+  if (underlyingQueue != NULL)
+    {
+      dispatch_retain(underlyingQueue);
+    }
+
+  internal->underlyingQueue = underlyingQueue;
+
+  [internal->lock unlock];
 }
 
 #endif
@@ -852,6 +865,13 @@ static NSOperationQueue *mainQueue = nil;
   DESTROY(internal->name);
   DESTROY(internal->cond);
   DESTROY(internal->lock);
+
+  if (internal->underlyingQueue != NULL)
+    {
+      dispatch_release(internal->underlyingQueue);
+      internal->underlyingQueue = NULL;
+    }
+
   GS_DESTROY_INTERNAL(NSOperationQueue);
   [super dealloc];
 }
