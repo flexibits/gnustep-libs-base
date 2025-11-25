@@ -1380,7 +1380,7 @@ static inline UCalendarDateFields NSCalendarUnitToUCalendarDateField(NSCalendarU
 
 - (void) setTimeZone: (NSTimeZone *) timeZone
 {
-  if ([[self timeZone] isEqualToTimeZone: timeZone])
+  if (![[self timeZone] isEqualToTimeZone: timeZone])
     {
       GSCalendarData *prevCalendarData = [self _calendarData];
 
