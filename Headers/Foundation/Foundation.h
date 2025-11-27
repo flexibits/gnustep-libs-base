@@ -199,8 +199,8 @@
 #  if __has_include(<dispatch/dispatch.h>)
 #    include <dispatch/dispatch.h>
 #  endif
-#  if __has_include(<GNUStepFixes/GNUStepFixes.h>)
-#    include <GNUStepFixes/GNUStepFixes.h>
+#  if __has_include(<GNUstepFixes/GNUstepFixes.h>)
+#    include <GNUstepFixes/GNUstepFixes.h>
 #  endif
 #endif
 
