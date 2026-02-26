@@ -1012,6 +1012,12 @@ static NSUInteger   urlAlign;
             {
               buf->emptyPath = YES;
             }
+          else if (strncmp(buf->scheme, "com.googleusercontent", 21) == 0
+            || strstr(buf->scheme, "fantastical") != 0)
+            {
+              // OAUth schemes
+              buf->emptyPath = YES;
+            }
           else
             {
               // Unknown scheme, don't parse the components (like data:). It's not required for Fantastical's usecase,
