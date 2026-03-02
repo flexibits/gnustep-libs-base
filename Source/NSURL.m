@@ -1520,23 +1520,23 @@ static id clientForHandle(void *data, NSURLHandle *hdl)
     return [target _URLBySettingPath:std encoded:YES];
 }
 
-- (NSURL *) URLByAppendingPathComponent:(NSString *)pc
+- (NSURL *) URLByAppendingPathComponent:(NSString *)pathComponent
 {
-    return [self _URLBySettingPath:[[self path] stringByAppendingPathComponent:pc]];
+    return [self _URLBySettingPath:[[self path] stringByAppendingPathComponent:pathComponent]];
 }
 
-- (NSURL *) URLByAppendingPathComponent:(NSString *)pc isDirectory:(BOOL)isDir
+- (NSURL *) URLByAppendingPathComponent:(NSString *)pathComponent isDirectory:(BOOL)isDirectory
 {
-    NSString *newPath = [[self path] stringByAppendingPathComponent:pc];
-    if (isDir && ![newPath hasSuffix:@"/"]) {
+    NSString *newPath = [[self path] stringByAppendingPathComponent:pathComponent];
+    if (isDirectory && ![newPath hasSuffix:@"/"]) {
         newPath = [newPath stringByAppendingString:@"/"];
     }
     return [self _URLBySettingPath:newPath];
 }
 
-- (NSURL *) URLByAppendingPathExtension:(NSString *)ext
+- (NSURL *) URLByAppendingPathExtension:(NSString *)pathExtension
 {
-    return [self _URLBySettingPath:[[self path] stringByAppendingPathExtension:ext]];
+    return [self _URLBySettingPath:[[self path] stringByAppendingPathExtension:pathExtension]];
 }
 
 - (NSURL *) URLByDeletingLastPathComponent
