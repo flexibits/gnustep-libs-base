@@ -505,6 +505,12 @@ static id clientForHandle(void *data, NSURLHandle *hdl)
                            host:(NSString *)aHost
                            path:(NSString *)aPath
 {
+#if defined(_WIN32)
+    // Convert Windows backslashes to forward slashes for RFC 3986 conformance.
+    if ([aScheme isEqualToString:@"file"]) {
+        aPath = [aPath stringByReplacingOccurrencesOfString:@"\\" withString:@"/"];
+    }
+#endif
     NSCharacterSet *pathCS = [aScheme isEqualToString:@"file"]
         ? fileCharSet
         : [NSCharacterSet URLPathAllowedCharacterSet];
@@ -1797,10 +1803,31 @@ static id clientForHandle(void *data, NSURLHandle *hdl)
         // resolves POSIX-style paths (/path/to/file) against the Windows CWD.
         // We preserve the original host component (e.g. file://host/path).
         NSString *host = myData->encodedHost ? myData->encodedHost : @"";
-        NSString *encodedPath = encoded
-            ? newPath
-            : [newPath stringByAddingPercentEncodingWithAllowedCharacters:
+        NSString *encodedPath;
+        if (encoded) {
+            encodedPath = newPath;
+        } else {
+#if defined(_WIN32)
+            // Convert Windows backslashes to forward slashes for RFC 3986
+            // conformance. Without this, backslashes get percent-encoded to
+            // %5C and the drive-letter prefix (e.g. C:) is misinterpreted as
+            // the URL authority instead of being part of the path.
+            newPath = [newPath stringByReplacingOccurrencesOfString:@"\\" withString:@"/"];
+#endif
+            encodedPath = [newPath stringByAddingPercentEncodingWithAllowedCharacters:
                [NSCharacterSet URLPathAllowedCharacterSet]];
+        }
+#if defined(_WIN32)
+        // Ensure Windows drive-letter paths start with '/' so the URL parser
+        // doesn't treat the drive letter as the authority component.
+        // e.g. C:/Users/... must become /C:/Users/... in the URL path.
+        if ([encodedPath length] >= 2 &&
+            ![encodedPath hasPrefix:@"/"] &&
+            isalpha((unsigned char)[encodedPath characterAtIndex:0]) &&
+            [encodedPath characterAtIndex:1] == ':') {
+            encodedPath = [@"/" stringByAppendingString:encodedPath];
+        }
+#endif
         return [NSURL URLWithString:[NSString stringWithFormat:@"file://%@%@",
                                      host, encodedPath]];
     }
