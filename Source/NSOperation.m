@@ -1168,57 +1168,61 @@ static NSOperationQueue *mainQueue = nil;
   [internal->lock lock];
 
   max = [self maxConcurrentOperationCount];
+
   if (NSOperationQueueDefaultMaxConcurrentOperationCount == max)
     {
       max = maxConcurrent;
     }
 
   NS_DURING
-  while (NO == [self isSuspended]
-    && max > internal->executing
-    && [internal->waiting count] > 0)
     {
-      NSOperation	*op;
-
-      /* Take the first operation from the queue and start it executing.
-       * We set ourselves up as an observer for the operating finishing
-       * and we keep track of the count of operations we have started,
-       * but the actual startup is left to the NSOperation -start method.
-       */
-      op = [internal->waiting objectAtIndex: 0];
-      [internal->waiting removeObjectAtIndex: 0];
-      [op removeObserver: self forKeyPath: @"queuePriority"];
-      [op addObserver: self
-	   forKeyPath: @"isFinished"
-	      options: NSKeyValueObservingOptionNew
-	      context: isFinishedCtxt];
-      internal->executing++;
-
-      [internal->cond lock];
-      [internal->starting addObject: op];
-
-      /* Create a new thread if all existing threads are busy and
-       * we haven't reached the pool limit.
-       */
-      if (internal->threadCount < max)
+      while (NO == [self isSuspended]
+        && max > internal->executing
+        && [internal->waiting count] > 0)
         {
-          internal->threadCount++;
-          NS_DURING
+          NSOperation	*op;
+
+          /* Take the first operation from the queue and start it executing.
+           * We set ourselves up as an observer for the operating finishing
+           * and we keep track of the count of operations we have started,
+           * but the actual startup is left to the NSOperation -start method.
+           */
+          op = RETAIN([internal->waiting objectAtIndex: 0]);
+          [internal->waiting removeObjectAtIndex: 0];
+          [op removeObserver: self forKeyPath: @"queuePriority"];
+          [op addObserver: self
+               forKeyPath: @"isFinished"
+                  options: NSKeyValueObservingOptionNew
+                  context: isFinishedCtxt];
+          internal->executing++;
+
+          [internal->cond lock];
+          [internal->starting addObject: op];
+          DESTROY(op);
+
+          /* Create a new thread if all existing threads are busy and
+           * we haven't reached the pool limit.
+           */
+          if (internal->threadCount < max)
             {
-              [NSThread detachNewThreadSelector: @selector(_thread)
-                                       toTarget: self
-                                     withObject: nil];
+              internal->threadCount++;
+              NS_DURING
+                {
+                  [NSThread detachNewThreadSelector: @selector(_thread)
+                                           toTarget: self
+                                         withObject: nil];
+                }
+              NS_HANDLER
+                {
+                  NSLog(@"Failed to create thread for %@: %@",
+                        self, localException);
+                }
+              NS_ENDHANDLER
             }
-          NS_HANDLER
-            {
-              NSLog(@"Failed to create thread for %@: %@",
-                self, localException);
-            }
-          NS_ENDHANDLER
+          /* Tell the thread pool that there is an operation to start.
+           */
+          [internal->cond unlockWithCondition: 1];
         }
-      /* Tell the thread pool that there is an operation to start.
-       */
-      [internal->cond unlockWithCondition: 1];
     }
   NS_HANDLER
     {
