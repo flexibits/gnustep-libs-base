@@ -1069,6 +1069,15 @@ static NSOperationQueue *mainQueue = nil;
   [self _execute];
 }
 
+#if HAVE_DISPATCH_H || HAVE_DISPATCH_DISPATCH_H
+static void dispatchQueueOperationCallback(void *context)
+{
+  NSOperation *op = (NSOperation *)context;
+
+  [op start];
+}
+#endif // HAVE_DISPATCH_H || HAVE_DISPATCH_DISPATCH_H
+
 - (void) _thread
 {
   CREATE_AUTORELEASE_POOL(arp);
@@ -1128,10 +1137,7 @@ static NSOperationQueue *mainQueue = nil;
 
               if (nil != underlyingQueue)
                 {
-                  dispatch_sync(underlyingQueue, ^(void)
-                    {
-                      [op start];
-                    });
+                  dispatch_sync_f(underlyingQueue, op, dispatchQueueOperationCallback);
                 }
               else
                 {
