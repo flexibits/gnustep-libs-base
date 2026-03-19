@@ -425,15 +425,17 @@ static NSArray	*empty = nil;
 
 - (void) start
 {
-  ENTER_POOL
+  double prio;
 
-  double prio = [NSThread threadPriority];
+  ENTER_POOL
 
   AUTORELEASE(RETAIN(self)); // Make sure we exist while running.
   [internal->lock lock];
 
   NS_DURING
     {
+      prio = [NSThread threadPriority];
+
       if (YES == [self isExecuting])
         {
           [NSException raise: NSInvalidArgumentException
@@ -477,15 +479,15 @@ static NSArray	*empty = nil;
         {
           [NSThread setThreadPriority: internal->threadPriority];
           [self main];
+          [NSThread setThreadPriority: prio];
         }
     }
   NS_HANDLER
     {
-      [NSThread setThreadPriority:  prio];
+      [NSThread setThreadPriority: prio];
       [localException raise];
     }
   NS_ENDHANDLER;
-
   [self _finish];
   LEAVE_POOL
 }
