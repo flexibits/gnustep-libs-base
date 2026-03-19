@@ -427,36 +427,40 @@ static NSArray	*empty = nil;
 {
   ENTER_POOL
 
-  double	prio = [NSThread  threadPriority];
+  double prio = [NSThread threadPriority];
 
-  AUTORELEASE(RETAIN(self));	// Make sure we exist while running.
+  AUTORELEASE(RETAIN(self)); // Make sure we exist while running.
   [internal->lock lock];
+
   NS_DURING
     {
       if (YES == [self isExecuting])
-	{
-	  [NSException raise: NSInvalidArgumentException
-		      format: @"[%@-%@] called on executing operation",
-	    NSStringFromClass([self class]), NSStringFromSelector(_cmd)];
-	}
+        {
+          [NSException raise: NSInvalidArgumentException
+                       format: @"[%@-%@] called on executing operation",
+                       NSStringFromClass([self class]), NSStringFromSelector(_cmd)];
+        }
+
       if (YES == [self isFinished])
-	{
-	  [NSException raise: NSInvalidArgumentException
-		      format: @"[%@-%@] called on finished operation",
-	    NSStringFromClass([self class]), NSStringFromSelector(_cmd)];
-	}
+        {
+          [NSException raise: NSInvalidArgumentException
+                       format: @"[%@-%@] called on finished operation",
+                       NSStringFromClass([self class]), NSStringFromSelector(_cmd)];
+        }
+
       if (NO == [self isReady])
-	{
-	  [NSException raise: NSInvalidArgumentException
-		      format: @"[%@-%@] called on operation which is not ready",
-	    NSStringFromClass([self class]), NSStringFromSelector(_cmd)];
-	}
+        {
+          [NSException raise: NSInvalidArgumentException
+                       format: @"[%@-%@] called on operation which is not ready",
+                       NSStringFromClass([self class]), NSStringFromSelector(_cmd)];
+        }
+
       if (NO == internal->executing)
-	{
-	  [self willChangeValueForKey: @"isExecuting"];
-	  internal->executing = YES;
-	  [self didChangeValueForKey: @"isExecuting"];
-	}
+        {
+          [self willChangeValueForKey: @"isExecuting"];
+          internal->executing = YES;
+          [self didChangeValueForKey: @"isExecuting"];
+        }
     }
   NS_HANDLER
     {
@@ -464,15 +468,16 @@ static NSArray	*empty = nil;
       [localException raise];
     }
   NS_ENDHANDLER
+
   [internal->lock unlock];
 
   NS_DURING
     {
       if (NO == [self isCancelled])
-	{
-	  [NSThread setThreadPriority: internal->threadPriority];
-	  [self main];
-	}
+        {
+          [NSThread setThreadPriority: internal->threadPriority];
+          [self main];
+        }
     }
   NS_HANDLER
     {
@@ -492,12 +497,13 @@ static NSArray	*empty = nil;
 
 - (void) waitUntilFinished
 {
-  [internal->cond lockWhenCondition: 1];	// Wait for finish
-  [internal->cond unlockWithCondition: 1];	// Signal any other watchers
+  [internal->cond lockWhenCondition: 1]; // Wait for finish
+  [internal->cond unlockWithCondition: 1]; // Signal any other watchers
 }
 @end
 
 @implementation	NSOperation (Private)
+
 /* NB code calling this method must ensure that the receiver is retained
  * until after the method returns.
  */
@@ -508,22 +514,22 @@ static NSArray	*empty = nil;
     {
       if (YES == internal->executing)
         {
-	  [self willChangeValueForKey: @"isExecuting"];
-	  [self willChangeValueForKey: @"isFinished"];
-	  internal->executing = NO;
-	  internal->finished = YES;
-	  [self didChangeValueForKey: @"isFinished"];
-	  [self didChangeValueForKey: @"isExecuting"];
-	}
+          [self willChangeValueForKey: @"isExecuting"];
+          [self willChangeValueForKey: @"isFinished"];
+          internal->executing = NO;
+          internal->finished = YES;
+          [self didChangeValueForKey: @"isFinished"];
+          [self didChangeValueForKey: @"isExecuting"];
+        }
       else
-	{
-	  [self willChangeValueForKey: @"isFinished"];
-	  internal->finished = YES;
-	  [self didChangeValueForKey: @"isFinished"];
-	}
-      CALL_BLOCK_NO_ARGS(
-	((GSOperationCompletionBlock)internal->completionBlock));
+        {
+          [self willChangeValueForKey: @"isFinished"];
+          internal->finished = YES;
+          [self didChangeValueForKey: @"isFinished"];
+        }
+      CALL_BLOCK_NO_ARGS(((GSOperationCompletionBlock)internal->completionBlock));
     }
+
   [internal->lock unlock];
 }
 
@@ -571,7 +577,7 @@ static NSArray	*empty = nil;
 
 - (void) addExecutionBlock: (GSBlockOperationBlock)block
 {
-  id	blockCopy = (id)Block_copy(block);
+  id blockCopy = (id)Block_copy(block);
 
   [_executionBlocks addObject: blockCopy];
   RELEASE(blockCopy);
@@ -1069,9 +1075,9 @@ static NSOperationQueue *mainQueue = nil;
                                                   forKey: threadKey];
   for (;;)
     {
-      NSOperation	*op;
-      NSDate		*when;
-      BOOL		found;
+      NSOperation *op;
+      NSDate *when;
+      BOOL found;
       /* We use a pool for each operation in case releasing the operation
        * causes it to be deallocated, and the deallocation of the operation
        * autoreleases something which needs to be cleaned up.
@@ -1081,37 +1087,38 @@ static NSOperationQueue *mainQueue = nil;
       when = [[NSDate alloc] initWithTimeIntervalSinceNow: 5.0];
       found = [internal->cond lockWhenCondition: 1 beforeDate: when];
       RELEASE(when);
+
       if (NO == found)
-	{
-	  break;	// Idle for 5 seconds ... exit thread.
-	}
+        {
+          break; // Idle for 5 seconds ... exit thread.
+        }
 
       if ([internal->starting count] > 0)
-	{
+        {
           op = RETAIN([internal->starting objectAtIndex: 0]);
-	  [internal->starting removeObjectAtIndex: 0];
-	}
+          [internal->starting removeObjectAtIndex: 0];
+        }
       else
-	{
-	  op = nil;
-	}
+        {
+          op = nil;
+        }
 
       if ([internal->starting count] > 0)
-	{
-	  // Signal any other idle threads,
+        {
+          // Signal any other idle threads,
           [internal->cond unlockWithCondition: 1];
-	}
+        }
       else
-	{
-	  // There are no more operations starting.
+        {
+          // There are no more operations starting.
           [internal->cond unlockWithCondition: 0];
-	}
+        }
 
       if (nil != op)
-	{
+        {
           NS_DURING
-	    {
-	      ENTER_POOL
+            {
+              ENTER_POOL
               [NSThread setThreadPriority: [op threadPriority]];
 
 #if HAVE_DISPATCH_H || HAVE_DISPATCH_DISPATCH_H
@@ -1121,26 +1128,27 @@ static NSOperationQueue *mainQueue = nil;
                 {
                   dispatch_sync(underlyingQueue, ^(void)
                     {
-                        [op start];
+                      [op start];
                     });
                 }
               else
                 {
-                    [op start];
+                  [op start];
                 }
 #else
               [op start];
-#endif
-	      LEAVE_POOL
-	    }
+#endif // HAVE_DISPATCH_H || HAVE_DISPATCH_DISPATCH_H
+              LEAVE_POOL
+            }
           NS_HANDLER
-	    {
-	      NSLog(@"Problem running operation %@ ... %@",
-		op, localException);
-	    }
+            {
+              NSLog(@"Problem running operation %@ ... %@",
+                    op, localException);
+            }
           NS_ENDHANDLER
+
           RELEASE(op);
-	}
+        }
     }
 
   [[[NSThread currentThread] threadDictionary] removeObjectForKey: threadKey];
