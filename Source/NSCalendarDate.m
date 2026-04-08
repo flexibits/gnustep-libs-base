@@ -155,8 +155,8 @@ abbrev(NSTimeZone *tz, NSDate *d)
     }
 }
 
-static inline NSUInteger
-lastDayOfGregorianMonth(NSUInteger month, NSUInteger year)
+static inline NSInteger
+lastDayOfGregorianMonth(NSInteger month, NSInteger year)
 {
   switch (month)
     {
@@ -174,26 +174,28 @@ lastDayOfGregorianMonth(NSUInteger month, NSUInteger year)
     }
 }
 
-static inline NSUInteger
-absoluteGregorianDay(NSUInteger day, NSUInteger month, NSUInteger year)
+/* Hinnant O(1) calendar constants.
+ * See https://howardhinnant.github.io/date_algorithms.html
+ */
+static const NSInteger DAYS_PER_ERA     = 146097; // days in a 400-year Gregorian cycle
+static const NSInteger YEARS_PER_ERA    = 400;
+static const NSInteger DAYS_PER_YEAR    = 365;
+static const NSInteger DAYS_PER_4Y      = 1460;   // 4   * 365 (no leap correction)
+static const NSInteger DAYS_PER_100Y    = 36524;   // 100 * 365 + 24
+static const NSInteger EPOCH_OFFSET     = 305;     // Jan 1 yr 1 epoch  →  Mar 1 yr 0 epoch
+static const NSInteger MONTH_DAYS_SCALE = 153;     // 5-month day-count numerator (153/5 ≈ 30.6)
+
+static inline NSInteger
+daysFromGregorian(NSInteger day, NSInteger month, NSInteger year)
 {
-  if (month > 1)
-    {
-      while (--month > 0)
-	{
-	  day = day + lastDayOfGregorianMonth(month, year);
-	}
-    }
-  if (year > 0)
-    {
-      year--;
-    }
-  return
-    (day            // days this year
-     + 365 * year   // days in previous years ignoring leap days
-     + year/4       // Julian leap days before this year...
-     - year/100     // ...minus prior century years...
-     + year/400);   // ...plus prior years divisible by 400
+  NSInteger y = year - (month <= 2 ? 1 : 0);
+  NSInteger era = (y >= 0 ? y : y - (YEARS_PER_ERA - 1)) / YEARS_PER_ERA;
+  NSInteger yoe = y - era * YEARS_PER_ERA;
+  NSInteger mp = month > 2 ? month - 3 : month + 9;
+  NSInteger doy = (MONTH_DAYS_SCALE * mp + 2) / 5 + day - 1;
+  NSInteger doe = yoe * DAYS_PER_YEAR + yoe/4 - yoe/100 + doy;
+
+  return era * DAYS_PER_ERA + doe - EPOCH_OFFSET;
 }
 
 static inline NSInteger
@@ -210,27 +212,21 @@ dayOfCommonEra(NSTimeInterval when)
 }
 
 static void
-gregorianDateFromAbsolute(NSInteger abs,
+gregorianFromDays(NSInteger abs,
   NSInteger *day, NSInteger *month, NSInteger *year)
 {
-  NSInteger     y;
-  NSInteger     m;
+  NSInteger z   = abs + EPOCH_OFFSET;
+  NSInteger era = (z >= 0 ? z : z - (DAYS_PER_ERA - 1)) / DAYS_PER_ERA;
+  NSInteger doe = z - (era * DAYS_PER_ERA);
+  NSInteger yoe = (doe - (doe / DAYS_PER_4Y) + (doe / DAYS_PER_100Y) - (doe / (DAYS_PER_ERA - 1))) / DAYS_PER_YEAR;
+  NSInteger y   = yoe + (era * YEARS_PER_ERA);
+  NSInteger doy = doe - ((DAYS_PER_YEAR * yoe) + (yoe / 4) - (yoe / 100));
+  NSInteger mp  = ((5 * doy) + 2) / MONTH_DAYS_SCALE;
 
-  // Search forward year by year from approximate year
-  y = abs/366;
-  while (abs >= absoluteGregorianDay(1, 1, y+1))
-    {
-      y++;
-    }
-  // Search forward month by month from January
-  m = 1;
-  while (abs > absoluteGregorianDay(lastDayOfGregorianMonth(m, y), m, y))
-    {
-      m++;
-    }
+  *day   = doy - (((MONTH_DAYS_SCALE * mp) + 2) / 5) + 1;
+  *month = mp < 10 ? mp + 3 : mp - 9;
+  y += (*month <= 2) ? 1 : 0;
   *year = y;
-  *month = m;
-  *day = abs - absoluteGregorianDay(1, m, y) + 1;
 }
 
 /**
@@ -238,11 +234,11 @@ gregorianDateFromAbsolute(NSInteger abs,
  * since the reference date.
  */
 static NSTimeInterval
-GSTime(unsigned day, unsigned month, unsigned year, unsigned hour, unsigned minute, unsigned second, unsigned mil)
+GSTime(NSInteger day, NSInteger month, NSInteger year, NSInteger hour, NSInteger minute, NSInteger second, NSInteger mil)
 {
   NSTimeInterval	a;
 
-  a = (NSTimeInterval)absoluteGregorianDay(day, month, year);
+  a = (NSTimeInterval)daysFromGregorian(day, month, year);
 
   // Calculate date as GMT
   a -= GREGORIAN_REFERENCE;
@@ -280,7 +276,7 @@ GSBreakTime(NSTimeInterval when,
   dayOfEra = (NSInteger)a;
 
   // Calculate year, month, and day
-  gregorianDateFromAbsolute(dayOfEra, day, month, year);
+  gregorianFromDays(dayOfEra, day, month, year);
 
   // Calculate hour, minute, and seconds
   d = dayOfEra - GREGORIAN_REFERENCE;
@@ -485,7 +481,7 @@ GSPrivateTimeNow(void)
 {
   id newObj = [[self class] dateWithTimeIntervalSinceReferenceDate:
      [self timeIntervalSinceReferenceDate] + seconds];
-	
+
   [newObj setTimeZone: [self timeZoneDetail]];
   [newObj setCalendarFormat: [self calendarFormat]];
 
@@ -1538,7 +1534,7 @@ static inline int getDigits(const char *from, char *to, int limit, BOOL *error)
 	     second: (NSUInteger)second
 	   timeZone: (NSTimeZone *)aTimeZone
 {
-  unsigned int		c;
+  NSInteger		c;
   NSTimeInterval	s;
   NSTimeInterval	oldOffset;
   NSTimeInterval	newOffset;
@@ -1668,7 +1664,7 @@ static inline int getDigits(const char *from, char *to, int limit, BOOL *error)
   NSTimeInterval	when;
 
   when = _seconds_since_ref + offset(_time_zone, self);
-  gregorianDateFromAbsolute(dayOfCommonEra(when), &d, &m, &y);
+  gregorianFromDays(dayOfCommonEra(when), &d, &m, &y);
 
   return d;
 }
@@ -1712,7 +1708,7 @@ static inline int getDigits(const char *from, char *to, int limit, BOOL *error)
   NSTimeInterval	when;
 
   when = _seconds_since_ref + offset(_time_zone, self);
-  gregorianDateFromAbsolute(dayOfCommonEra(when), &d, &m, &y);
+  gregorianFromDays(dayOfCommonEra(when), &d, &m, &y);
   days = d;
   for (i = m - 1;  i > 0; i--) // days in prior months this year
     days = days + lastDayOfGregorianMonth(i, y);
@@ -1778,7 +1774,7 @@ static inline int getDigits(const char *from, char *to, int limit, BOOL *error)
   NSTimeInterval	when;
 
   when = _seconds_since_ref + offset(_time_zone, self);
-  gregorianDateFromAbsolute(dayOfCommonEra(when), &d, &m, &y);
+  gregorianFromDays(dayOfCommonEra(when), &d, &m, &y);
 
   return m;
 }
@@ -1820,7 +1816,7 @@ static inline int getDigits(const char *from, char *to, int limit, BOOL *error)
   NSTimeInterval	when;
 
   when = _seconds_since_ref + offset(_time_zone, self);
-  gregorianDateFromAbsolute(dayOfCommonEra(when), &d, &m, &y);
+  gregorianFromDays(dayOfCommonEra(when), &d, &m, &y);
 
   return y;
 }
@@ -2071,7 +2067,7 @@ static void outputValueWithFormat(int v, char *fldfmt, DescriptionInfo *info)
 		    else
 		      {
 			NSString	*name;
-		
+
 			name = [months objectAtIndex: info->md-1];
 			v = [name length];
 			Grow(info, v);
@@ -2579,29 +2575,6 @@ static void outputValueWithFormat(int v, char *fldfmt, DescriptionInfo *info)
 - (NSInteger) lastDayOfGregorianMonth: (NSInteger)month year: (NSInteger)year
 {
   return lastDayOfGregorianMonth(month, year);
-}
-
-/**
- * Returns the number of days since the start of the era for the specified
- * day, month, and year.
- */
-- (NSInteger) absoluteGregorianDay: (NSInteger)day
-			     month: (NSInteger)month
-			      year: (NSInteger)year
-{
-  return absoluteGregorianDay(day, month, year);
-}
-
-/**
- * Given a day number since the start of the era, returns the date as a
- * day, month, and year.
- */
-- (void) gregorianDateFromAbsolute: (NSInteger)d
-			       day: (NSInteger *)day
-			     month: (NSInteger *)month
-			      year: (NSInteger *)year
-{
-  gregorianDateFromAbsolute(d, day, month, year);
 }
 
 @end
