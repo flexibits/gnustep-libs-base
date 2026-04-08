@@ -2438,16 +2438,20 @@ static void outputValueWithFormat(int v, char *fldfmt, DescriptionInfo *info)
  * recognized.</p>
  */
 - (NSString*) descriptionWithCalendarFormat: (NSString*)format
-				     locale: (NSDictionary*)locale
+                                     locale: (NSDictionary*)locale
 {
-  unichar		tbuf[512];
-  NSString		*result;
-  DescriptionInfo	info;
+  unichar tbuf[512];
+  NSString *result;
+  DescriptionInfo info;
+  NSTimeZone *timeZone = _time_zone;
+  NSTimeInterval secondsSinceRef = _seconds_since_ref;
+  NSTimeInterval timeZoneOffset = offset(timeZone, self);
+  NSTimeInterval when = secondsSinceRef + timeZoneOffset;
 
   if (format == nil)
     format = [LOCALE objectForKey: NSTimeDateFormatString];
 
-  GSBreakTime(_seconds_since_ref + offset(_time_zone, self),
+  GSBreakTime(when,
     &info.yd, &info.md, &info.dom, &info.hd, &info.mnd, &info.sd, &info.mil);
 
   info.base = tbuf;
