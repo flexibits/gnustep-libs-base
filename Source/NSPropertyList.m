@@ -3488,24 +3488,29 @@ GSPropertyListMake(id obj, NSDictionary *loc, BOOL xml,
                   encoding: NSUTF16BigEndianStringEncoding];
       result = [s autorelease];
     }
-  else if (next == 0x80)
+  else if ((next >= 0x80) && (next <= 0x8F))
     {
-      unsigned char index;
+      // Keyed archiver UID — low nibble encodes (byteSize - 1)
+      unsigned size = (next & 0x0F) + 1;
+      unsigned long long index = 0;
+      unsigned char buffer[8];
+      unsigned i;
 
-      [data getBytes: &index range: NSMakeRange(counter,1)];
-      result = [NSDictionary dictionaryWithObject:
-                 [NSNumber numberWithInt: index]
-                 forKey: @"CF$UID"];
-    }
-  else if (next == 0x81)
-    {
-      unsigned short    index;
+      if (size > 8)
+        {
+          [NSException raise: NSInvalidArgumentException
+                      format: @"Unsupported UID size %u in binary property list", size];
+        }
 
-      [data getBytes: &index range: NSMakeRange(counter,2)];
-      index = NSSwapBigShortToHost(index);
-      result = [NSDictionary dictionaryWithObject:
-                 [NSNumber numberWithInt: index]
-                 forKey: @"CF$UID"];
+      [data getBytes: buffer range: NSMakeRange(counter, size)];
+
+      for (i = 0; i < size; i++)
+        {
+          index = (index << 8) | buffer[i];
+        }
+
+      result = [NSDictionary dictionaryWithObject:[NSNumber numberWithUnsignedLongLong: index]
+                                           forKey: @"CF$UID"];
     }
   else if ((next >= 0xA0) && (next < 0xAF))
     {
@@ -4252,28 +4257,44 @@ isEqualFunc(const void *item1, const void *item2,
 
   if (num != nil)
     {
-      // Special dictionary from keyed encoding
-      unsigned int index;
+      // Special dictionary from keyed encoding — low nibble of marker = (byteSize - 1)
+      unsigned long long  index = [num unsignedLongLongValue];
+      unsigned char buffer[8];
+      unsigned size;
+      unsigned i;
 
-      index = [num intValue];
-      if (index < 256)
+      if (index < 0x100ULL)
         {
-          unsigned char ci;
-
-          code = 0x80;
-          [dest appendBytes: &code length: 1];
-          ci = (unsigned char)index;
-          [dest appendBytes: &ci length: 1];
+          size = 1;
+        }
+      else if (index < 0x10000ULL)
+        {
+          size = 2;
+        }
+      else if (index < 0x1000000ULL)
+        {
+          size = 3;
+        }
+      else if (index < 0x100000000ULL)
+        {
+          size = 4;
         }
       else
         {
-          unsigned short si;
-
-          code = 0x81;
-          [dest appendBytes: &code length: 1];
-          si = NSSwapHostShortToBig((unsigned short)index);
-          [dest appendBytes: &si length: 2];
+          [NSException raise: NSInvalidArgumentException
+                      format: @"CF$UID value %llu too large for binary property list", index];
         }
+
+      code = 0x80 | (unsigned char)(size - 1);
+      [dest appendBytes: &code length: 1];
+
+      for (i = size; i > 0; i--)
+        {
+          buffer[i - 1] = (unsigned char)(index & 0xFF);
+          index >>= 8;
+        }
+
+      [dest appendBytes: buffer length: size];
     }
   else
     {
