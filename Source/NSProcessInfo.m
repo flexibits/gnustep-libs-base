@@ -272,35 +272,38 @@ _gnu_process_args(int argc, char *argv[], char *env[])
       const char	*tmp;
 
       while (needed_size == buffer_size)
-	{
+        {
           buffer_size = buffer_size + 256;
           buffer = (unichar*)malloc(buffer_size * sizeof(unichar));
           needed_size = GetModuleFileNameW(NULL, buffer, buffer_size);
-          if (needed_size < buffer_size)
-	    {
-	      unsigned	i;
 
-	      for (i = 0; i < needed_size; i++)
-		{
-		  if (buffer[i] == 0)
-		    {
-		      break;
-		    }
-		}
-	      arg0 = [[NSString alloc] initWithCharacters: buffer length: i];
-	    }
+          if (needed_size < buffer_size)
+            {
+              unsigned	i;
+
+              for (i = 0; i < needed_size; i++)
+                {
+                  if (buffer[i] == 0)
+                    {
+                      break;
+                    }
+                }
+
+              arg0 = [[NSString alloc] initWithCharacters: buffer length: i];
+            }
           else
-	    {
+            {
               free(buffer);
-	    }
-	}
+            }
+        }
+
       tmp = [arg0 cStringUsingEncoding: [NSString defaultCStringEncoding]];
       len = strlen(tmp) + 1;
       _gnu_arg_zero = (char*)malloc(len);
       memcpy(_gnu_arg_zero, tmp, len);
 #else
       fprintf(stderr, "Error: for some reason, argv not properly set up "
-	      "during GNUstep base initialization\n");
+              "during GNUstep base initialization\n");
       abort();
 #endif
     }
@@ -308,6 +311,7 @@ _gnu_process_args(int argc, char *argv[], char *env[])
   /* Getting the process name */
   IF_NO_ARC(RELEASE(_gnu_processName);)
   _gnu_processName = [arg0 lastPathComponent];
+
 #if	defined(_WIN32)
   /* On windows we remove any .exe extension for consistency with app names
    * under unix
@@ -317,7 +321,7 @@ _gnu_process_args(int argc, char *argv[], char *env[])
 
     if (e != nil && [e caseInsensitiveCompare: @"EXE"] == NSOrderedSame)
       {
-	_gnu_processName = [_gnu_processName stringByDeletingPathExtension];
+        _gnu_processName = [_gnu_processName stringByDeletingPathExtension];
       }
   }
 #endif
@@ -330,25 +334,30 @@ _gnu_process_args(int argc, char *argv[], char *env[])
   NSString *str;
   id obj_argv[argc];
   int added = 1;
-  
+
   /* Copy the zero'th argument to the argument list */
   obj_argv[0] = arg0;
-  
+
   if (mySet == nil) mySet = [NSMutableSet new];
 
   for (i = 1; i < argc; i++)
     {
       str = [NSString stringWithCharacters: argvw[i] length: wcslen(argvw[i])];
+
+      if (str == nil)
+        {
+          continue;
+        }
       if ([str hasPrefix: @"--GNU-Debug="])
-	{
-	  [mySet addObject: [str substringFromIndex: 12]];
-	}
+        {
+          [mySet addObject: [str substringFromIndex: 12]];
+        }
       else
-	{
-	  obj_argv[added++] = str;
-	}
+        {
+          obj_argv[added++] = str;
+        }
     }
-    
+
   IF_NO_ARC(RELEASE(_gnu_arguments);)
   _gnu_arguments = [[NSArray alloc] initWithObjects: obj_argv count: added];
   RELEASE(arg0);
@@ -367,21 +376,25 @@ _gnu_process_args(int argc, char *argv[], char *env[])
       if (mySet == nil) mySet = [NSMutableSet new];
 
       for (i = 1; i < argc; i++)
-	{
-	  str = [NSString stringWithCString: argv[i] encoding: enc];
+        {
+          str = [NSString stringWithCString: argv[i] encoding: enc];
 
-	  if ([str hasPrefix: @"--GNU-Debug="])
-	    [mySet addObject: [str substringFromIndex: 12]];
-	  else
-	    obj_argv[added++] = str;
-	}
+          if ([str hasPrefix: @"--GNU-Debug="])
+            {
+              [mySet addObject: [str substringFromIndex: 12]];
+            }
+          else
+            {
+              obj_argv[added++] = str;
+            }
+        }
 
       IF_NO_ARC(RELEASE(_gnu_arguments);)
       _gnu_arguments = [[NSArray alloc] initWithObjects: obj_argv count: added];
       RELEASE(arg0);
     }
-#endif	
-	
+#endif
+
   /* Copy the evironment list */
   {
     NSMutableArray	*keys = [NSMutableArray new];
@@ -391,79 +404,100 @@ _gnu_process_args(int argc, char *argv[], char *env[])
 #if defined(_WIN32)
     if (fallbackInitialisation == NO)
       {
-	unichar	*base;
+        unichar	*base;
 
-	base = GetEnvironmentStringsW();
-	if (base != 0)
-	  {
-	    const unichar	*wenvp = base;
+        base = GetEnvironmentStringsW();
 
-	    while (*wenvp != 0)
-	      {
-		const unichar	*start = wenvp;
-		NSString		*key;
-		NSString		*val;
+        if (base != 0)
+          {
+            const unichar	*wenvp = base;
 
-		start = wenvp;
-		while (*wenvp != '=' && *wenvp != 0)
-		  {
-		    wenvp++;
-		  }
-		if (*wenvp == '=')
-		  {
-		    key = [NSString stringWithCharacters: start
-						  length: wenvp - start];
-		    wenvp++;
-		    start = wenvp;
-		  }
-		else
-		  {
-		    break;	// Bad format ... expected '='
-		  }
-		while (*wenvp != 0)
-		  {
-		    wenvp++;
-		  }
-		val = [NSString stringWithCharacters: start
-					      length: wenvp - start];
-		wenvp++;	// Skip past variable terminator
-		[keys addObject: key];
-		[values addObject: val];
-	      }
-	    FreeEnvironmentStringsW(base);
-	    env = 0;	// Suppress standard code.
-	  }
+            while (*wenvp != 0)
+              {
+                const unichar *start = wenvp;
+                NSString *key;
+                NSString *val;
+
+                start = wenvp;
+
+                while (*wenvp != '=' && *wenvp != 0)
+                  {
+                    wenvp++;
+                  }
+
+                if (*wenvp == '=')
+                  {
+                    key = [NSString stringWithCharacters: start
+                                                  length: wenvp - start];
+                    wenvp++;
+                    start = wenvp;
+                  }
+                else
+                  {
+                    break; // Bad format ... expected '='
+                  }
+
+                while (*wenvp != 0)
+                  {
+                    wenvp++;
+                  }
+
+                val = [NSString stringWithCharacters: start
+                                              length: wenvp - start];
+                wenvp++; // Skip past variable terminator
+
+                if (key != nil && val != nil)
+                  {
+                    [keys addObject: key];
+                    [values addObject: val];
+                  }
+              }
+
+            FreeEnvironmentStringsW(base);
+            env = 0; // Suppress standard code.
+          }
       }
 #endif
     if (env != 0)
       {
-	i = 0;
-	while (env[i])
-	  {
-	    int		len = strlen(env[i]);
-	    char	*cp = strchr(env[i], '=');
+        i = 0;
 
-	    if (len && cp)
-	      {
-		char	buf[len+2];
+        while (env[i])
+          {
+            int len = strlen(env[i]);
+            char *cp = strchr(env[i], '=');
 
-		memcpy(buf, env[i], len + 1);
-		cp = &buf[cp - env[i]];
-		*cp++ = '\0';
-		[keys addObject:
-		  [NSString stringWithCString: buf encoding: enc]];
-		[values addObject:
-		  [NSString stringWithCString: cp encoding: enc]];
-	      }
-	    i++;
-	  }
+            if (len && cp)
+              {
+                char buf[len+2];
+                NSString *key;
+                NSString *val;
+
+                memcpy(buf, env[i], len + 1);
+                cp = &buf[cp - env[i]];
+                *cp++ = '\0';
+
+                key = [NSString stringWithCString: buf encoding: enc];
+                val = [NSString stringWithCString: cp encoding: enc];
+
+                if (key != nil && val != nil)
+                  {
+                    [keys addObject: key];
+                    [values addObject: val];
+                  }
+              }
+
+            i++;
+          }
       }
+
     IF_NO_ARC(RELEASE(_gnu_environment);)
     _gnu_environment = [[NSDictionary alloc] initWithObjects: values
-						     forKeys: keys];
+                                                     forKeys: keys];
     IF_NO_ARC(RELEASE(keys);)
     IF_NO_ARC(RELEASE(values);)
   }
+
   [arp drain];
 }
 
@@ -581,22 +615,22 @@ static char	**_gnu_noobjc_env = NULL;
   psinfo_t pinfo;
   char **vectors;
   int i, count;
-  
+
   // Read commandline
   proc_file_name = (char*)malloc(2048);
   snprintf(proc_file_name, 2048, "/proc/%d/psinfo", (int)getpid());
-  
+
   ifp = fopen(proc_file_name, "r");
   if (ifp == NULL)
     {
-      fprintf(stderr, "Error: Failed to open the process info file:%s\n", 
+      fprintf(stderr, "Error: Failed to open the process info file:%s\n",
               proc_file_name);
       abort();
     }
-  
+
   fread(&pinfo, sizeof(pinfo), 1, ifp);
   fclose(ifp);
-  
+
   vectors = (char **)pinfo.pr_envp;
   if (!vectors)
     {
@@ -605,7 +639,7 @@ static char	**_gnu_noobjc_env = NULL;
         "Please check the linking process\n");
       abort();
     }
-  
+
   /* copy the environment strings */
   for (count = 0; vectors[count]; count++)
     ;
@@ -1355,7 +1389,7 @@ static void determineOperatingSystem()
 	{
 	  NSLog(@"Cannot determine processor count.");
 	}
-    }    
+    }
   return procCount;
 }
 
@@ -1447,7 +1481,7 @@ static void determineOperatingSystem()
 #else
 #warning	"no known way to determine amount of memory on this system"
 #endif
-  
+
       beenHere = YES;
       if (availMem == 0)
 	{
@@ -1468,7 +1502,7 @@ static void determineOperatingSystem()
 #else
   uptime = GetTickCount64() / 1000;
 #endif
-  
+
 #elif	defined(HAVE_SYSCTLBYNAME)
   struct timeval	tval;
   size_t		len = sizeof(tval);
