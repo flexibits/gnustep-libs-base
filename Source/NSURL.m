@@ -143,6 +143,7 @@ typedef struct {
 
 #define myData ((parsedURL*)(self->_data))
 #define baseData ((self->_baseURL == 0)?0:((parsedURL*)(self->_baseURL->_data)))
+#define GS_URL_BUF_SIZE 512
 
 static NSLock   *clientsLock = nil;
 
@@ -1677,7 +1678,8 @@ static NSUInteger   urlAlign;
   if (myData->host != 0)
     {
       NSUInteger hlen = strlen(myData->host) + 1;
-      char *buf = NSZoneMalloc(NSDefaultMallocZone(), hlen);
+      char stackBuf[GS_URL_BUF_SIZE];
+      char *buf = (hlen <= GS_URL_BUF_SIZE) ? stackBuf : NSZoneMalloc(NSDefaultMallocZone(), hlen);
 
       if (buf == NULL)
         {
@@ -1699,7 +1701,11 @@ static NSUInteger   urlAlign;
         }
 
       host = [NSString stringWithUTF8String: buf];
-      NSZoneFree(NSDefaultMallocZone(), buf);
+
+      if (buf != stackBuf)
+        {
+          NSZoneFree(NSDefaultMallocZone(), buf);
+        }
     }
 
   return host;
@@ -1811,7 +1817,8 @@ static NSUInteger   urlAlign;
   if (myData->password != 0)
     {
       NSUInteger plen = strlen(myData->password) + 1;
-      char *buf = NSZoneMalloc(NSDefaultMallocZone(), plen);
+      char stackBuf[GS_URL_BUF_SIZE];
+      char *buf = (plen <= GS_URL_BUF_SIZE) ? stackBuf : NSZoneMalloc(NSDefaultMallocZone(), plen);
 
       if (buf == NULL)
         {
@@ -1820,7 +1827,11 @@ static NSUInteger   urlAlign;
 
       unescape(myData->password, buf);
       password = [NSString stringWithUTF8String: buf];
-      NSZoneFree(NSDefaultMallocZone(), buf);
+
+      if (buf != stackBuf)
+        {
+          NSZoneFree(NSDefaultMallocZone(), buf);
+        }
     }
 
   return password;
@@ -1857,7 +1868,8 @@ static NSUInteger   urlAlign;
 
       if (len > 3)
         {
-          char *buf = NSZoneMalloc(NSDefaultMallocZone(), len);
+          char stackBuf[GS_URL_BUF_SIZE];
+          char *buf = (len <= GS_URL_BUF_SIZE) ? stackBuf : NSZoneMalloc(NSDefaultMallocZone(), len);
           char *ptr;
 
           if (buf == NULL)
@@ -1867,7 +1879,11 @@ static NSUInteger   urlAlign;
 
           ptr = [self _path: buf withEscapes: withEscapes];
           path = [NSString stringWithUTF8String: ptr];
-          NSZoneFree(NSDefaultMallocZone(), buf);
+
+          if (buf != stackBuf)
+            {
+              NSZoneFree(NSDefaultMallocZone(), buf);
+            }
         }
       else if (YES == myData->emptyPath)
         {
@@ -1943,7 +1959,8 @@ static NSUInteger   urlAlign;
       if (myData->path != 0)
         {
           NSUInteger rlen = strlen(myData->path) + 1;
-          char *buf = NSZoneMalloc(NSDefaultMallocZone(), rlen);
+          char stackBuf[GS_URL_BUF_SIZE];
+          char *buf = (rlen <= GS_URL_BUF_SIZE) ? stackBuf : NSZoneMalloc(NSDefaultMallocZone(), rlen);
 
           if (buf == NULL)
             {
@@ -1953,7 +1970,11 @@ static NSUInteger   urlAlign;
           strcpy(buf, myData->path);
           unescape(buf, buf);
           path = [NSString stringWithUTF8String: buf];
-          NSZoneFree(NSDefaultMallocZone(), buf);
+
+          if (buf != stackBuf)
+            {
+              NSZoneFree(NSDefaultMallocZone(), buf);
+            }
         }
 
       return path;
@@ -2131,7 +2152,8 @@ static NSUInteger   urlAlign;
   if (myData->user != 0)
     {
       NSUInteger ulen = strlen(myData->user) + 1;
-      char *buf = NSZoneMalloc(NSDefaultMallocZone(), ulen);
+      char stackBuf[GS_URL_BUF_SIZE];
+      char *buf = (ulen <= GS_URL_BUF_SIZE) ? stackBuf : NSZoneMalloc(NSDefaultMallocZone(), ulen);
 
       if (buf == NULL)
         {
@@ -2140,7 +2162,11 @@ static NSUInteger   urlAlign;
 
       unescape(myData->user, buf);
       user = [NSString stringWithUTF8String: buf];
-      NSZoneFree(NSDefaultMallocZone(), buf);
+
+      if (buf != stackBuf)
+        {
+          NSZoneFree(NSDefaultMallocZone(), buf);
+        }
     }
 
   return user;
@@ -2346,7 +2372,8 @@ static NSUInteger   urlAlign;
 
       if (len > 3)
         {
-          char *buf = NSZoneMalloc(NSDefaultMallocZone(), len);
+          char stackBuf[GS_URL_BUF_SIZE];
+          char *buf = (len <= GS_URL_BUF_SIZE) ? stackBuf : NSZoneMalloc(NSDefaultMallocZone(), len);
           char *ptr;
 
           if (buf == NULL)
@@ -2356,7 +2383,11 @@ static NSUInteger   urlAlign;
 
           ptr = [self _path: buf withEscapes: NO];
           path = [NSString stringWithUTF8String: ptr];
-          NSZoneFree(NSDefaultMallocZone(), buf);
+
+          if (buf != stackBuf)
+            {
+              NSZoneFree(NSDefaultMallocZone(), buf);
+            }
         }
     }
   return path;
