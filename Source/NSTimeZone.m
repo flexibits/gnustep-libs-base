@@ -2492,6 +2492,7 @@ typedef struct TZI_format {
     SYSTEMTIME DaylightDate;
 } TZI;
 
+#if !GS_USE_ICU
 static inline unsigned int
 lastDayOfGregorianMonth(int month, int year)
 {
@@ -2510,6 +2511,7 @@ lastDayOfGregorianMonth(int month, int year)
             return 31;
     }
 }
+#endif // !GS_USE_ICU
 
 /* IMPORT from NSCalendar date */
 void GSBreakTime(NSTimeInterval when,
