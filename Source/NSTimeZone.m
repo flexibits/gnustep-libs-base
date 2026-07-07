@@ -1368,12 +1368,12 @@ static NSMapTable *absolutes = 0;
 
             // Convert Windows timezone name to IANA identifier
             if (tzName) {
-                windowsZoneString = [NSString stringWithCharacters: tzName length: wcslen(tzName)];
-
                 UErrorCode ucalError = U_ZERO_ERROR;
                 UChar ianaTzName[BUFFER_SIZE];
+                int32_t ianaTzNameLen;
 
-                int32_t ianaTzNameLen =
+                windowsZoneString = [NSString stringWithCharacters: tzName length: wcslen(tzName)];
+                ianaTzNameLen =
                     ucal_getTimeZoneIDForWindowsID(
                         tzName,
                         -1,
