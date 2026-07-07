@@ -1413,9 +1413,13 @@ static NSMapTable *absolutes = 0;
         }
     }
 
-    NSTimeZone *zone = AUTORELEASE(RETAIN(systemTimeZone));
-    GS_MUTEX_UNLOCK(zone_mutex);
-    return zone;
+    {
+        NSTimeZone *zone = AUTORELEASE(RETAIN(systemTimeZone));
+
+        GS_MUTEX_UNLOCK(zone_mutex);
+
+        return zone;
+    }
 }
 
 #else
