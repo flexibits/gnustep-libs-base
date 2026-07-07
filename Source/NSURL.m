@@ -1672,26 +1672,34 @@ static NSUInteger   urlAlign;
 
 - (NSString*) host
 {
-  NSString  *host = nil;
+  NSString *host = nil;
 
   if (myData->host != 0)
     {
-      char  buf[strlen(myData->host)+1];
+      NSUInteger hlen = strlen(myData->host) + 1;
+      char *buf = NSZoneMalloc(NSDefaultMallocZone(), hlen);
+
+      if (buf == NULL)
+        {
+          return nil;
+        }
 
       if (*myData->host == '[')
-    {
-      char  *end = unescape(myData->host + 1, buf);
-
-      if (end[-1] == ']')
         {
-          end[-1] = '\0';
+          char *end = unescape(myData->host + 1, buf);
+
+          if (end[-1] == ']')
+            {
+              end[-1] = '\0';
+            }
         }
-    }
       else
-    {
+        {
           unescape(myData->host, buf);
-    }
+        }
+
       host = [NSString stringWithUTF8String: buf];
+      NSZoneFree(NSDefaultMallocZone(), buf);
     }
 
   return host;
@@ -1802,10 +1810,17 @@ static NSUInteger   urlAlign;
 
   if (myData->password != 0)
     {
-      char  buf[strlen(myData->password)+1];
+      NSUInteger plen = strlen(myData->password) + 1;
+      char *buf = NSZoneMalloc(NSDefaultMallocZone(), plen);
+
+      if (buf == NULL)
+        {
+          return nil;
+        }
 
       unescape(myData->password, buf);
       password = [NSString stringWithUTF8String: buf];
+      NSZoneFree(NSDefaultMallocZone(), buf);
     }
 
   return password;
@@ -1842,11 +1857,17 @@ static NSUInteger   urlAlign;
 
       if (len > 3)
         {
-          char      buf[len];
-          char      *ptr;
+          char *buf = NSZoneMalloc(NSDefaultMallocZone(), len);
+          char *ptr;
+
+          if (buf == NULL)
+            {
+              return nil;
+            }
 
           ptr = [self _path: buf withEscapes: withEscapes];
           path = [NSString stringWithUTF8String: ptr];
+          NSZoneFree(NSDefaultMallocZone(), buf);
         }
       else if (YES == myData->emptyPath)
         {
@@ -1881,7 +1902,7 @@ static NSUInteger   urlAlign;
 
   if (myData->port != 0)
     {
-      char  buf[strlen(myData->port)+1];
+      char buf[16]; // port numbers are at most 5 digits
 
       unescape(myData->port, buf);
       port = [NSNumber numberWithUnsignedShort: atol(buf)];
@@ -1921,11 +1942,18 @@ static NSUInteger   urlAlign;
 
       if (myData->path != 0)
         {
-          char buf[strlen(myData->path) + 1];
-        
+          NSUInteger rlen = strlen(myData->path) + 1;
+          char *buf = NSZoneMalloc(NSDefaultMallocZone(), rlen);
+
+          if (buf == NULL)
+            {
+              return nil;
+            }
+
           strcpy(buf, myData->path);
           unescape(buf, buf);
           path = [NSString stringWithUTF8String: buf];
+          NSZoneFree(NSDefaultMallocZone(), buf);
         }
 
       return path;
@@ -2102,10 +2130,17 @@ static NSUInteger   urlAlign;
 
   if (myData->user != 0)
     {
-      char  buf[strlen(myData->user)+1];
+      NSUInteger ulen = strlen(myData->user) + 1;
+      char *buf = NSZoneMalloc(NSDefaultMallocZone(), ulen);
+
+      if (buf == NULL)
+        {
+          return nil;
+        }
 
       unescape(myData->user, buf);
       user = [NSString stringWithUTF8String: buf];
+      NSZoneFree(NSDefaultMallocZone(), buf);
     }
 
   return user;
@@ -2311,11 +2346,17 @@ static NSUInteger   urlAlign;
 
       if (len > 3)
         {
-          char      buf[len];
-          char      *ptr;
+          char *buf = NSZoneMalloc(NSDefaultMallocZone(), len);
+          char *ptr;
+
+          if (buf == NULL)
+            {
+              return nil;
+            }
 
           ptr = [self _path: buf withEscapes: NO];
           path = [NSString stringWithUTF8String: ptr];
+          NSZoneFree(NSDefaultMallocZone(), buf);
         }
     }
   return path;
