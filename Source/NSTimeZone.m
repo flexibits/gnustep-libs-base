@@ -1335,7 +1335,6 @@ static NSMapTable *absolutes = 0;
     if (systemTimeZone == nil) {
         NSString *windowsZoneString = nil;
         NSString *ianaZoneString = nil;
-        NSString *zoneSource = nil;
 
         /*
         * setup default value in case something goes wrong.
@@ -1363,8 +1362,6 @@ static NSMapTable *absolutes = 0;
             // NOT the standard name to perform its conversions.
             // See https://gist.github.com/brooke-tilley/7203b758ea722f8f72fa1508e1d18ed9 for proof.
             tzName = tz.TimeZoneKeyName;
-
-            zoneSource = @"function: 'GetTimeZoneInformation()'";
 
             // Convert Windows timezone name to IANA identifier
             if (tzName) {
