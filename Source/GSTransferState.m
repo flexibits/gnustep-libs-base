@@ -18,6 +18,9 @@
 #define GS_DELIMITERS_CR 0x0d
 #define GS_DELIMITERS_LR 0x0a
 
+@interface _GSMutableInsensitiveDictionary : NSMutableDictionary
+@end
+
 @implementation GSParsedResponseHeader
 
 - (instancetype) init
