@@ -1412,7 +1412,7 @@ static NSMapTable *absolutes = 0;
             }
 
             ASSIGN(systemTimeZone, zone);
-            ASSIGN(zone, nil);
+            DESTROY(zone);
         }
     }
 
