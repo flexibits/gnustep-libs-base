@@ -3013,7 +3013,7 @@ static NSCharacterSet   *queryItemCharSet = nil;
 - (void) setQueryItems: (NSArray *)queryItems
 { 
   ASSIGNCOPY(internal->_queryItems, queryItems);
-  ASSIGN(internal->_percentEncodedQueryItems, nil);
+  DESTROY(internal->_percentEncodedQueryItems);
   internal->_dirty = YES;
 }
 
