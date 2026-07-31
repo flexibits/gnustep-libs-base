@@ -542,6 +542,24 @@ addBundlePath(NSMutableArray *list, NSArray *contents,
     }
 }
 
+#ifdef __ANDROID__
+/* Probe each compatible localization name directly in Android assets. */
+static void
+addAndroidBundlePaths(NSMutableArray *list, NSString *path, NSString *lang)
+{
+  NSEnumerator *enumerator = [altLang(lang) objectEnumerator];
+  NSString *alternative;
+
+  while (nil != (alternative = [enumerator nextObject]))
+    {
+      NSString *localizedPath = [path stringByAppendingPathComponent:
+	[alternative stringByAppendingPathExtension: @"lproj"]];
+      NSArray *contents = bundle_directory_readable(localizedPath);
+      addBundlePath(list, contents, localizedPath, nil, nil);
+    }
+}
+#endif
+
 /* Try to locate name framework in standard places
    which are like /Library/Frameworks/(name).framework */
 static inline NSString *
@@ -2265,10 +2283,7 @@ IF_NO_ARC(
       
       if (localization)
 	{
-	  primary = [primary stringByAppendingPathComponent:
-	    [localization stringByAppendingPathExtension: @"lproj"]];
-	  contents = bundle_directory_readable(primary);
-	  addBundlePath(array, contents, primary, nil, nil);
+	  addAndroidBundlePaths(array, primary, localization);
 	}
       else
 	{
@@ -2277,29 +2292,20 @@ IF_NO_ARC(
 	  enumerate = [languages objectEnumerator];
 	  while ((language = [enumerate nextObject]))
 	    {
-	      primary = [subPathPrimary stringByAppendingPathComponent:
-		[language stringByAppendingPathExtension: @"lproj"]];
-	      contents = bundle_directory_readable(primary);
-	      addBundlePath(array, contents, primary, nil, nil);
+	      addAndroidBundlePaths(array, subPathPrimary, language);
 	    }
 	}
     }
   if (localization)
     {
-      primary = [originalPrimary stringByAppendingPathComponent:
-	[localization stringByAppendingPathExtension: @"lproj"]];
-      contents = bundle_directory_readable(primary);
-      addBundlePath(array, contents, primary, nil, nil);
+      addAndroidBundlePaths(array, originalPrimary, localization);
     }
   else
     {
       enumerate = [languages objectEnumerator];
       while ((language = [enumerate nextObject]))
 	{
-	  primary = [originalPrimary stringByAppendingPathComponent:
-	    [language stringByAppendingPathExtension: @"lproj"]];
-	  contents = bundle_directory_readable(primary);
-	  addBundlePath(array, contents, primary, nil, nil);
+	  addAndroidBundlePaths(array, originalPrimary, language);
 	}
     }
 #endif /* __ANDROID__ */
@@ -3461,4 +3467,3 @@ IF_NO_ARC(
 #endif /* __ANDROID__ */
 
 @end
-
