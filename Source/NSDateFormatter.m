@@ -31,7 +31,8 @@
   NSTimeZone *_tz; \
   NSDateFormatterStyle _timeStyle; \
   NSDateFormatterStyle _dateStyle; \
-  void      *_formatter
+  void      *_formatter; \
+  BOOL       _hasExplicitFormat
 
 #define	EXPOSE_NSDateFormatter_IVARS	1
 #import "common.h"
@@ -73,17 +74,17 @@ NSToUDateFormatStyle (NSDateFormatterStyle style)
 #if GS_USE_ICU == 1
   NSInteger relative =
     (style & FormatterDoesRelativeDateFormatting) ? UDAT_RELATIVE : 0;
-  switch (style)
+  switch (style & ~FormatterDoesRelativeDateFormatting)
     {
       case NSDateFormatterNoStyle:
         return (relative | UDAT_NONE);
-      case NSDateFormatterShortStyle: 
+      case NSDateFormatterShortStyle:
         return (relative | UDAT_SHORT);
-      case NSDateFormatterMediumStyle: 
+      case NSDateFormatterMediumStyle:
         return (relative | UDAT_MEDIUM);
       case NSDateFormatterLongStyle:
         return (relative | UDAT_LONG);
-      case NSDateFormatterFullStyle: 
+      case NSDateFormatterFullStyle:
         return (relative | UDAT_FULL);
     }
 #endif
@@ -381,6 +382,7 @@ static NSDateFormatterBehavior _defaultBehavior = 0;
 
 - (void) setDateFormat: (NSString *)string
 {
+  internal->_hasExplicitFormat = (string != nil);
   ASSIGNCOPY(_dateFormat, string);
   [self _resetUDateFormat];
 }
@@ -392,6 +394,7 @@ static NSDateFormatterBehavior _defaultBehavior = 0;
 
 - (void) setDateStyle: (NSDateFormatterStyle)style
 {
+  internal->_hasExplicitFormat = NO;
   internal->_dateStyle = style;
   [self _resetUDateFormat];
 }
@@ -403,6 +406,7 @@ static NSDateFormatterBehavior _defaultBehavior = 0;
 
 - (void) setTimeStyle: (NSDateFormatterStyle)style
 {
+  internal->_hasExplicitFormat = NO;
   internal->_timeStyle = style;
   [self _resetUDateFormat];
 }
@@ -917,7 +921,11 @@ static NSDateFormatterBehavior _defaultBehavior = 0;
 
 - (void) setDoesRelativeDateFormatting: (BOOL)flag
 {
-  internal->_dateStyle |= FormatterDoesRelativeDateFormatting;
+  if (flag)
+    internal->_dateStyle |= FormatterDoesRelativeDateFormatting;
+  else
+    internal->_dateStyle &= ~FormatterDoesRelativeDateFormatting;
+  [self _resetUDateFormat];
 }
 @end
 
@@ -940,11 +948,15 @@ static NSDateFormatterBehavior _defaultBehavior = 0;
   tzID = malloc(sizeof(UChar) * tzIDLength);
   [[internal->_tz name] getCharacters: tzID];
   
-  if (self->_dateFormat)
+  if (internal->_hasExplicitFormat)
     {
       patLength = [self->_dateFormat length];
       pat = malloc(sizeof(UChar) * patLength);
       [self->_dateFormat getCharacters: pat];
+    }
+  else
+    {
+      DESTROY(_dateFormat);
     }
 #if U_ICU_VERSION_MAJOR_NUM >= 50 || defined(HAVE_ICU_H)
   timeStyle = pat ? UDAT_PATTERN : NSToUDateFormatStyle (internal->_timeStyle);
@@ -961,6 +973,17 @@ static NSDateFormatterBehavior _defaultBehavior = 0;
   if (pat)
     free(pat);
   free(tzID);
+  if (!internal->_hasExplicitFormat && internal->_formatter)
+    {
+      err = U_ZERO_ERROR;
+      int32_t length = udat_toPattern (internal->_formatter, NO, NULL, 0, &err);
+      unichar *buf = malloc (sizeof(unichar) * (length + 1));
+      err = U_ZERO_ERROR;
+      udat_toPattern (internal->_formatter, NO, buf, length, &err);
+      if (U_SUCCESS(err))
+        _dateFormat = [[NSString alloc] initWithCharacters: buf length: length];
+      free (buf);
+    }
 #else
   return;
 #endif
