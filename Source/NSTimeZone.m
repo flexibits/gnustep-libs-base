@@ -1299,6 +1299,8 @@ static NSMapTable *absolutes = 0;
  */
 + (void)setDefaultTimeZone:(NSTimeZone *)aTimeZone
 {
+  BOOL changed = NO;
+
   /*
    * We can't make the localTimeZone the default since that would
    * cause recursion ...
@@ -1308,12 +1310,16 @@ static NSMapTable *absolutes = 0;
       aTimeZone = [self systemTimeZone];
     }
 
+  GS_MUTEX_LOCK(zone_mutex);
   if (aTimeZone != defaultTimeZone && (aTimeZone == nil || defaultTimeZone == nil || ![aTimeZone isEqualToTimeZone:defaultTimeZone]))
     {
-      GS_MUTEX_LOCK(zone_mutex);
       ASSIGN(defaultTimeZone, aTimeZone);
-      GS_MUTEX_UNLOCK(zone_mutex);
+      changed = YES;
+    }
+  GS_MUTEX_UNLOCK(zone_mutex);
 
+  if (changed)
+    {
       [[NSNotificationCenter defaultCenter] postNotificationName: GSDefaultTimeZoneDidChangeNotification
                                                           object: nil];
     }
