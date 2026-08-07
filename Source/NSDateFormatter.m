@@ -138,6 +138,7 @@ static NSDateFormatterBehavior _defaultBehavior = 0;
     {
       GS_COPY_INTERNAL(o, zone)
       IF_NO_ARC(RETAIN(GSIVar(o,_locale));)
+      IF_NO_ARC(RETAIN(GSIVar(o,_tz));)
 #if GS_USE_ICU == 1
       {
         UErrorCode err = U_ZERO_ERROR;
