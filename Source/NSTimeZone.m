@@ -2355,6 +2355,7 @@ static NSMapTable *absolutes = 0;
                                     cLocale, result, len, &err);
     }
 
+    ucal_close(cal);
     return AUTORELEASE([[NSString alloc] initWithCharactersNoCopy:result
                                                            length:len
                                                      freeWhenDone:YES]);
