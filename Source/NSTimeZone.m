@@ -1405,11 +1405,13 @@ static NSMapTable *absolutes = 0;
             if (zone == nil)
             {
                 NSLog(@"Using time zone with absolute offset 0.");
-                zone = systemTimeZone;
+                // systemTimeZone is already set to the GMT+0 fallback above; nothing to do.
             }
-
-            ASSIGN(systemTimeZone, zone);
-            DESTROY(zone);
+            else
+            {
+                ASSIGN(systemTimeZone, zone);
+                DESTROY(zone);
+            }
         }
     }
 
