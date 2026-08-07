@@ -903,7 +903,10 @@ static NSDateFormatterBehavior _defaultBehavior = 0;
   
   skelLen = udatpg_getSkeleton (datpg, pat, patLen, skel, BUFFER_SIZE, &err);
   if (U_FAILURE(err))
-    return nil;
+    {
+      udatpg_close (datpg);
+      return nil;
+    }
   
   patLen =
     udatpg_getBestPattern (datpg, skel, skelLen, pat, BUFFER_SIZE, &err);
