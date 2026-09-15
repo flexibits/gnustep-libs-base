@@ -107,7 +107,7 @@
       unichar	(*caiImp)(NSString*, SEL, NSUInteger);
       SEL caiSel = @selector(characterAtIndex:);
 
-      caiImp = (unichar (*)())[self methodForSelector: caiSel];
+      caiImp = (unichar (*)(NSString*, SEL, NSUInteger))[self methodForSelector: caiSel];
       while (start < length && space((*caiImp)(self, caiSel, start)))
 	{
 	  start++;
@@ -134,7 +134,7 @@
       unichar	(*caiImp)(NSString*, SEL, NSUInteger);
       SEL caiSel = @selector(characterAtIndex:);
 
-      caiImp = (unichar (*)())[self methodForSelector: caiSel];
+      caiImp = (unichar (*)(NSString*, SEL, NSUInteger))[self methodForSelector: caiSel];
       while (end > 0)
 	{
 	  if (!space((*caiImp)(self, caiSel, end - 1)))
@@ -166,7 +166,7 @@
       unichar	(*caiImp)(NSString*, SEL, NSUInteger);
       SEL caiSel = @selector(characterAtIndex:);
 
-      caiImp = (unichar (*)())[self methodForSelector: caiSel];
+      caiImp = (unichar (*)(NSString*, SEL, NSUInteger))[self methodForSelector: caiSel];
       while (start < length && space((*caiImp)(self, caiSel, start)))
 	{
 	  start++;
