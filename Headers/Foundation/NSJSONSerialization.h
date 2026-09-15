@@ -51,7 +51,11 @@ enum
    * If this is not set, then the writer will not generate any superfluous
    * whitespace, producing space-efficient but not very human-friendly JSON.
    */
-  NSJSONWritingPrettyPrinted = (1UL << 0)
+  NSJSONWritingPrettyPrinted = (1UL << 0),
+  /**
+   * When writing JSON, sort dictionary keys in lexicographic order.
+   */
+  NSJSONWritingSortedKeys     = (1UL << 3)
 };
 /**
  * A bitmask containing flags from the NSJSONWriting* set, specifying options
