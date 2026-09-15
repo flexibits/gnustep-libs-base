@@ -55,7 +55,7 @@ typedef struct _cifframe_t {
 
 extern NSMutableData *cifframe_from_signature (NSMethodSignature *info);
 
-extern GSCodeBuffer* cifframe_closure (NSMethodSignature *sig, void (*func)());
+extern GSCodeBuffer* cifframe_closure (NSMethodSignature *sig, void (*func)(ffi_cif*, void*, void**, void*));
 
 extern void cifframe_set_arg(cifframe_t *cframe, int index, void *buffer, 
 			     int size);
