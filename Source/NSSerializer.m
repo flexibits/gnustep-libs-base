@@ -445,8 +445,8 @@ typedef struct {
   unsigned	*cursor;
   BOOL		mutable;
   BOOL		didUnique;
-  void		(*debImp)();
-  unsigned int	(*deiImp)();
+  void		(*debImp)(NSData*, SEL, void*, NSUInteger, unsigned*);
+  unsigned int	(*deiImp)(NSData*, SEL, unsigned*);
   GSIArray_t	array;
 } _NSDeserializerInfo;
 
@@ -471,8 +471,8 @@ initDeserializerInfo(_NSDeserializerInfo* info, NSData *d, unsigned *c, BOOL m)
   info->data = d;
   info->cursor = c;
   info->mutable = m;
-  info->debImp = (void (*)())[d methodForSelector: debSel];
-  info->deiImp = (unsigned int (*)())[d methodForSelector: deiSel];
+  info->debImp = (void (*)(NSData*, SEL, void*, NSUInteger, unsigned*))[d methodForSelector: debSel];
+  info->deiImp = (unsigned int (*)(NSData*, SEL, unsigned*))[d methodForSelector: deiSel];
   (*info->debImp)(d, debSel, &u, 1, c);
   if (u == 0 || u == 1)
     {
