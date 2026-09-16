@@ -899,7 +899,7 @@ writeObject(id obj, NSMutableString *output, NSInteger tabs, BOOL sortedKeys)
         writeNewline(output, tabs);
         writeTabs(output, tabs);
         writeObject(o, output, tabs + 1, sortedKeys);
-        [output appendString: @": "];
+        [output appendString: tabs >= 0 ? @": " : @":"];
         writeObject([obj objectForKey: o], output, tabs + 1, sortedKeys);
       END_FOR_IN(keySource)
       writeNewline(output, tabs);
