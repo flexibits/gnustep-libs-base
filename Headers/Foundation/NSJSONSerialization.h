@@ -55,7 +55,11 @@ enum
   /**
    * When writing JSON, sort dictionary keys in lexicographic order.
    */
-  NSJSONWritingSortedKeys     = (1UL << 3)
+  NSJSONWritingSortedKeys     = (1UL << 1),
+  /**
+   * When writing JSON, do not escape forward slash characters.
+   */
+  NSJSONWritingWithoutEscapingSlashes = (1UL << 3)
 };
 /**
  * A bitmask containing flags from the NSJSONWriting* set, specifying options
