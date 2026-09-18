@@ -4291,10 +4291,77 @@ agree, create a new GSUInlineString otherwise.
                         length:(NSUInteger)length
                   freeWhenDone:(BOOL)flag
 {
-    return [self initWithBytesNoCopy:(void *)chars
-                              length:length * sizeof(unichar)
-                            encoding:NSUnicodeStringEncoding
-                        freeWhenDone:flag];
+    // Do NOT route through initWithBytesNoCopy:/initWithBytes: here.
+    // chars is already an array of decoded unichar values
+    // Initializing from bytes will call fixBOM(),
+    // which strips a leading U+FEFF from the buffer if it's there
+    BOOL isASCII = NO;
+    BOOL isLatin1 = NO;
+
+    _flags.owned = YES;
+    _zone = [self zone];
+
+    if (length == 0)
+      {
+        if (flag && chars != NULL)
+          {
+            NSZoneFree(NSZoneFromPointer(chars), chars);
+          }
+
+        return [self initWithCapacity:0];
+      }
+
+    if (chars == NULL)
+      {
+        [NSException raise:NSInvalidArgumentException
+                    format:@"-[%@ %@] given NULL pointer",
+                    NSStringFromClass([self class]), NSStringFromSelector(_cmd)];
+      }
+
+    if (GSUnicode(chars, length, &isASCII, &isLatin1) != length)
+      {
+        if (flag == YES)
+          {
+            NSZoneFree(NSZoneFromPointer(chars), chars);
+          }
+
+        return nil;
+      }
+
+    if (isASCII || (internalEncoding == NSISOLatin1StringEncoding && isLatin1))
+      {
+        _contents.c = NSZoneMalloc(_zone, length);
+        _count = length;
+        _flags.wide = 0;
+
+        while (length-- > 0)
+          {
+            _contents.c[length] = chars[length];
+          }
+
+        if (flag == YES)
+          {
+            NSZoneFree(NSZoneFromPointer(chars), chars);
+          }
+      }
+    else
+      {
+        if (flag == YES)
+          {
+            _zone = NSZoneFromPointer(chars);
+            _contents.u = chars;
+          }
+        else
+          {
+            _contents.u = NSZoneMalloc(_zone, length * sizeof(unichar));
+            memcpy(_contents.u, chars, length * sizeof(unichar));
+          }
+
+        _count = length;
+        _flags.wide = 1;
+      }
+
+    return self;
 }
 
 - (id)initWithCStringNoCopy:(char *)chars

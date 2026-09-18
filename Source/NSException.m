@@ -1263,9 +1263,9 @@ GSPrivateReturnAddresses(NSUInteger **returns)
       GS_MUTEX_LOCK(traceLock);
       for (i = 0; i < count; i++)
         {
-          NSUInteger	addr = (NSUInteger)*ptrs++; 
+          NSUInteger	addr = (NSUInteger)*ptrs++;
 
-          if ((fromSym)(hProcess, (DWORD64)addr, 0, symbol))
+          if ((fromSym)(hProcess, (DWORD64)(addr - 1), 0, symbol))
             {
               syms[i] = [NSString stringWithFormat:
                 @"%s - %lx", symbol->Name, (unsigned long)addr];

@@ -861,7 +861,7 @@ writeNewline(NSMutableString *output, NSInteger tabs)
 }
 
 static BOOL
-writeObject(id obj, NSMutableString *output, NSInteger tabs)
+writeObject(id obj, NSMutableString *output, NSInteger tabs, BOOL sortedKeys, BOOL escapeSlashes)
 {
   if ([obj isKindOfClass: NSArrayClass])
     {
@@ -875,7 +875,7 @@ writeObject(id obj, NSMutableString *output, NSInteger tabs)
         writeComma = YES;
         writeNewline(output, tabs);
         writeTabs(output, tabs);
-        writeObject(o, output, tabs + 1);
+        writeObject(o, output, tabs + 1, sortedKeys, escapeSlashes);
       END_FOR_IN(obj)
       writeNewline(output, tabs);
       writeTabs(output, tabs);
@@ -884,8 +884,11 @@ writeObject(id obj, NSMutableString *output, NSInteger tabs)
   else if ([obj isKindOfClass: NSDictionaryClass])
     {
       BOOL writeComma = NO;
+      id keySource = sortedKeys
+        ? [[obj allKeys] sortedArrayUsingSelector: @selector(compare:)]
+        : obj;
       [output appendString: @"{"];
-      FOR_IN(id, o, obj)
+      FOR_IN(id, o, keySource)
         // Keys in dictionaries must be strings
         if (![o isKindOfClass: NSStringClass]) { return NO; }
         if (writeComma)
@@ -895,10 +898,10 @@ writeObject(id obj, NSMutableString *output, NSInteger tabs)
         writeComma = YES;
         writeNewline(output, tabs);
         writeTabs(output, tabs);
-        writeObject(o, output, tabs + 1);
-        [output appendString: @": "];
-        writeObject([obj objectForKey: o], output, tabs + 1);
-      END_FOR_IN(obj)
+        writeObject(o, output, tabs + 1, sortedKeys, escapeSlashes);
+        [output appendString: tabs >= 0 ? @": " : @":"];
+        writeObject([obj objectForKey: o], output, tabs + 1, sortedKeys, escapeSlashes);
+      END_FOR_IN(keySource)
       writeNewline(output, tabs);
       writeTabs(output, tabs);
       [output appendString: @"}"];
@@ -927,8 +930,8 @@ writeObject(id obj, NSMutableString *output, NSInteger tabs)
             {
               unichar	c = from[i];
 
-              if (c == '"' || c == '\\' || c == '\b'
-                || c == '\f' || c == '\n' || c == '\r' || c == '\t')
+              if (c == '"' || c == '\\' || (c == '/' && escapeSlashes)
+                || c == '\b' || c == '\f' || c == '\n' || c == '\r' || c == '\t')
                 {
                   size += 2;
                 }
@@ -948,13 +951,14 @@ writeObject(id obj, NSMutableString *output, NSInteger tabs)
             {
               unichar	c = from[i];
 
-              if (c == '"' || c == '\\' || c == '\b'
-                || c == '\f' || c == '\n' || c == '\r' || c == '\t')
+              if (c == '"' || c == '\\' || (c == '/' && escapeSlashes)
+                || c == '\b' || c == '\f' || c == '\n' || c == '\r' || c == '\t')
                 {
                   to[j++] = '\\';
                   switch (c)
                     {
                       case '\\': to[j++] = '\\'; break;
+                      case '/': to[j++] = '/'; break;
                       case '\b': to[j++] = 'b'; break;
                       case '\f': to[j++] = 'f'; break;
                       case '\n': to[j++] = 'n'; break;
@@ -1061,9 +1065,11 @@ writeObject(id obj, NSMutableString *output, NSInteger tabs)
   NSData *data = nil;
   NSUInteger tabs;
 
+  BOOL sortedKeys = (opt & NSJSONWritingSortedKeys) == NSJSONWritingSortedKeys;
+  BOOL escapeSlashes = (opt & NSJSONWritingWithoutEscapingSlashes) != NSJSONWritingWithoutEscapingSlashes;
   tabs = ((opt & NSJSONWritingPrettyPrinted) == NSJSONWritingPrettyPrinted) ?
     0 : NSIntegerMin;
-  if (writeObject(obj, str, tabs))
+  if (writeObject(obj, str, tabs, sortedKeys, escapeSlashes))
     {
       data = [str dataUsingEncoding: NSUTF8StringEncoding];
       if (NULL != error)
@@ -1090,7 +1096,7 @@ writeObject(id obj, NSMutableString *output, NSInteger tabs)
 
 + (BOOL) isValidJSONObject: (id)obj
 {
-  return writeObject(obj, nil, NSIntegerMin);
+  return writeObject(obj, nil, NSIntegerMin, NO, YES);
 }
 
 + (id) JSONObjectWithData: (NSData *)data

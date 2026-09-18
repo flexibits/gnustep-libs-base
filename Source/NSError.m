@@ -218,15 +218,20 @@
 
 - (BOOL)isEqual:(id)object
 {
-    if (self == object) {
+    NSError *otherError;
+
+    if (self == object)
+      {
         return YES;
-    }
+      }
 
-    if (![object isKindOfClass:[NSError class]]) {
+    if (![object isKindOfClass:[NSError class]])
+      {
         return NO;
-    }
+      }
 
-    NSError *otherError = (NSError *) object;
+    otherError = (NSError *)object;
+
     return [_domain isEqualToString:[otherError domain]]
            && _code == [otherError code]
            && [_userInfo isEqual:[otherError userInfo]];

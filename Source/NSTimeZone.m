@@ -1299,6 +1299,8 @@ static NSMapTable *absolutes = 0;
  */
 + (void)setDefaultTimeZone:(NSTimeZone *)aTimeZone
 {
+  BOOL changed = NO;
+
   /*
    * We can't make the localTimeZone the default since that would
    * cause recursion ...
@@ -1308,12 +1310,16 @@ static NSMapTable *absolutes = 0;
       aTimeZone = [self systemTimeZone];
     }
 
+  GS_MUTEX_LOCK(zone_mutex);
   if (aTimeZone != defaultTimeZone && (aTimeZone == nil || defaultTimeZone == nil || ![aTimeZone isEqualToTimeZone:defaultTimeZone]))
     {
-      GS_MUTEX_LOCK(zone_mutex);
       ASSIGN(defaultTimeZone, aTimeZone);
-      GS_MUTEX_UNLOCK(zone_mutex);
+      changed = YES;
+    }
+  GS_MUTEX_UNLOCK(zone_mutex);
 
+  if (changed)
+    {
       [[NSNotificationCenter defaultCenter] postNotificationName: GSDefaultTimeZoneDidChangeNotification
                                                           object: nil];
     }
@@ -1335,7 +1341,6 @@ static NSMapTable *absolutes = 0;
     if (systemTimeZone == nil) {
         NSString *windowsZoneString = nil;
         NSString *ianaZoneString = nil;
-        NSString *zoneSource = nil;
 
         /*
         * setup default value in case something goes wrong.
@@ -1364,16 +1369,14 @@ static NSMapTable *absolutes = 0;
             // See https://gist.github.com/brooke-tilley/7203b758ea722f8f72fa1508e1d18ed9 for proof.
             tzName = tz.TimeZoneKeyName;
 
-            zoneSource = @"function: 'GetTimeZoneInformation()'";
-
             // Convert Windows timezone name to IANA identifier
             if (tzName) {
-                windowsZoneString = [NSString stringWithCharacters: tzName length: wcslen(tzName)];
-
                 UErrorCode ucalError = U_ZERO_ERROR;
                 UChar ianaTzName[BUFFER_SIZE];
+                int32_t ianaTzNameLen;
 
-                int32_t ianaTzNameLen =
+                windowsZoneString = [NSString stringWithCharacters: tzName length: wcslen(tzName)];
+                ianaTzNameLen =
                     ucal_getTimeZoneIDForWindowsID(
                         tzName,
                         -1,
@@ -1408,17 +1411,23 @@ static NSMapTable *absolutes = 0;
             if (zone == nil)
             {
                 NSLog(@"Using time zone with absolute offset 0.");
-                zone = systemTimeZone;
+                // systemTimeZone is already set to the GMT+0 fallback above; nothing to do.
             }
-
-            ASSIGN(systemTimeZone, zone);
-            ASSIGN(zone, nil);
+            else
+            {
+                ASSIGN(systemTimeZone, zone);
+                DESTROY(zone);
+            }
         }
     }
 
-    NSTimeZone *zone = AUTORELEASE(RETAIN(systemTimeZone));
-    GS_MUTEX_UNLOCK(zone_mutex);
-    return zone;
+    {
+        NSTimeZone *zone = AUTORELEASE(RETAIN(systemTimeZone));
+
+        GS_MUTEX_UNLOCK(zone_mutex);
+
+        return zone;
+    }
 }
 
 #else
@@ -2352,6 +2361,7 @@ static NSMapTable *absolutes = 0;
                                     cLocale, result, len, &err);
     }
 
+    ucal_close(cal);
     return AUTORELEASE([[NSString alloc] initWithCharactersNoCopy:result
                                                            length:len
                                                      freeWhenDone:YES]);
@@ -2491,6 +2501,7 @@ typedef struct TZI_format {
     SYSTEMTIME DaylightDate;
 } TZI;
 
+#if !GS_USE_ICU
 static inline unsigned int
 lastDayOfGregorianMonth(int month, int year)
 {
@@ -2509,6 +2520,7 @@ lastDayOfGregorianMonth(int month, int year)
             return 31;
     }
 }
+#endif // !GS_USE_ICU
 
 /* IMPORT from NSCalendar date */
 void GSBreakTime(NSTimeInterval when,

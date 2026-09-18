@@ -129,13 +129,6 @@ GS_EXPORT_CLASS
 @interface NSCalendarDate (GregorianDate)
 
 - (NSInteger) lastDayOfGregorianMonth: (NSInteger)month year: (NSInteger)year;
-- (NSInteger) absoluteGregorianDay: (NSInteger)day
-			     month: (NSInteger)month
-			      year: (NSInteger)year;
-- (void) gregorianDateFromAbsolute: (NSInteger)d
-			       day: (NSInteger*)day
-			     month: (NSInteger*)month
-			      year: (NSInteger*)year;
 
 @end
 

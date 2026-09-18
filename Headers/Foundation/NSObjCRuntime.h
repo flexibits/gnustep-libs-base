@@ -340,7 +340,12 @@ typedef NSString* NSExceptionName;
 #define NS_CLASS_DEPRECATED(...)
 #define NS_CLASS_AVAILABLE_MAC(...)
 #define NS_CLASS_DEPRECATED_MAC(...)
-#define NS_UNAVAILABLE
+
+#if __has_attribute(unavailable)
+#  define NS_UNAVAILABLE __attribute__((unavailable))
+#else
+#  define NS_UNAVAILABLE
+#endif
 
 /* Define root class NS macro */
 #ifndef NS_ROOT_CLASS
