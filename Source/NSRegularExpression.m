@@ -215,17 +215,16 @@ NSRegularExpressionOptionsToURegexpFlags(NSRegularExpressionOptions opts)
 
 - (NSString*) pattern
 {
-  UErrorCode	s = 0;
-  UText		*t = uregex_patternUText(regex, &s);
-  GSUTextString	*str = NULL;
+  UErrorCode s = U_ZERO_ERROR;
+  int32_t len = 0;
+  const UChar *p = uregex_pattern(regex, &len, &s);
 
-  if (U_FAILURE(s))
+  if (U_FAILURE(s) || p == NULL)
     {
       return nil;
     }
-  str = [GSUTextString new];
-  utext_clone(&str->txt, t, FALSE, TRUE, &s);
-  return AUTORELEASE(str);
+
+  return [NSString stringWithCharacters: (const unichar*)p length: (NSUInteger)len];
 }
 #else
 - (id) initWithPattern: (NSString*)aPattern
@@ -868,34 +867,50 @@ prepareResult(NSRegularExpression *regex,
 {
   // FIXME: We're computing a value that is most likely ignored in an
   // expensive way.
-  NSInteger	results = [self numberOfMatchesInString: string
-						options: opts
-						  range: range];
-  UErrorCode	s = 0;
-  UText		txt = UTEXT_INITIALIZER;
-  UText		replacement = UTEXT_INITIALIZER;
-  GSUTextString	*ret = [GSUTextString new];
+  NSInteger results = [self numberOfMatchesInString: string
+                                            options: opts
+                                              range: range];
+  UErrorCode s = U_ZERO_ERROR;
+  UText txt = UTEXT_INITIALIZER;
+  UText replacement = UTEXT_INITIALIZER;
+  UText *output = NULL;
   URegularExpression *r = setupRegex(regex, string, &txt, opts, range, 0);
-  UText		*output = NULL;
 
   UTextInitWithNSString(&replacement, template);
 
   output = uregex_replaceAllUText(r, &replacement, NULL, &s);
-  if (0 != s)
-    {
-      uregex_close(r);
-      utext_close(&replacement);
-      utext_close(&txt);
-      DESTROY(ret);
-      return 0;
-    }
-  utext_clone(&ret->txt, output, TRUE, TRUE, &s);
-  [string setString: ret];
-  RELEASE(ret);
-  uregex_close(r);
 
+  if (U_SUCCESS(s))
+    {
+      int64_t len = utext_nativeLength(output);
+      unichar *buf = NSZoneMalloc(NSDefaultMallocZone(), len * sizeof(unichar));
+      UErrorCode es = U_ZERO_ERROR;
+
+      utext_extract(output, 0, len, buf, (int32_t)len, &es);
+
+      if (U_FAILURE(es))
+        {
+          NSZoneFree(NSDefaultMallocZone(), buf);
+        }
+      else
+        {
+          NSString *result;
+
+          result = AUTORELEASE([[NSString alloc] initWithCharactersNoCopy: buf
+                                                                   length: (NSUInteger)len
+                                                             freeWhenDone: YES]);
+          [string setString: result];
+        }
+    }
+
+  uregex_close(r);
   utext_close(&txt);
-  utext_close(output);
+
+  if (output != NULL)
+    {
+      utext_close(output);
+    }
+
   utext_close(&replacement);
   return results;
 }
@@ -905,31 +920,47 @@ prepareResult(NSRegularExpression *regex,
                                          range: (NSRange)range
                                   withTemplate: (NSString*)template
 {
-  UErrorCode	s = 0;
-  UText		txt = UTEXT_INITIALIZER;
-  UText		replacement = UTEXT_INITIALIZER;
-  UText		*output = NULL;
-  GSUTextString	*ret = [GSUTextString new];
+  UErrorCode s = U_ZERO_ERROR;
+  UText txt = UTEXT_INITIALIZER;
+  UText replacement = UTEXT_INITIALIZER;
+  UText *output = NULL;
+  NSString *ret = nil;
   URegularExpression *r = setupRegex(regex, string, &txt, opts, range, 0);
 
   UTextInitWithNSString(&replacement, template);
 
   output = uregex_replaceAllUText(r, &replacement, NULL, &s);
-  if (0 != s)
-    {
-      uregex_close(r);
-      utext_close(&replacement);
-      utext_close(&txt);
-      DESTROY(ret);
-      return nil;
-    }
-  utext_clone(&ret->txt, output, TRUE, TRUE, &s);
-  uregex_close(r);
 
+  if (U_SUCCESS(s))
+    {
+      int64_t len = utext_nativeLength(output);
+      unichar *buf = NSZoneMalloc(NSDefaultMallocZone(), len * sizeof(unichar));
+      UErrorCode es = U_ZERO_ERROR;
+
+      utext_extract(output, 0, len, buf, (int32_t)len, &es);
+
+      if (U_FAILURE(es))
+        {
+          NSZoneFree(NSDefaultMallocZone(), buf);
+        }
+      else
+        {
+          ret = AUTORELEASE([[NSString alloc] initWithCharactersNoCopy: buf
+                                                                length: (NSUInteger)len
+                                                          freeWhenDone: YES]);
+        }
+    }
+
+  uregex_close(r);
   utext_close(&txt);
-  utext_close(output);
+
+  if (output != NULL)
+    {
+      utext_close(output);
+    }
+
   utext_close(&replacement);
-  return AUTORELEASE(ret);
+  return ret;
 }
 
 - (NSString*) replacementStringForResult: (NSTextCheckingResult*)result
@@ -937,37 +968,53 @@ prepareResult(NSRegularExpression *regex,
                                   offset: (NSInteger)offset
                                 template: (NSString*)template
 {
-  UErrorCode	s = 0;
-  UText		txt = UTEXT_INITIALIZER;
-  UText		replacement = UTEXT_INITIALIZER;
-  UText		*output = NULL;
-  GSUTextString	*ret = [GSUTextString new];
-  NSRange	range = [result range];
+  UErrorCode s = U_ZERO_ERROR;
+  UText txt = UTEXT_INITIALIZER;
+  UText replacement = UTEXT_INITIALIZER;
+  UText *output = NULL;
+  NSString *ret = nil;
+  NSRange range = [result range];
   URegularExpression *r = setupRegex(regex,
-				     [string substringWithRange: range],
-				     &txt,
-				     0,
-				     NSMakeRange(0, range.length),
-				     0);
+                                     [string substringWithRange: range],
+                                     &txt,
+                                     0,
+                                     NSMakeRange(0, range.length),
+                                     0);
 
   UTextInitWithNSString(&replacement, template);
 
   output = uregex_replaceFirstUText(r, &replacement, NULL, &s);
-  if (0 != s)
-    {
-      uregex_close(r);
-      utext_close(&replacement);
-      utext_close(&txt);
-      DESTROY(ret);
-      return nil;
-    }
-  utext_clone(&ret->txt, output, TRUE, TRUE, &s);
-  uregex_close(r);
 
+  if (U_SUCCESS(s))
+    {
+      int64_t len = utext_nativeLength(output);
+      unichar *buf = NSZoneMalloc(NSDefaultMallocZone(), len * sizeof(unichar));
+      UErrorCode es = U_ZERO_ERROR;
+
+      utext_extract(output, 0, len, buf, (int32_t)len, &es);
+
+      if (U_FAILURE(es))
+        {
+          NSZoneFree(NSDefaultMallocZone(), buf);
+        }
+      else
+        {
+          ret = AUTORELEASE([[NSString alloc] initWithCharactersNoCopy: buf
+                                                                length: (NSUInteger)len
+                                                          freeWhenDone: YES]);
+        }
+    }
+
+  uregex_close(r);
   utext_close(&txt);
-  utext_close(output);
+
+  if (output != NULL)
+    {
+      utext_close(output);
+    }
+
   utext_close(&replacement);
-  return AUTORELEASE(ret);
+  return ret;
 }
 #else
 - (NSUInteger) replaceMatchesInString: (NSMutableString*)string

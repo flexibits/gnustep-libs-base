@@ -431,14 +431,32 @@ UTextInitWithNSString(UText *txt, NSString *str)
 
 - (void) getCharacters: (unichar*)buffer range: (NSRange)r
 {
-  UErrorCode status = 0;
+  NSUInteger myLen = [self length];
+  UErrorCode status = U_ZERO_ERROR;
+  unichar *full;
 
-  utext_extract(&txt, r.location, r.location+r.length, buffer, r.length,
-    &status);
-  if (U_FAILURE(status))
+  if (r.location > myLen || r.length > (myLen - r.location))
     {
       _NSRangeExceptionRaise();
     }
+
+  // NOTE: We cannot just extract the range directly, because utext_extract under the hood will
+  //       snap to the previous utf16 unit if we happen to begin in the second part of a surrogate pair
+  full = NSZoneMalloc(NSDefaultMallocZone(), myLen * sizeof(unichar));
+  utext_extract(&txt, 0, (int64_t)myLen, full, (int32_t)myLen, &status);
+
+  if (U_SUCCESS(status))
+    {
+      memcpy(buffer, full + r.location, r.length * sizeof(unichar));
+    }
+  else
+    {
+      [NSException raise: NSInternalInconsistencyException
+                  format: @"GSUTextString getCharacters:range: "
+                          @"utext_extract failed with ICU error %d", (int)status];
+    }
+
+  NSZoneFree(NSDefaultMallocZone(), full);
 }
 
 - (void) dealloc
@@ -474,14 +492,32 @@ UTextInitWithNSString(UText *txt, NSString *str)
 
 - (void) getCharacters: (unichar*)buffer range: (NSRange)r
 {
-  UErrorCode status = 0;
+  NSUInteger myLen = [self length];
+  UErrorCode status = U_ZERO_ERROR;
+  unichar *full;
 
-  utext_extract(&txt, r.location, r.location+r.length, buffer, r.length,
-    &status);
-  if (U_FAILURE(status))
+  if (r.location > myLen || r.length > (myLen - r.location))
     {
       _NSRangeExceptionRaise();
     }
+
+  // NOTE: We cannot just extract the range directly, because utext_extract under the hood will
+  //       snap to the previous utf16 unit if we happen to begin in the second part of a surrogate pair
+  full = NSZoneMalloc(NSDefaultMallocZone(), myLen * sizeof(unichar));
+  utext_extract(&txt, 0, (int64_t)myLen, full, (int32_t)myLen, &status);
+
+  if (U_SUCCESS(status))
+    {
+      memcpy(buffer, full + r.location, r.length * sizeof(unichar));
+    }
+  else
+    {
+      [NSException raise: NSInternalInconsistencyException
+                  format: @"GSUTextMutableString getCharacters:range: "
+                          @"utext_extract failed with ICU error %d", (int)status];
+    }
+
+  NSZoneFree(NSDefaultMallocZone(), full);
 }
 
 - (void) replaceCharactersInRange: (NSRange)r
