@@ -392,8 +392,10 @@ static NSString *_time_zone_path(NSString *subpath, NSString *type)
     unichar c;
     int i;
     if ((length == 3 && ([name isEqualToString:@"GMT"] == YES || [name isEqualToString:@"UTC"] == YES || [name isEqualToString:@"UCT"] == YES)) || (length == 4 && ([name isEqualToString:@"GMT0"] == YES || [name isEqualToString:@"Zulu"] == YES)) || (length == 9 && [name isEqualToString:@"Universal"] == YES)) {
-        // Synonyms for GMT
-        zone = [[GSAbsTimeZone alloc] initWithOffset:0 name:name];
+        // All synonyms for the zero-offset zone collapse to a single zone named "GMT".
+        // This matches Apple's NSTimeZone convention (NSDate and NSDateFormatter also
+        // use "GMT" as the canonical name for the zero-offset zone)
+        zone = [[GSAbsTimeZone alloc] initWithOffset:0 name:@"GMT"];
     } else if (length == 5 && [name hasPrefix:@"GMT"] == YES && ((c = [name characterAtIndex:3]) == '+' || c == '-') && ((c = [name characterAtIndex:4]) >= '0' && c <= '9')) {
         // GMT-9 to GMT+9
         i = (c - '0') * 60 * 60;
@@ -703,7 +705,9 @@ static NSMapTable *absolutes = 0;
         DESTROY(self);
     } else {
         if (aName == nil) {
-            if (anOffset % 60 == 0) {
+            if (anOffset == 0) {
+                name = [@"GMT" copy];
+            } else if (anOffset % 60 == 0) {
                 char s = (anOffset >= 0) ? '+' : '-';
                 unsigned i = (anOffset >= 0) ? anOffset / 60 : -anOffset / 60;
                 unsigned h = (i / 60) % 24;
