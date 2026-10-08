@@ -1712,6 +1712,53 @@ static NSMapTable *absolutes = 0;
     }
     GS_MUTEX_LOCK(zone_mutex);
     if (regionsArray == nil) {
+#if GS_USE_ICU == 1
+        NSAutoreleasePool *pool = [NSAutoreleasePool new];
+        NSMutableArray *temp_array[24];
+        NSInteger i;
+        UErrorCode err = U_ZERO_ERROR;
+        UEnumeration *tzEnum;
+
+        for (i = 0; i < 24; i++) {
+            temp_array[i] = [NSMutableArray array];
+        }
+
+        // Enumerate canonical location-based IANA zones only. This excludes
+        // POSIX forms (MST7MDT, CET), Etc/* abstract offsets, and link/alias
+        // ids (US/Mountain), giving us a clean set of "proper" zones that all
+        // have CLDR display names via ICU.
+        tzEnum = ucal_openTimeZoneIDEnumeration(UCAL_ZONE_TYPE_CANONICAL_LOCATION, NULL, NULL, &err);
+
+        if (U_SUCCESS(err) && tzEnum != NULL) {
+            const UChar *zoneID;
+            int32_t zoneIDLen;
+            UErrorCode nextErr = U_ZERO_ERROR;
+
+            while ((zoneID = uenum_unext(tzEnum, &zoneIDLen, &nextErr)) != NULL && U_SUCCESS(nextErr)) {
+                UErrorCode calErr = U_ZERO_ERROR;
+                UCalendar *cal = ucal_open(zoneID, zoneIDLen, NULL, UCAL_TRADITIONAL, &calErr);
+
+                if (U_SUCCESS(calErr) && cal != NULL) {
+                    int32_t rawOffsetMs = ucal_get(cal, UCAL_ZONE_OFFSET, &calErr);
+
+                    if (U_SUCCESS(calErr)) {
+                        NSInteger hours = rawOffsetMs / 1000 / 3600;
+                        NSInteger bucket = ((hours % 24) + 24) % 24;
+                        NSString *name = [NSString stringWithCharacters:zoneID length:zoneIDLen];
+
+                        [temp_array[bucket] addObject:name];
+                    }
+
+                    ucal_close(cal);
+                }
+            }
+
+            uenum_close(tzEnum);
+        }
+
+        regionsArray = [[NSArray alloc] initWithObjects:temp_array count:24];
+        [pool drain];
+#else
         NSAutoreleasePool *pool = [NSAutoreleasePool new];
         NSMutableArray *temp_array[24];
         NSInteger index;
@@ -1827,6 +1874,7 @@ static NSMapTable *absolutes = 0;
         }
         regionsArray = [[NSArray alloc] initWithObjects:temp_array count:24];
         [pool drain];
+#endif // GS_USE_ICU == 1
     }
     GS_MUTEX_UNLOCK(zone_mutex);
     return regionsArray;
