@@ -2143,13 +2143,18 @@ static NSMapTable *absolutes = 0;
  */
 - (BOOL)isEqualToTimeZone:(NSTimeZone *)aTimeZone
 {
+    NSData *selfData;
+    NSData *otherData;
+
     if (aTimeZone == self)
         return YES;
-    if ([[self name] isEqual:[aTimeZone name]] == NO)
+    if (![[self name] isEqual:[aTimeZone name]])
         return NO;
-    if (([self data] == nil && [aTimeZone data] == nil) || [[self name] isEqual:[aTimeZone name]] == YES)
-        return YES;
-    return NO;
+
+    selfData = [self data];
+    otherData = [aTimeZone data];
+
+    return selfData == otherData || [selfData isEqual:otherData];
 }
 
 /**
