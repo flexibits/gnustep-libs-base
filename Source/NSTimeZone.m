@@ -678,7 +678,16 @@ static NSMapTable *absolutes = 0;
     }
     anOffset *= sign;
 
-    if (anOffset % 900 == 0) {
+    /* The commonAbsolutes / absolutes caches are keyed only by offset, so
+     * reusing a cached entry for a *named* request (GMT, UTC, UCT, Zulu,
+     * Universal -- all offset 0) would hand back whichever name was asked
+     * first. Only consult the caches when the caller is willing to accept
+     * the auto-generated "GMT±HHMM" name (aName == nil); named instances
+     * are stored in zoneDictionary (keyed by name) by the create branch
+     * below, so repeated same-name lookups still hit the placeholder-level
+     * cache in -[GSPlaceholderTimeZone initWithName:data:].
+     */
+    if (aName == nil && anOffset % 900 == 0) {
         z = commonAbsolutes[anOffset / 900 + 72];
         if (z != nil) {
             IF_NO_ARC(RETAIN(z);)
@@ -688,7 +697,7 @@ static NSMapTable *absolutes = 0;
     }
 
     GS_MUTEX_LOCK(zone_mutex);
-    z = (GSAbsTimeZone *)NSMapGet(absolutes, (void *)(uintptr_t)anOffset);
+    z = (aName == nil) ? (GSAbsTimeZone *)NSMapGet(absolutes, (void *)(uintptr_t)anOffset) : nil;
     if (z != nil) {
         IF_NO_ARC(RETAIN(z);)
         DESTROY(self);
@@ -711,16 +720,16 @@ static NSMapTable *absolutes = 0;
                 name = [[NSString alloc]
                     initWithFormat:@"NSAbsoluteTimeZone:%" PRIdPTR, anOffset];
             }
+            NSMapInsert(absolutes, (void *)(uintptr_t)anOffset, (void *)self);
         } else {
             name = [aName copy];
         }
         detail = [[GSAbsTimeZoneDetail alloc] initWithTimeZone:self];
         offset = anOffset;
         z = self;
-        NSMapInsert(absolutes, (void *)(uintptr_t)anOffset, (void *)z);
         [zoneDictionary setObject:self forKey:(NSString *)name];
     }
-    if (anOffset % 900 == 0) {
+    if (aName == nil && anOffset % 900 == 0) {
         int index = anOffset / 900 + 72;
 
         if (nil == commonAbsolutes[index]) {
