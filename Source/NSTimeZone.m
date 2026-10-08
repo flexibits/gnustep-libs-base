@@ -256,21 +256,13 @@ typedef struct {
 }
 @end
 
-#if defined(_WIN32)
-@interface GSWindowsTimeZone : NSTimeZone {
-   @public
-    NSString *ianaZoneName;
-    NSString *timeZoneName;
-    NSString *daylightZoneName;
-    NSString *timeZoneNameAbbr;
-    NSString *daylightZoneNameAbbr;
-    LONG Bias;
-    LONG StandardBias;
-    LONG DaylightBias;
-    SYSTEMTIME StandardDate;
-    SYSTEMTIME DaylightDate;
+#if defined(_WIN32) && GS_USE_ICU == 1
+// Time zone backed entirely by an ICU UCalendar
+@interface GSICUTimeZone : NSTimeZone {
+    NSString *_name;
+    UCalendar *_calendar;
+    gs_mutex_t _calLock;
 }
-- (id)initWithName:(NSString *)name data:(NSData *)data ianaName:(NSString *)ianaName;
 @end
 #endif
 
@@ -464,42 +456,30 @@ static NSString *_time_zone_path(NSString *subpath, NSString *type)
         return (GSPlaceholderTimeZone *)zone;
     }
 
-#if defined(_WIN32)
-    //
-    // Convert IANA to Windows timezone name
-    //
-    NSData* ianaNameData = [name dataUsingEncoding:NSUTF16LittleEndianStringEncoding];
-    const UChar* ianaNameDataChars = (const UChar*)[ianaNameData bytes];
-    UChar windowsZoneStringBuffer[BUFFER_SIZE];
-    UErrorCode ucalError = U_ZERO_ERROR;
+#if defined(_WIN32) && GS_USE_ICU == 1
+    // Validate `name` as a time zone ICU can canonicalize -- either a known
+    // IANA id or a normalized custom id ("GMT+5", "GMT+05:00")
+    NSData *nameData = [name dataUsingEncoding:NSUTF16LittleEndianStringEncoding];
+    const UChar *nameChars = (const UChar *)[nameData bytes];
+    int32_t nameLen = (int32_t)[name length];
+    UChar canonicalBuf[BUFFER_SIZE];
+    UErrorCode err = U_ZERO_ERROR;
+    int32_t canonicalLen = ucal_getCanonicalTimeZoneID(nameChars, nameLen, canonicalBuf, BUFFER_SIZE, NULL, &err);
 
-    int32_t windowsZoneStringLength =
-        ucal_getWindowsTimeZoneID(
-            ianaNameDataChars,
-            [name length],
-            windowsZoneStringBuffer,
-            BUFFER_SIZE,
-            &ucalError);
-
-    if (U_SUCCESS(ucalError) && windowsZoneStringLength > 0) {
-        NSString* windowsZoneString = [NSString stringWithCharacters: windowsZoneStringBuffer
-                                                length: windowsZoneStringLength];
-
-        zone = [[GSWindowsTimeZone alloc] initWithName:windowsZoneString data:data ianaName:name];
-		
-		if (zone != nil) {
-		    // Cache with the ianaName for future lookup
-		    GS_MUTEX_LOCK(zone_mutex);
-			[zoneDictionary setObject:zone forKey:name];
-			GS_MUTEX_UNLOCK(zone_mutex);
-		}
-
-        DESTROY(self);
-        return (GSPlaceholderTimeZone *)zone;
+    if (!U_SUCCESS(err) || canonicalLen <= 0) {
+        return nil;
     }
 
-    NSLog(@"Couldn't convert timezone '%@' to Windows format", name);
-    return nil;
+    zone = [[GSICUTimeZone alloc] initWithName:name data:data];
+
+    if (zone != nil) {
+        GS_MUTEX_LOCK(zone_mutex);
+        [zoneDictionary setObject:zone forKey:name];
+        GS_MUTEX_UNLOCK(zone_mutex);
+    }
+
+    DESTROY(self);
+    return (GSPlaceholderTimeZone *)zone;
 
 #else
     if (data == nil) {
@@ -1328,97 +1308,34 @@ static NSMapTable *absolutes = 0;
 /**
  * Returns the current system time zone for the process.
  */
-#if defined(_WIN32) && defined(_MSC_VER) && defined(UCAL_H)
+#if defined(_WIN32) && GS_USE_ICU == 1
 
 /*
  * Windows/MSVC/UCal-specific systemTimeZone implementation (Flexibits)
  */
 
-+ (NSTimeZone*)systemTimeZone
++ (NSTimeZone *)systemTimeZone
 {
     GS_MUTEX_LOCK(zone_mutex);
 
     if (systemTimeZone == nil) {
-        NSString *windowsZoneString = nil;
-        NSString *ianaZoneString = nil;
+        UChar nameBuf[BUFFER_SIZE];
+        UErrorCode err = U_ZERO_ERROR;
+        int32_t nameLen = ucal_getHostTimeZone(nameBuf, BUFFER_SIZE, &err);
+        NSTimeZone *zone = nil;
 
-        /*
-        * setup default value in case something goes wrong.
-        */
-        systemTimeZone = RETAIN([NSTimeZoneClass timeZoneForSecondsFromGMT: 0]);
+        if (U_SUCCESS(err) && nameLen > 0) {
+            NSString *name = [NSString stringWithCharacters:nameBuf length:nameLen];
 
-        /*
-        * Try to get timezone from windows system call.
-        */
-        {
-            DYNAMIC_TIME_ZONE_INFORMATION tz;
-            DWORD dst;
-            wchar_t *tzName;
-
-            // Get time zone name for US locale as expected by ICU method below
-            LANGID origLangID = GetThreadUILanguage();
-            SetThreadUILanguage(MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US));
-            dst = GetDynamicTimeZoneInformation(&tz);
-            SetThreadUILanguage(origLangID);
-
-            // The key name is the actual "canonical" windows name for the timezone,
-            // because tz.StandardName and tz.DaylightName are both localized.
-            // And even without localization, StandardName often differs from the key name.
-            // Based on tables provided by ICU, it seems that it always uses the key name,
-            // NOT the standard name to perform its conversions.
-            // See https://gist.github.com/brooke-tilley/7203b758ea722f8f72fa1508e1d18ed9 for proof.
-            tzName = tz.TimeZoneKeyName;
-
-            // Convert Windows timezone name to IANA identifier
-            if (tzName) {
-                UErrorCode ucalError = U_ZERO_ERROR;
-                UChar ianaTzName[BUFFER_SIZE];
-                int32_t ianaTzNameLen;
-
-                windowsZoneString = [NSString stringWithCharacters: tzName length: wcslen(tzName)];
-                ianaTzNameLen =
-                    ucal_getTimeZoneIDForWindowsID(
-                        tzName,
-                        -1,
-                        NULL,
-                        ianaTzName,
-                        BUFFER_SIZE,
-                        &ucalError);
-
-                if (U_SUCCESS(ucalError) && ianaTzNameLen > 0) {
-                    ianaZoneString = [NSString stringWithCharacters: ianaTzName
-                                               length: ianaTzNameLen];
-                } else if (U_SUCCESS(ucalError)) {
-                    // this happens when ICU has no mapping for the time zone
-                    NSLog(@"Unable to map timezone '%ls' to IANA format", tzName);
-                } else {
-                    NSLog(@"Error converting timezone '%ls' to IANA format: %s",
-                          tzName, u_errorName(ucalError));
-                }
-            }
+            zone = [NSTimeZoneClass timeZoneWithName:name];
         }
 
-        if (windowsZoneString == nil || ianaZoneString == nil) {
-            // Default to GMT (UTC+0) if we were unable to get the zone from Windows, or if
-            // the zone name couldn't be converted to a proper IANA zone name.
-            windowsZoneString = @"GMT Standard Time";
-            ianaZoneString = @"Etc/GMT";
+        if (zone == nil) {
+            NSLog(@"Couldn't determine system time zone via ICU; falling back to GMT");
+            zone = [NSTimeZoneClass timeZoneForSecondsFromGMT:0];
         }
 
-        {
-            NSTimeZone* zone = [[GSWindowsTimeZone alloc] initWithName:windowsZoneString data:0 ianaName:ianaZoneString];
-
-            if (zone == nil)
-            {
-                NSLog(@"Using time zone with absolute offset 0.");
-                // systemTimeZone is already set to the GMT+0 fallback above; nothing to do.
-            }
-            else
-            {
-                ASSIGN(systemTimeZone, zone);
-                DESTROY(zone);
-            }
-        }
+        ASSIGN(systemTimeZone, zone);
     }
 
     {
@@ -2490,422 +2407,148 @@ static NSString *zoneDirs[] = {
 }
 @end
 
+#if defined(_WIN32) && GS_USE_ICU == 1
 
-#if defined(_WIN32)
-/* Timezone information data as stored in the registry */
-typedef struct TZI_format {
-    LONG Bias;
-    LONG StandardBias;
-    LONG DaylightBias;
-    SYSTEMTIME StandardDate;
-    SYSTEMTIME DaylightDate;
-} TZI;
-
-#if !GS_USE_ICU
-static inline unsigned int
-lastDayOfGregorianMonth(int month, int year)
-{
-    switch (month) {
-        case 2:
-            if ((((year % 4) == 0) && ((year % 100) != 0)) || ((year % 400) == 0))
-                return 29;
-            else
-                return 28;
-        case 4:
-        case 6:
-        case 9:
-        case 11:
-            return 30;
-        default:
-            return 31;
-    }
-}
-#endif // !GS_USE_ICU
-
-/* IMPORT from NSCalendar date */
-void GSBreakTime(NSTimeInterval when,
-                 NSInteger *year, NSInteger *month, NSInteger *day,
-                 NSInteger *hour, NSInteger *minute, NSInteger *second, NSInteger *mil);
-
-
-@implementation GSWindowsTimeZone
+@implementation GSICUTimeZone
 
 - (NSString *)abbreviationForDate:(NSDate *)aDate
 {
-    if ([self isDaylightSavingTimeForDate:aDate])
-        return daylightZoneNameAbbr;
-    return timeZoneNameAbbr;
+    NSString *abbr = _name;
+
+    GS_MUTEX_LOCK(_calLock);
+
+    if (_calendar != NULL) {
+        UErrorCode err = U_ZERO_ERROR;
+        UChar buf[BUFFER_SIZE];
+        BOOL isDST;
+        int32_t len;
+
+        ucal_clear(_calendar);
+        ucal_setMillis(_calendar, [aDate timeIntervalSince1970] * 1000.0, &err);
+        isDST = U_SUCCESS(err) ? (ucal_inDaylightTime(_calendar, &err) ? YES : NO) : NO;
+        len = ucal_getTimeZoneDisplayName(_calendar, isDST ? UCAL_SHORT_DST : UCAL_SHORT_STANDARD, NULL, buf, BUFFER_SIZE, &err);
+
+        if (U_SUCCESS(err) && len > 0) {
+            abbr = [NSString stringWithCharacters:buf length:len];
+        }
+    }
+
+    GS_MUTEX_UNLOCK(_calLock);
+    return abbr;
 }
 
 - (NSData *)data
 {
-    return 0;
+    return nil;
 }
 
 - (void)dealloc
 {
-    RELEASE(ianaZoneName);
-    RELEASE(timeZoneName);
-    RELEASE(daylightZoneName);
-    RELEASE(timeZoneNameAbbr);
-    RELEASE(daylightZoneNameAbbr);
-    DEALLOC
-}
+    RELEASE(_name);
 
-- (id)initWithName:(NSString *)name data:(NSData *)data ianaName:(NSString *)ianaName
-{
-    ASSIGN(ianaZoneName, ianaName);
-    return [self initWithName:name data:data];
+    if (_calendar != NULL) {
+        ucal_close(_calendar);
+        _calendar = NULL;
+    }
+
+    GS_MUTEX_DESTROY(_calLock);
+    DEALLOC
 }
 
 - (id)initWithName:(NSString *)name data:(NSData *)data
 {
-    HKEY regDirKey;
-    BOOL isNT = NO;
-    BOOL regFound = NO;
-    BOOL tzFound = NO;
+    UChar tzName[BUFFER_SIZE];
+    int32_t tzLen;
+    UErrorCode err = U_ZERO_ERROR;
 
-    /* Open the key in the local machine hive where
-     * the time zone data is stored. */
-    if (ERROR_SUCCESS == RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Time Zones", 0, KEY_READ, &regDirKey)) {
-        isNT = YES;
-        regFound = YES;
-    } else {
-        if (ERROR_SUCCESS == RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Time Zones", 0, KEY_READ, &regDirKey)) {
-            regFound = YES;
-        }
+    _name = [name copy];
+    GS_MUTEX_INIT(_calLock);
+
+    tzLen = (int32_t)[name length];
+
+    if (tzLen > BUFFER_SIZE) {
+        tzLen = BUFFER_SIZE;
     }
 
-    if (regFound) {
-        /* Iterate over all subKeys in the registry to find the right one.
-           Unfortunately name is a localized value. The keys in the registry are
-           unlocalized names. */
-        wchar_t achKey[255]; // buffer for subkey name
-        DWORD cbName; // size of name string
-        wchar_t achClass[MAX_PATH] = L""; // buffer for class name
-        DWORD cchClassName = MAX_PATH; // size of class string
-        DWORD cSubKeys = 0; // number of subkeys
-        DWORD cbMaxSubKey; // longest subkey size
-        DWORD cchMaxClass; // longest class string
-        DWORD cValues; // number of values for key
-        DWORD cchMaxValue; // longest value name
-        DWORD cbMaxValueData; // longest value data
-        DWORD cbSecurityDescriptor; // size of security descriptor
-        FILETIME ftLastWriteTime; // last write time
-        DWORD i, retCode;
+    [name getCharacters:tzName range:NSMakeRange(0, tzLen)];
+    _calendar = ucal_open(tzName, tzLen, NULL, UCAL_TRADITIONAL, &err);
 
-        /* Get the class name and the value count. */
-        retCode = RegQueryInfoKeyW(
-            regDirKey, // key handle
-            achClass, // buffer for class name
-            &cchClassName, // size of class string
-            NULL, // reserved
-            &cSubKeys, // number of subkeys
-            &cbMaxSubKey, // longest subkey size
-            &cchMaxClass, // longest class string
-            &cValues, // number of values for this key
-            &cchMaxValue, // longest value name
-            &cbMaxValueData, // longest value data
-            &cbSecurityDescriptor, // security descriptor
-            &ftLastWriteTime); // last write time
-
-        if (cSubKeys && (retCode == ERROR_SUCCESS)) {
-            unsigned wLen = [name length];
-            wchar_t *wName = malloc((wLen + 1) * sizeof(wchar_t));
-
-            if (wName) {
-                [name getCharacters:wName];
-                wName[wLen] = 0;
-                for (i = 0; i < cSubKeys && !tzFound; i++) {
-                    cbName = 255;
-
-                    retCode = RegEnumKeyExW(regDirKey, i, achKey, &cbName,
-                                            NULL, NULL, NULL, &ftLastWriteTime);
-                    if (retCode == ERROR_SUCCESS) {
-                        wchar_t keyBuffer[16384];
-                        HKEY regKey;
-
-                        if (isNT)
-                            wcscpy(keyBuffer, L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Time Zones\\");
-                        else
-                            wcscpy(keyBuffer, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Time Zones\\");
-
-                        wcscat(keyBuffer, achKey);
-                        if (ERROR_SUCCESS == RegOpenKeyExW(HKEY_LOCAL_MACHINE, keyBuffer, 0, KEY_READ, &regKey)) {
-                            wchar_t buf[256];
-                            wchar_t standardName[256];
-                            wchar_t daylightName[256];
-                            DWORD bufsize;
-                            DWORD type;
-
-                            /* check display name */
-                            if (wcscmp(achKey, wName) == 0) {
-                                tzFound = YES;
-                            }
-
-                            /* check standardname */
-                            standardName[0] = L'\0';
-                            bufsize = sizeof(buf);
-                            if (ERROR_SUCCESS == RegQueryValueExW(regKey, L"Std", 0, &type, (BYTE *)buf, &bufsize)) {
-                                wcscpy(standardName, buf);
-                                if (wcscmp(standardName, wName) == 0)
-                                    tzFound = YES;
-                            }
-
-                            /* check daylightname */
-                            daylightName[0] = L'\0';
-                            bufsize = sizeof(buf);
-                            if (ERROR_SUCCESS == RegQueryValueExW(regKey, L"Dlt", 0, &type, (BYTE *)buf, &bufsize)) {
-                                wcscpy(daylightName, buf);
-                                if (wcscmp(daylightName, wName) == 0)
-                                    tzFound = YES;
-                            }
-
-                            if (tzFound) {
-                                /* Read in the time zone data */
-                                bufsize = sizeof(buf);
-                                if (ERROR_SUCCESS == RegQueryValueExW(regKey, L"TZI", 0, &type, (BYTE *)buf, &bufsize)) {
-                                    TZI *tzi = (void *)buf;
-                                    Bias = tzi->Bias;
-                                    StandardBias = tzi->StandardBias;
-                                    DaylightBias = tzi->DaylightBias;
-                                    StandardDate = tzi->StandardDate;
-                                    DaylightDate = tzi->DaylightDate;
-                                }
-
-                                /* Set the standard name for the time zone. */
-                                if (wcslen(standardName)) {
-                                    int a, b;
-
-                                    ASSIGN(timeZoneName,
-                                           [NSString stringWithCharacters:standardName
-                                                                   length:wcslen(standardName)]);
-
-                                    /* Abbr generated here is IMHO
-                                     * a bit suspicous but I kept it */
-                                    for (a = 0, b = 0; standardName[a]; a++) {
-                                        if (iswupper(standardName[a]))
-                                            standardName[b++] = standardName[a];
-                                    }
-                                    standardName[b] = L'\0';
-                                    ASSIGN(timeZoneNameAbbr,
-                                           [NSString stringWithCharacters:standardName
-                                                                   length:wcslen(standardName)]);
-                                }
-
-                                /* Set the daylight savings name
-                                 * for the time zone. */
-                                if (wcslen(daylightName)) {
-                                    int a, b;
-
-                                    ASSIGN(daylightZoneName,
-                                           [NSString stringWithCharacters:daylightName
-                                                                   length:wcslen(daylightName)]);
-
-                                    /* Abbr generated here is IMHO
-                                     * a bit suspicous but I kept it */
-                                    for (a = 0, b = 0; daylightName[a]; a++) {
-                                        if (iswupper(daylightName[a]))
-                                            daylightName[b++] = daylightName[a];
-                                    }
-                                    daylightName[b] = L'\0';
-                                    ASSIGN(daylightZoneNameAbbr,
-                                           [NSString stringWithCharacters:daylightName
-                                                                   length:wcslen(daylightName)]);
-                                }
-                            }
-                            RegCloseKey(regKey);
-                        }
-                    }
-                }
-                free(wName);
-            }
-        }
-        RegCloseKey(regDirKey);
-    }
-    if (NO == tzFound) {
+    if (U_FAILURE(err) || _calendar == NULL) {
         DESTROY(self);
+        return nil;
     }
+
     return self;
 }
 
-#if !GS_USE_ICU
 - (BOOL)isDaylightSavingTimeForDate:(NSDate *)aDate
 {
-    NSInteger year, month, day, hour, minute, second, mil;
-    int dow;
-    int daylightdate, count, maxdate;
-    NSTimeInterval when;
+    BOOL isDST = NO;
 
-    if (DaylightDate.wMonth == 0)
-        return NO;
+    GS_MUTEX_LOCK(_calLock);
 
-    when = [aDate timeIntervalSinceReferenceDate] - Bias * 60;
+    if (_calendar != NULL) {
+        UErrorCode err = U_ZERO_ERROR;
 
-    GSBreakTime(when, &year, &month, &day, &hour, &minute, &second, &mil);
+        ucal_clear(_calendar);
+        ucal_setMillis(_calendar, [aDate timeIntervalSince1970] * 1000.0, &err);
 
-    // Check north globe
-    if (StandardDate.wMonth >= DaylightDate.wMonth) {
-        // Before April or after October is Std
-        if (month < DaylightDate.wMonth || month > StandardDate.wMonth) {
-            return NO;
-        }
-        // After April and before October is DST
-        if (month > DaylightDate.wMonth && month < StandardDate.wMonth) {
-            return YES;
-        }
-    } else {
-        /* check south globe
-         * Before April or after October is DST
-         */
-        if (month < StandardDate.wMonth || month > DaylightDate.wMonth) {
-            return YES;
-        }
-        // After April and before October is Std
-        if (month > StandardDate.wMonth && month < DaylightDate.wMonth) {
-            return NO;
+        if (U_SUCCESS(err)) {
+            isDST = ucal_inDaylightTime(_calendar, &err) ? YES : NO;
         }
     }
 
-    dow = ((NSInteger)((when / 86400.0) + GREGORIAN_REFERENCE)) % 7;
-    if (dow < 0)
-        dow += 7;
-
-    if (month == DaylightDate.wMonth /* April */) {
-        daylightdate = day - dow + DaylightDate.wDayOfWeek;
-        maxdate = lastDayOfGregorianMonth(DaylightDate.wMonth, year) - 7;
-        while (daylightdate > 7)
-            daylightdate -= 7;
-        if (daylightdate < 1)
-            daylightdate += 7;
-        count = DaylightDate.wDay;
-        while (count > 1 && daylightdate < maxdate) {
-            daylightdate += 7;
-            count--;
-        }
-        if (day > daylightdate)
-            return YES;
-        if (day < daylightdate)
-            return NO;
-        if (hour > DaylightDate.wHour)
-            return YES;
-        if (hour < DaylightDate.wHour)
-            return NO;
-        if (minute > DaylightDate.wMinute)
-            return YES;
-        if (minute < DaylightDate.wMinute)
-            return NO;
-        if (second > DaylightDate.wSecond)
-            return YES;
-        if (second < DaylightDate.wSecond)
-            return NO;
-        if (mil >= DaylightDate.wMilliseconds)
-            return YES;
-        return NO;
-    }
-    if (month == StandardDate.wMonth /* October */) {
-        daylightdate = day - dow + StandardDate.wDayOfWeek;
-        maxdate = lastDayOfGregorianMonth(StandardDate.wMonth, year) - 7;
-        while (daylightdate > 7)
-            daylightdate -= 7;
-        if (daylightdate < 1)
-            daylightdate += 7;
-        count = StandardDate.wDay;
-        while (count > 1 && daylightdate < maxdate) {
-            daylightdate += 7;
-            count--;
-        }
-        if (day > daylightdate)
-            return NO;
-        if (day < daylightdate)
-            return YES;
-        if (hour > StandardDate.wHour)
-            return NO;
-        if (hour < StandardDate.wHour)
-            return YES;
-        if (minute > StandardDate.wMinute)
-            return NO;
-        if (minute < StandardDate.wMinute)
-            return YES;
-        if (second > StandardDate.wSecond)
-            return NO;
-        if (second < StandardDate.wSecond)
-            return YES;
-        if (mil >= StandardDate.wMilliseconds)
-            return NO;
-        return YES;
-    }
-    return NO; // Never reached
-}
-#endif // !GS_USE_ICU
-
-- (NSString*)name
-{
-    return ianaZoneName;
+    GS_MUTEX_UNLOCK(_calLock);
+    return isDST;
 }
 
-- (NSString *)windowsName
+- (NSString *)name
 {
-    TIME_ZONE_INFORMATION tz;
-    DWORD DST = GetTimeZoneInformation(&tz);
-
-    if (DST == TIME_ZONE_ID_DAYLIGHT) {
-        return daylightZoneName;
-    } else {
-        return timeZoneName;
-    }
+    return _name;
 }
 
 - (NSInteger)secondsFromGMTForDate:(NSDate *)aDate
 {
-    if ([self isDaylightSavingTimeForDate:aDate])
-        return -Bias * 60 - DaylightBias * 60;
-    return -Bias * 60 - StandardBias * 60;
+    NSInteger offset = 0;
+
+    GS_MUTEX_LOCK(_calLock);
+
+    if (_calendar != NULL) {
+        UErrorCode err = U_ZERO_ERROR;
+
+        ucal_clear(_calendar);
+        ucal_setMillis(_calendar, [aDate timeIntervalSince1970] * 1000.0, &err);
+
+        if (U_SUCCESS(err)) {
+            offset = ((NSInteger)ucal_get(_calendar, UCAL_ZONE_OFFSET, &err) + (NSInteger)ucal_get(_calendar, UCAL_DST_OFFSET, &err)) / 1000;
+        }
+    }
+
+    GS_MUTEX_UNLOCK(_calLock);
+    return offset;
 }
 
 - (NSArray *)timeZoneDetailArray
 {
-    return [NSArray arrayWithObjects:
-                        [[[GSTimeZoneDetail alloc] initWithTimeZone:self
-                                                         withAbbrev:timeZoneNameAbbr
-                                                         withOffset:-Bias * 60 - StandardBias * 60
-                                                            withDST:NO] autorelease],
-                        [[[GSTimeZoneDetail alloc] initWithTimeZone:self
-                                                         withAbbrev:daylightZoneNameAbbr
-                                                         withOffset:-Bias * 60 - DaylightBias * 60
-                                                            withDST:YES] autorelease],
-                        0];
+    return [NSArray arrayWithObject:[self timeZoneDetailForDate:[NSDate date]]];
 }
 
 - (NSTimeZoneDetail *)timeZoneDetailForDate:(NSDate *)aDate
 {
-    GSTimeZoneDetail *detail;
-    int offset;
-    BOOL isDST = [self isDaylightSavingTimeForDate:aDate];
-    NSString *abbr;
-
-    if (isDST) {
-        offset = -Bias * 60 - DaylightBias * 60;
-        abbr = daylightZoneNameAbbr;
-    } else {
-        offset = -Bias * 60 - StandardBias * 60;
-        abbr = timeZoneNameAbbr;
-    }
-    detail = [GSTimeZoneDetail alloc];
-    detail = [detail initWithTimeZone:self
-                           withAbbrev:abbr
-                           withOffset:offset
-                              withDST:isDST];
-    return AUTORELEASE(detail);
+    return AUTORELEASE([[GSTimeZoneDetail alloc] initWithTimeZone:self
+                                                       withAbbrev:[self abbreviationForDate:aDate]
+                                                       withOffset:[self secondsFromGMTForDate:aDate]
+                                                          withDST:[self isDaylightSavingTimeForDate:aDate]]);
 }
 
 - (NSString *)timeZoneName
 {
-    return [self name];
+    return _name;
 }
-@end
-#endif // _WIN32
 
+@end
+
+#endif // defined(_WIN32) && GS_USE_ICU == 1
 
 @implementation GSTimeZone
 
