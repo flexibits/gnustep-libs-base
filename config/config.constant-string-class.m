@@ -61,7 +61,7 @@ struct objc_class _FooConstantStringClassReference;
 int main (int argc, char **argv)
 {
    /* Create a test constant string */
-   FooConstantString *string = @"Antonio Valente";
+   FooConstantString *string = (FooConstantString *)@"Antonio Valente";
 
 #ifdef NeXT_RUNTIME
    /* This memcpy is needed here due to a bug in ObjC gcc when using
@@ -81,7 +81,7 @@ int main (int argc, char **argv)
      }
 
    /* Do another, more direct test. */
-   if (strcmp ([@"JumpMustBeBigEnoughNotToBeATingString" customString], "JumpMustBeBigEnoughNotToBeATingString"))
+   if (strcmp ([(FooConstantString *)@"JumpMustBeBigEnoughNotToBeATingString" customString], "JumpMustBeBigEnoughNotToBeATingString"))
        {
          abort ();
        }
