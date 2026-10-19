@@ -32,10 +32,12 @@
   NSDateFormatterStyle _timeStyle; \
   NSDateFormatterStyle _dateStyle; \
   void      *_formatter; \
-  BOOL       _hasExplicitFormat
+  BOOL       _hasExplicitFormat; \
+  gs_mutex_t _lock
 
 #define	EXPOSE_NSDateFormatter_IVARS	1
 #import "common.h"
+#import "GSPThread.h"
 #import "Foundation/NSArray.h"
 #import "Foundation/NSDate.h"
 #import "Foundation/NSDictionary.h"
@@ -109,10 +111,11 @@ static NSDateFormatterBehavior _defaultBehavior = 0;
   
   GS_CREATE_INTERNAL(NSDateFormatter)
 
+  GS_MUTEX_INIT(internal->_lock);
   internal->_behavior = _defaultBehavior;
   internal->_locale = RETAIN([NSLocale currentLocale]);
   internal->_tz = RETAIN([NSTimeZone defaultTimeZone]);
-  
+
   [self _resetUDateFormat];
   
   return self;
@@ -139,10 +142,13 @@ static NSDateFormatterBehavior _defaultBehavior = 0;
       GS_COPY_INTERNAL(o, zone)
       IF_NO_ARC(RETAIN(GSIVar(o,_locale));)
       IF_NO_ARC(RETAIN(GSIVar(o,_tz));)
+      GS_MUTEX_INIT(GSIVar(o,_lock));
 #if GS_USE_ICU == 1
       {
         UErrorCode err = U_ZERO_ERROR;
+        GS_MUTEX_LOCK(internal->_lock);
         GSIVar(o,_formatter) = udat_clone (internal->_formatter, &err);
+        GS_MUTEX_UNLOCK(internal->_lock);
       }
 #endif
     }
@@ -165,6 +171,7 @@ static NSDateFormatterBehavior _defaultBehavior = 0;
 #if GS_USE_ICU == 1
       udat_close (internal->_formatter);
 #endif
+      GS_MUTEX_DESTROY(internal->_lock);
       GS_DESTROY_INTERNAL(NSDateFormatter)
     }
   [super dealloc];
@@ -219,6 +226,8 @@ static NSDateFormatterBehavior _defaultBehavior = 0;
 - (id) initWithCoder: (NSCoder*)aCoder
 {
   GS_CREATE_INTERNAL(NSDateFormatter)
+
+  GS_MUTEX_INIT(internal->_lock);
 
   [aCoder decodeValuesOfObjCTypes: "@C", &_dateFormat, &_allowsNaturalLanguage];
   return self;
@@ -298,7 +307,12 @@ static NSDateFormatterBehavior _defaultBehavior = 0;
 - (BOOL) isLenient
 {
 #if GS_USE_ICU == 1
-  return (BOOL)udat_isLenient (internal->_formatter);
+  BOOL result;
+
+  GS_MUTEX_LOCK(internal->_lock);
+  result = (BOOL)udat_isLenient (internal->_formatter);
+  GS_MUTEX_UNLOCK(internal->_lock);
+  return result;
 #else
   return NO;
 #endif
@@ -307,7 +321,9 @@ static NSDateFormatterBehavior _defaultBehavior = 0;
 - (void) setLenient: (BOOL)flag
 {
 #if GS_USE_ICU == 1
+  GS_MUTEX_LOCK(internal->_lock);
   udat_setLenient (internal->_formatter, flag);
+  GS_MUTEX_UNLOCK(internal->_lock);
 #else
   return;
 #endif
@@ -330,12 +346,16 @@ static NSDateFormatterBehavior _defaultBehavior = 0;
     return nil;
   
   [string getCharacters: text range: NSMakeRange (0, textLength)];
-  
+
+  GS_MUTEX_LOCK(internal->_lock);
   date = udat_parse (internal->_formatter, text, textLength, &pPos, &err);
+  GS_MUTEX_UNLOCK(internal->_lock);
+
   if (U_SUCCESS(err))
-    result =
-      [NSDate dateWithTimeIntervalSince1970: (NSTimeInterval)(date / 1000.0)];
-  
+    {
+      result = [NSDate dateWithTimeIntervalSince1970: (NSTimeInterval)(date / 1000.0)];
+    }
+
   free(text);
   return result;
 #else
@@ -351,11 +371,14 @@ static NSDateFormatterBehavior _defaultBehavior = 0;
   unichar *string;
   UDate udate = [date timeIntervalSince1970] * 1000.0;
   UErrorCode err = U_ZERO_ERROR;
-  
+
+  GS_MUTEX_LOCK(internal->_lock);
   length = udat_format (internal->_formatter, udate, NULL, 0, NULL, &err);
   string = malloc(sizeof(UChar) * (length + 1));
   err = U_ZERO_ERROR;
   udat_format (internal->_formatter, udate, string, length, NULL, &err);
+  GS_MUTEX_UNLOCK(internal->_lock);
+
   if (U_SUCCESS(err))
     {
       result = AUTORELEASE([[NSString allocWithZone: NSDefaultMallocZone()]
@@ -478,8 +501,12 @@ static NSDateFormatterBehavior _defaultBehavior = 0;
 {
 #if GS_USE_ICU == 1
   UErrorCode err = U_ZERO_ERROR;
-  return [NSDate dateWithTimeIntervalSince1970:
-    (udat_get2DigitYearStart (internal->_formatter, &err) / 1000.0)];
+  UDate udate;
+
+  GS_MUTEX_LOCK(internal->_lock);
+  udate = udat_get2DigitYearStart (internal->_formatter, &err);
+  GS_MUTEX_UNLOCK(internal->_lock);
+  return [NSDate dateWithTimeIntervalSince1970: (udate / 1000.0)];
 #else
   return nil;
 #endif
@@ -489,9 +516,12 @@ static NSDateFormatterBehavior _defaultBehavior = 0;
 {
 #if GS_USE_ICU == 1
   UErrorCode err = U_ZERO_ERROR;
+
+  GS_MUTEX_LOCK(internal->_lock);
   udat_set2DigitYearStart (internal->_formatter,
                            ([date timeIntervalSince1970] * 1000.0),
                            &err);
+  GS_MUTEX_UNLOCK(internal->_lock);
 #else
   return;
 #endif
@@ -944,10 +974,14 @@ static NSDateFormatterBehavior _defaultBehavior = 0;
   UDateFormatStyle timeStyle;
   UDateFormatStyle dateStyle;
   UErrorCode err = U_ZERO_ERROR;
-  
+
+  GS_MUTEX_LOCK(internal->_lock);
+
   if (internal->_formatter)
-    udat_close (internal->_formatter);
-  
+    {
+      udat_close (internal->_formatter);
+    }
+
   tzIDLength = [[internal->_tz name] length];
   tzID = malloc(sizeof(UChar) * tzIDLength);
   [[internal->_tz name] getCharacters: tzID];
@@ -988,6 +1022,8 @@ static NSDateFormatterBehavior _defaultBehavior = 0;
         _dateFormat = [[NSString alloc] initWithCharacters: buf length: length];
       free (buf);
     }
+
+  GS_MUTEX_UNLOCK(internal->_lock);
 #else
   return;
 #endif
@@ -1020,9 +1056,13 @@ symbolRange(NSInteger symbol, int *from)
 {
 #if GS_USE_ICU == 1
   int idx;
-  int count = udat_countSymbols (internal->_formatter, symbol);
-  
+  int count;
+
+  GS_MUTEX_LOCK(internal->_lock);
+  count = udat_countSymbols (internal->_formatter, symbol);
+
   symbolRange(symbol, &idx);
+
   if ([array count] == count - idx)
     {
       while (idx < count)
@@ -1031,7 +1071,7 @@ symbolRange(NSInteger symbol, int *from)
           UChar         *value;
           UErrorCode    err = U_ZERO_ERROR;
           NSString      *string = [array objectAtIndex: idx];
-          
+
           length = [string length];
           value = malloc(sizeof(unichar) * length);
           [string getCharacters: value range: NSMakeRange(0, length)];
@@ -1041,6 +1081,8 @@ symbolRange(NSInteger symbol, int *from)
           ++idx;
         }
     }
+
+  GS_MUTEX_UNLOCK(internal->_lock);
 #endif
   return;
 }
@@ -1051,10 +1093,12 @@ symbolRange(NSInteger symbol, int *from)
   NSMutableArray        *mArray;
   int                   idx;
   int                   count;
-  
+
+  GS_MUTEX_LOCK(internal->_lock);
   count = udat_countSymbols(internal->_formatter, symbol);
   symbolRange(symbol, &idx);
   mArray = [NSMutableArray arrayWithCapacity: count - idx];
+
   while (idx < count)
     {
       int               length;
@@ -1062,7 +1106,7 @@ symbolRange(NSInteger symbol, int *from)
       NSString          *str;
       NSZone            *z = [self zone];
       UErrorCode        err = U_ZERO_ERROR;
-      
+
       length
         = udat_getSymbols(internal->_formatter, symbol, idx, NULL, 0, &err);
       value = NSZoneMalloc(z, sizeof(unichar) * (length + 1));
@@ -1082,10 +1126,12 @@ symbolRange(NSInteger symbol, int *from)
         {
           NSZoneFree (z, value);
         }
-      
+
       ++idx;
     }
-  
+
+  GS_MUTEX_UNLOCK(internal->_lock);
+
   return [NSArray arrayWithArray: mArray];
 #else
   return nil;
