@@ -153,26 +153,37 @@ static NSRecursiveLock *classLock = nil;
 {
   NSUserDefaults	*defs;
   NSString		*name;
+  NSString		*oldName;
 
   defs = [NSUserDefaults standardUserDefaults];
-  name = [defs stringForKey: @"Locale"];
-  if ([name isEqual: autoupdatingLocale->_localeId] == NO)
+
+  if ([n object] != defs)
     {
-      [classLock lock];
-      RELEASE(autoupdatingLocale->_localeId);
-      RELEASE(autoupdatingLocale->_components);
-      
-      autoupdatingLocale->_localeId = RETAIN(name);
-      autoupdatingLocale->_components = nil;
-      
-      RELEASE(currentLocale);
-      currentLocale = nil;
-      [classLock unlock];
-      
-      [[NSNotificationCenter defaultCenter]
-        postNotificationName: NSCurrentLocaleDidChangeNotification
-        object: nil];
+        return;
     }
+
+  name = [defs stringForKey: @"Locale"];
+  oldName = autoupdatingLocale->_localeId;
+
+  if (name == oldName || [name isEqual: oldName])
+    {
+      return;
+    }
+
+  [classLock lock];
+  RELEASE(autoupdatingLocale->_localeId);
+  RELEASE(autoupdatingLocale->_components);
+
+  autoupdatingLocale->_localeId = RETAIN(name);
+  autoupdatingLocale->_components = nil;
+
+  RELEASE(currentLocale);
+  currentLocale = nil;
+  [classLock unlock];
+
+  [[NSNotificationCenter defaultCenter]
+    postNotificationName: NSCurrentLocaleDidChangeNotification
+    object: nil];
 }
 
 + (id) autoupdatingCurrentLocale
