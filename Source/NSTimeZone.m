@@ -468,7 +468,9 @@ static NSString *_time_zone_path(NSString *subpath, NSString *type)
     UErrorCode err = U_ZERO_ERROR;
     int32_t canonicalLen = ucal_getCanonicalTimeZoneID(nameChars, nameLen, canonicalBuf, BUFFER_SIZE, NULL, &err);
 
-    if (!U_SUCCESS(err) || canonicalLen <= 0) {
+    // ICU canonicalizes its "Etc/Unknown" placeholder successfully (e.g. what ucal_getHostTimeZone returns for a Windows
+    // zone it can't map), but it isn't a real zone
+    if (!U_SUCCESS(err) || canonicalLen <= 0 || [[NSString stringWithCharacters:canonicalBuf length:canonicalLen] isEqualToString:@"Etc/Unknown"]) {
         return nil;
     }
 
