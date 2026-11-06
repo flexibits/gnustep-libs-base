@@ -1336,21 +1336,25 @@ static NSMapTable *absolutes = 0;
     if (systemTimeZone == nil) {
         UChar nameBuf[BUFFER_SIZE];
         UErrorCode err = U_ZERO_ERROR;
-        int32_t nameLen = ucal_getHostTimeZone(nameBuf, BUFFER_SIZE, &err);
-        NSTimeZone *zone = nil;
+        int32_t nameLen;
+
+        // Seed the GMT fallback before doing anything that might NSLog: NSLog formats its timestamp with the default
+        // time zone, which re-enters here and recurses until the stack overflows if systemTimeZone is still nil
+        ASSIGN(systemTimeZone, [NSTimeZoneClass timeZoneForSecondsFromGMT:0]);
+        nameLen = ucal_getHostTimeZone(nameBuf, BUFFER_SIZE, &err);
 
         if (U_SUCCESS(err) && nameLen > 0) {
             NSString *name = [NSString stringWithCharacters:nameBuf length:nameLen];
+            NSTimeZone *zone = [NSTimeZoneClass timeZoneWithName:name];
 
-            zone = [NSTimeZoneClass timeZoneWithName:name];
+            if (zone != nil) {
+                ASSIGN(systemTimeZone, zone);
+            } else {
+                NSLog(@"Host time zone '%@' not recognized; falling back to GMT", name);
+            }
+        } else {
+            NSLog(@"ucal_getHostTimeZone failed (%s); falling back to GMT", u_errorName(err));
         }
-
-        if (zone == nil) {
-            NSLog(@"Couldn't determine system time zone via ICU; falling back to GMT");
-            zone = [NSTimeZoneClass timeZoneForSecondsFromGMT:0];
-        }
-
-        ASSIGN(systemTimeZone, zone);
     }
 
     {
