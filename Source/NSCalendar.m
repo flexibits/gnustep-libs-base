@@ -1126,17 +1126,19 @@ static inline UCalendarDateFields NSCalendarUnitToUCalendarDateField(NSCalendarU
 
 - (NSDate *) startOfDayForDate: (NSDate *) date
 {
-    NSDateComponents *components = [self components:NSCalendarUnitYear | NSCalendarUnitMonth | NSCalendarUnitDay fromDate:date];
+    // Include the era, otherwise calendars with eras (eg Japanese) resolve the year in the current era
+    NSDateComponents *components = [self components:NSCalendarUnitEra | NSCalendarUnitYear | NSCalendarUnitMonth | NSCalendarUnitDay fromDate:date];
 
     return [self dateFromComponents:components];
 }
 
 - (BOOL) isDate: (NSDate *) date1 inSameDayAsDate: (NSDate *) date2
 {
-  NSDateComponents *components1 = [self components:NSCalendarUnitYear | NSCalendarUnitMonth | NSCalendarUnitDay fromDate:date1];
-  NSDateComponents *components2 = [self components:NSCalendarUnitYear | NSCalendarUnitMonth | NSCalendarUnitDay fromDate:date2];
+  NSDateComponents *components1 = [self components:NSCalendarUnitEra | NSCalendarUnitYear | NSCalendarUnitMonth | NSCalendarUnitDay fromDate:date1];
+  NSDateComponents *components2 = [self components:NSCalendarUnitEra | NSCalendarUnitYear | NSCalendarUnitMonth | NSCalendarUnitDay fromDate:date2];
 
-  return [components1 year] == [components2 year] &&
+  return [components1 era] == [components2 era] &&
+      [components1 year] == [components2 year] &&
       [components1 month] == [components2 month] &&
       [components1 day] == [components2 day];
 }
