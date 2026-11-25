@@ -1459,6 +1459,8 @@ fixBOM(unsigned char **bytes, NSUInteger *length, BOOL *owned,
      * allocated on the stack.  The GSPrivateFormat function can write into it.
      */
     f = (GSStr)alloca(class_getInstanceSize(GSMutableStringClass));
+    /* object_setClass() checks the current class pointer. */
+    *(void **)f = NULL;
     object_setClass(f, GSMutableStringClass);
     f->_zone = NSDefaultMallocZone();
     f->_contents.c = buf;
@@ -2199,6 +2201,8 @@ getCString_c(GSStr self, char *buffer, unsigned int maxLength,
      * unicode function to get the cString.
      */
     o = (GSMutableString *)alloca(class_getInstanceSize(GSMutableStringClass));
+    /* object_setClass() checks the current class pointer. */
+    *(void **)o = NULL;
     object_setClass(o, GSMutableStringClass);
     o->_count = self->_count;
     o->_flags.wide = 0;

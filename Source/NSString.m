@@ -1516,6 +1516,8 @@ GSICUCollatorOpen(NSStringCompareOptions mask, NSLocale *locale)
    * allocated on the stack.  The GSPrivateFormat function can write into it.
    */
   f = (GSStr)alloca(class_getInstanceSize(GSMutableStringClass));
+  /* object_setClass() checks the current class pointer. */
+  *(void **)f = NULL;
   object_setClass(f, GSMutableStringClass);
   f->_zone = NSDefaultMallocZone();
   f->_contents.c = buf;
