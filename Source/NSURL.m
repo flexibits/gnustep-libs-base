@@ -29,6 +29,7 @@
     NSString *_path; \
     NSNumber *_port; \
     NSArray  *_queryItems; \
+    NSArray  *_percentEncodedQueryItems; \
     NSString *_scheme; \
     NSString *_user; \
     NSRange   _rangeOfFragment; \
@@ -2052,6 +2053,7 @@ static NSCharacterSet *queryItemCharSet = nil;
     RELEASE(internal->_path);
     RELEASE(internal->_port);
     RELEASE(internal->_queryItems);
+    RELEASE(internal->_percentEncodedQueryItems);
     RELEASE(internal->_scheme);
     RELEASE(internal->_user);
     GS_DESTROY_INTERNAL(NSURLComponents);
@@ -2325,13 +2327,13 @@ static NSCharacterSet *queryItemCharSet = nil;
                 value = [item substringFromIndex:NSMaxRange(eq)];
             }
         }
-        if (encoded) {
-            name  = [name  stringByRemovingPercentEncoding];
-            value = [value stringByRemovingPercentEncoding];
-        }
         [result addObject:[NSURLQueryItem queryItemWithName:name value:value]];
     }
-    [self setQueryItems:result];
+    if (encoded) {
+        [self setPercentEncodedQueryItems:result];
+    } else {
+        [self setQueryItems:result];
+    }
 }
 
 - (void) setQuery:(NSString *)query
@@ -2343,6 +2345,7 @@ static NSCharacterSet *queryItemCharSet = nil;
 - (void) setQueryItems:(NSArray *)queryItems
 {
     ASSIGNCOPY(internal->_queryItems, queryItems);
+    DESTROY(internal->_percentEncodedQueryItems);
     internal->_dirty = YES;
 }
 
@@ -2440,6 +2443,9 @@ static NSCharacterSet *queryItemCharSet = nil;
 
 - (NSArray *) percentEncodedQueryItems
 {
+    if (internal->_percentEncodedQueryItems != nil) {
+        return AUTORELEASE(RETAIN(internal->_percentEncodedQueryItems));
+    }
     if (internal->_queryItems == nil) return nil;
 
     NSMutableArray *items = [NSMutableArray arrayWithCapacity:[internal->_queryItems count]];
@@ -2463,6 +2469,9 @@ static NSCharacterSet *queryItemCharSet = nil;
         }
     }
     [self setQueryItems:items];
+    // A decoded item may contain characters such as '+' that the serializer
+    // would otherwise leave unescaped.
+    ASSIGNCOPY(internal->_percentEncodedQueryItems, queryItems);
 }
 
 - (NSString *) percentEncodedUser

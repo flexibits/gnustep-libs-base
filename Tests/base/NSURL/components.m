@@ -81,6 +81,28 @@ int main()
     "set query to item containing ampersand")
   PASS_EQUAL([components percentEncodedQuery], @"%26",
     "percent encoded query item encodes ampersand")
+
+  NSURLQueryItem *encodedEmail = [NSURLQueryItem queryItemWithName: @"email"
+    value: @"alex%2Bwork%40example.com"];
+  [components setPercentEncodedQueryItems: [NSArray arrayWithObject: encodedEmail]];
+  PASS_EQUAL([components percentEncodedQuery], @"email=alex%2Bwork%40example.com",
+    "pre-encoded query preserves the escaped plus")
+  PASS_EQUAL([[[components percentEncodedQueryItems] lastObject] value], [encodedEmail value],
+    "pre-encoded query item keeps its original escapes")
+  PASS_EQUAL([[[components queryItems] lastObject] value], @"alex+work@example.com",
+    "ordinary query items return the decoded address")
+  PASS_EQUAL([[components URL] absoluteString],
+    @"https://user:password@some.host.com?email=alex%2Bwork%40example.com",
+    "URL contains the escaped plus")
+
+  NSURLComponents *copy = [components copy];
+  PASS_EQUAL([copy percentEncodedQuery], @"email=alex%2Bwork%40example.com",
+    "copy preserves the encoded query")
+  RELEASE(copy);
+  [components setQueryItems: [NSArray arrayWithObject:
+    [NSURLQueryItem queryItemWithName: @"email" value: @"other@example.com"]]];
+  PASS_EQUAL([components percentEncodedQuery], @"email=other@example.com",
+    "ordinary query items replace the encoded query")
     
   //NSURLQueryItem percent encoding/decoding test
   NSString* urlString = @"http://domain/?%D0%90%D0%B0%D0%91%D0%B1=%D0%90%D0%B0%D0%91%D0%B1";
