@@ -150,7 +150,7 @@ static Class	NSDate_class;
                           repeats: (BOOL)repeats
                             block: (GSTimerBlock)block
 {
-  ASSIGN(_block, (id)block);
+  ASSIGNCOPY(_block, (id)block);
   return [self initWithFireDate: date
                        interval: interval
                          target: nil
@@ -272,6 +272,7 @@ static Class	NSDate_class;
     {
       [self invalidate];
     }
+  RELEASE((id)_block);
   RELEASE(_date);
   [super dealloc];
 }
